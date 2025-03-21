@@ -13,7 +13,8 @@ import {
   Apple,
   User,
   ChevronRight,
-  CheckCircle
+  CheckCircle,
+  Activity
 } from "lucide-react";
 
 export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
@@ -22,7 +23,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
   const [formData, setFormData] = useState({
     name: "",
     age: 30,
-    gender: "male",
+    gender: "male" as "male" | "female" | "other",
     height: 175,
     weight: 75,
     fitnessGoal: "muscle_gain" as FitnessGoal,

@@ -10,7 +10,8 @@ import {
   Mic, 
   Zap,
   Weight,
-  ChartBar
+  ChartBar,
+  LucideProps
 } from "lucide-react";
 
 export const AnimatedCard = ({ 
@@ -46,7 +47,7 @@ export const IconButton = ({
   size = "md",
   className,
 }: { 
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>, 
+  icon: React.ComponentType<LucideProps>, 
   onClick?: () => void,
   label?: string,
   variant?: "primary" | "secondary" | "outline" | "ghost",
@@ -100,7 +101,7 @@ export const StatsCard = ({
 }: {
   title: string;
   value: string;
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  icon: React.ComponentType<LucideProps>;
   trend?: "up" | "down" | "neutral";
   trendValue?: string;
   className?: string;
@@ -137,7 +138,7 @@ export const NavigationItem = ({
   onClick,
   active = false,
 }: {
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  icon: React.ComponentType<LucideProps>;
   label: string;
   onClick?: () => void;
   active?: boolean;
@@ -236,7 +237,7 @@ export function IconBox({
   label,
   className,
 }: {
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  icon: React.ComponentType<LucideProps>;
   label: string;
   className?: string;
 }) {
