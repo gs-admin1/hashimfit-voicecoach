@@ -4,7 +4,9 @@ import { X, Send, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { AnimatedCard } from "./ui-components";
-import { toast } from "./ui/use-toast";
+import { toast } from "@/hooks/use-toast";
+import supabase from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 
 type Message = {
   id: string;
@@ -30,6 +32,7 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { isAuthenticated, userId } = useAuth();
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -37,9 +40,71 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     }
   }, [messages, isOpen]);
 
+  useEffect(() => {
+    // Load chat history from Supabase when authenticated
+    if (isAuthenticated && userId) {
+      fetchChatHistory();
+    }
+  }, [isAuthenticated, userId, isOpen]);
+
+  const fetchChatHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true })
+        .limit(50);
+      
+      if (error) {
+        console.error('Error fetching chat history:', error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        const formattedMessages = data.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          role: msg.role as "user" | "assistant",
+          timestamp: new Date(msg.created_at)
+        }));
+        
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error('Error in fetchChatHistory:', error);
+    }
+  };
+
+  const saveChatMessage = async (message: Omit<Message, 'id' | 'timestamp'>) => {
+    try {
+      if (!userId) return;
+      
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert([
+          {
+            user_id: userId,
+            content: message.content,
+            role: message.role
+          }
+        ])
+        .select();
+      
+      if (error) {
+        console.error('Error saving message:', error);
+      }
+      
+      return data?.[0]?.id;
+    } catch (error) {
+      console.error('Error in saveChatMessage:', error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
+    // Create user message
     const userMessage: Message = {
       id: Date.now().toString(),
       content: input,
@@ -51,33 +116,59 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     setInput("");
     setIsLoading(true);
 
-    // This is where you would integrate with OpenAI via Supabase
-    // For now, we'll simulate a response
-    setTimeout(() => {
-      const fitnessTips = [
-        "Try to get at least 150 minutes of moderate aerobic activity or 75 minutes of vigorous aerobic activity a week.",
-        "Strength training exercises for all major muscle groups at least twice a week.",
-        "Drink water before, during, and after your workout.",
-        "Get adequate sleep to allow your body to recover and repair.",
-        "Include a mix of cardio, strength, flexibility, and balance exercises in your routine.",
-        "Start slowly and gradually increase the intensity of your workouts.",
-        "Listen to your body and rest when needed.",
-        "Proper form prevents injuries. Consider working with a trainer initially.",
-        "Set specific, measurable, achievable, relevant, and time-bound (SMART) goals.",
-      ];
+    try {
+      // Save user message to Supabase if authenticated
+      if (isAuthenticated && userId) {
+        await saveChatMessage({
+          content: userMessage.content,
+          role: userMessage.role
+        });
+      }
 
-      const randomResponse = fitnessTips[Math.floor(Math.random() * fitnessTips.length)];
+      // This would ideally call your edge function, but for now let's use the fallback
+      setTimeout(async () => {
+        const fitnessTips = [
+          "Try to get at least 150 minutes of moderate aerobic activity or 75 minutes of vigorous aerobic activity a week.",
+          "Strength training exercises for all major muscle groups at least twice a week.",
+          "Drink water before, during, and after your workout.",
+          "Get adequate sleep to allow your body to recover and repair.",
+          "Include a mix of cardio, strength, flexibility, and balance exercises in your routine.",
+          "Start slowly and gradually increase the intensity of your workouts.",
+          "Listen to your body and rest when needed.",
+          "Proper form prevents injuries. Consider working with a trainer initially.",
+          "Set specific, measurable, achievable, relevant, and time-bound (SMART) goals.",
+        ];
 
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        content: randomResponse,
-        role: "assistant",
-        timestamp: new Date(),
-      };
+        const randomResponse = fitnessTips[Math.floor(Math.random() * fitnessTips.length)];
 
-      setMessages((prev) => [...prev, assistantMessage]);
+        const assistantMessage: Message = {
+          id: Date.now().toString(),
+          content: randomResponse,
+          role: "assistant",
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, assistantMessage]);
+        
+        // Save assistant message to Supabase if authenticated
+        if (isAuthenticated && userId) {
+          await saveChatMessage({
+            content: assistantMessage.content,
+            role: assistantMessage.role
+          });
+        }
+        
+        setIsLoading(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Error in chat flow:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process your message. Please try again.",
+        variant: "destructive"
+      });
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   if (!isOpen) return null;

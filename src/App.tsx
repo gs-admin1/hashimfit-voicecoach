@@ -13,28 +13,31 @@ import Workouts from "./pages/Workouts";
 import Planner from "./pages/Planner";
 import Progress from "./pages/Progress";
 import { UserProvider } from "./context/UserContext";
+import { AuthProvider } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <UserProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/assessment" element={<Assessment />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/workouts" element={<Workouts />} />
-            <Route path="/planner" element={<Planner />} />
-            <Route path="/progress" element={<Progress />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/assessment" element={<Assessment />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/workouts" element={<Workouts />} />
+              <Route path="/planner" element={<Planner />} />
+              <Route path="/progress" element={<Progress />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </UserProvider>
   </QueryClientProvider>
 );
