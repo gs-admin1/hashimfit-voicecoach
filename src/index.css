@@ -153,9 +153,17 @@
            data-[state=checked]:border-hashim-200 px-4 py-2.5;
   }
   
-  /* Add blue selection styles */
-  .hashim-radio-item.data-\[state\=checked\]\:bg-hashim-500 {
-    @apply data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white data-[state=checked]:border-hashim-500;
+  /* Fixed blue selection styles without circular dependency */
+  .hashim-radio-item-blue {
+    @apply flex items-center justify-center rounded-full border border-muted bg-transparent text-sm font-medium
+           transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-hashim-500
+           active:scale-95 disabled:opacity-70 disabled:pointer-events-none px-4 py-2.5;
+  }
+  
+  .hashim-radio-item-blue[data-state="checked"] {
+    background-color: theme('colors.hashim.500');
+    color: white;
+    border-color: theme('colors.hashim.500');
   }
   
   /* Mobile number input style */

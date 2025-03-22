@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useUser, FitnessGoal, WorkoutFrequency, Diet, Equipment } from "@/context/UserContext";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -125,9 +124,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <RadioGroupItem value="male" id="male" className="sr-only" />
                 <Label
                   htmlFor="male"
-                  className={`hashim-radio-item cursor-pointer ${
-                    formData.gender === "male" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                  }`}
+                  className="hashim-radio-item-blue"
                 >
                   <User className="mr-2 h-4 w-4" />
                   Male
@@ -137,9 +134,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <RadioGroupItem value="female" id="female" className="sr-only" />
                 <Label
                   htmlFor="female"
-                  className={`hashim-radio-item cursor-pointer ${
-                    formData.gender === "female" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                  }`}
+                  className="hashim-radio-item-blue"
                 >
                   <User className="mr-2 h-4 w-4" />
                   Female
@@ -149,9 +144,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <RadioGroupItem value="other" id="other" className="sr-only" />
                 <Label
                   htmlFor="other"
-                  className={`hashim-radio-item cursor-pointer ${
-                    formData.gender === "other" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                  }`}
+                  className="hashim-radio-item-blue"
                 >
                   <User className="mr-2 h-4 w-4" />
                   Other
@@ -238,9 +231,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <RadioGroupItem value="muscle_gain" id="muscle_gain" className="sr-only" />
                 <Label
                   htmlFor="muscle_gain"
-                  className={`hashim-radio-item cursor-pointer ${
-                    formData.fitnessGoal === "muscle_gain" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                  }`}
+                  className="hashim-radio-item-blue"
                 >
                   <Dumbbell className="mr-2 h-4 w-4" />
                   Muscle Gain
@@ -250,9 +241,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <RadioGroupItem value="weight_loss" id="weight_loss" className="sr-only" />
                 <Label
                   htmlFor="weight_loss"
-                  className={`hashim-radio-item cursor-pointer ${
-                    formData.fitnessGoal === "weight_loss" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                  }`}
+                  className="hashim-radio-item-blue"
                 >
                   <Weight className="mr-2 h-4 w-4" />
                   Weight Loss
@@ -262,9 +251,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <RadioGroupItem value="endurance" id="endurance" className="sr-only" />
                 <Label
                   htmlFor="endurance"
-                  className={`hashim-radio-item cursor-pointer ${
-                    formData.fitnessGoal === "endurance" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                  }`}
+                  className="hashim-radio-item-blue"
                 >
                   <Activity className="mr-2 h-4 w-4" />
                   Endurance
@@ -274,9 +261,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <RadioGroupItem value="sport_specific" id="sport_specific" className="sr-only" />
                 <Label
                   htmlFor="sport_specific"
-                  className={`hashim-radio-item cursor-pointer ${
-                    formData.fitnessGoal === "sport_specific" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                  }`}
+                  className="hashim-radio-item-blue"
                 >
                   <Activity className="mr-2 h-4 w-4" />
                   Sport Specific
@@ -297,9 +282,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                   <RadioGroupItem value={num.toString()} id={`freq-${num}`} className="sr-only" />
                   <Label
                     htmlFor={`freq-${num}`}
-                    className={`hashim-radio-item cursor-pointer ${
-                      formData.workoutFrequency === num ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                    }`}
+                    className="hashim-radio-item-blue"
                   >
                     <Calendar className="mr-2 h-4 w-4" />
                     {num} {num === 1 ? 'day' : 'days'}
@@ -352,9 +335,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                   <RadioGroupItem value={diet.id} id={diet.id} className="sr-only" />
                   <Label
                     htmlFor={diet.id}
-                    className={`hashim-radio-item cursor-pointer ${
-                      formData.diet === diet.id ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                    }`}
+                    className="hashim-radio-item-blue"
                   >
                     <Apple className="mr-2 h-4 w-4" />
                     {diet.label}
@@ -381,9 +362,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                   <RadioGroupItem value={equipment.id} id={equipment.id} className="sr-only" />
                   <Label
                     htmlFor={equipment.id}
-                    className={`hashim-radio-item cursor-pointer ${
-                      formData.equipment === equipment.id ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
-                    }`}
+                    className="hashim-radio-item-blue"
                   >
                     <Dumbbell className="mr-2 h-4 w-4" />
                     {equipment.label}
