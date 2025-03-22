@@ -2,6 +2,7 @@
 import { Dashboard } from "@/components/Dashboard";
 import { Logo } from "@/components/Logo";
 import { NavigationBar } from "@/components/ui-components";
+import { ChatFAB } from "@/components/ChatFAB";
 
 export default function DashboardPage() {
   return (
@@ -17,6 +18,7 @@ export default function DashboardPage() {
       </main>
       
       <NavigationBar />
+      <ChatFAB />
     </div>
   );
 }

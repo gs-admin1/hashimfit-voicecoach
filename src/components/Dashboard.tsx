@@ -10,6 +10,8 @@ import {
 } from "./ui-components";
 import { WorkoutCard } from "./WorkoutCard";
 import { ProgressChart } from "./ProgressChart";
+import { VoiceInput } from "./VoiceInput";
+import { MealCaptureCard } from "./MealCaptureCard";
 import { 
   Activity, 
   Weight, 
@@ -148,7 +150,10 @@ export function Dashboard() {
           />
         </div>
 
-        <VoiceWidget />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <VoiceInput />
+          <MealCaptureCard />
+        </div>
       </div>
 
       <div className="mb-8">
