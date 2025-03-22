@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { 
@@ -13,6 +12,7 @@ import {
   ChartBar,
   LucideProps
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export const AnimatedCard = ({ 
   children, 
@@ -135,17 +135,19 @@ export const StatsCard = ({
 export const NavigationItem = ({
   icon: Icon,
   label,
-  onClick,
+  path,
   active = false,
 }: {
   icon: React.ComponentType<LucideProps>;
   label: string;
-  onClick?: () => void;
+  path: string;
   active?: boolean;
 }) => {
+  const navigate = useNavigate();
+  
   return (
     <button
-      onClick={onClick}
+      onClick={() => navigate(path)}
       className={cn(
         "flex items-center p-3 rounded-xl w-full transition-all duration-300",
         active
@@ -164,10 +166,12 @@ export const Chip = ({
   label,
   active = false,
   onClick,
+  date
 }: {
   label: string;
   active?: boolean;
   onClick?: () => void;
+  date?: Date;
 }) => {
   return (
     <button
@@ -235,14 +239,27 @@ export function VoiceWidget() {
 export function IconBox({
   icon: Icon,
   label,
+  path,
   className,
 }: {
   icon: React.ComponentType<LucideProps>;
   label: string;
+  path?: string;
   className?: string;
 }) {
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    if (path) {
+      navigate(path);
+    }
+  };
+  
   return (
-    <div className={cn("flex flex-col items-center p-4", className)}>
+    <div 
+      className={cn("flex flex-col items-center p-4 cursor-pointer", className)}
+      onClick={handleClick}
+    >
       <div className="p-3 rounded-full bg-hashim-50 dark:bg-hashim-900/20 mb-2">
         <Icon size={24} className="text-hashim-600" />
       </div>
@@ -252,12 +269,15 @@ export function IconBox({
 }
 
 export function NavigationBar() {
+  const navigate = useNavigate();
+  const location = window.location.pathname;
+  
   const navItems = [
-    { icon: Activity, label: "Dashboard" },
-    { icon: Dumbbell, label: "Workouts" },
-    { icon: Calendar, label: "Planner" },
-    { icon: ChartBar, label: "Progress" },
-    { icon: User, label: "Profile" },
+    { icon: Activity, label: "Dashboard", path: "/dashboard" },
+    { icon: Dumbbell, label: "Workouts", path: "/workouts" },
+    { icon: Calendar, label: "Planner", path: "/planner" },
+    { icon: ChartBar, label: "Progress", path: "/progress" },
+    { icon: User, label: "Profile", path: "/profile" },
   ];
 
   return (
@@ -268,6 +288,7 @@ export function NavigationBar() {
             key={item.label}
             icon={item.icon}
             label={item.label}
+            path={item.path}
             className="px-2"
           />
         ))}

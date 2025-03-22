@@ -105,9 +105,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
             <Input
               id="age"
               type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="Enter your age"
               value={formData.age.toString()}
-              onChange={(e) => updateFormData("age", parseInt(e.target.value))}
+              onChange={(e) => updateFormData("age", parseInt(e.target.value) || 0)}
               className="hashim-input"
             />
           </div>
@@ -124,7 +126,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <Label
                   htmlFor="male"
                   className={`hashim-radio-item cursor-pointer ${
-                    formData.gender === "male" ? "data-[state=checked]" : ""
+                    formData.gender === "male" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                   }`}
                 >
                   <User className="mr-2 h-4 w-4" />
@@ -136,7 +138,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <Label
                   htmlFor="female"
                   className={`hashim-radio-item cursor-pointer ${
-                    formData.gender === "female" ? "data-[state=checked]" : ""
+                    formData.gender === "female" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                   }`}
                 >
                   <User className="mr-2 h-4 w-4" />
@@ -148,7 +150,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <Label
                   htmlFor="other"
                   className={`hashim-radio-item cursor-pointer ${
-                    formData.gender === "other" ? "data-[state=checked]" : ""
+                    formData.gender === "other" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                   }`}
                 >
                   <User className="mr-2 h-4 w-4" />
@@ -178,9 +180,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
             <Input
               id="height"
               type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="Enter your height in cm"
               value={formData.height.toString()}
-              onChange={(e) => updateFormData("height", parseInt(e.target.value))}
+              onChange={(e) => updateFormData("height", parseInt(e.target.value) || 0)}
               className="hashim-input"
             />
           </div>
@@ -190,9 +194,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
             <Input
               id="weight"
               type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="Enter your weight in kg"
               value={formData.weight.toString()}
-              onChange={(e) => updateFormData("weight", parseInt(e.target.value))}
+              onChange={(e) => updateFormData("weight", parseInt(e.target.value) || 0)}
               className="hashim-input"
             />
           </div>
@@ -233,7 +239,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <Label
                   htmlFor="muscle_gain"
                   className={`hashim-radio-item cursor-pointer ${
-                    formData.fitnessGoal === "muscle_gain" ? "data-[state=checked]" : ""
+                    formData.fitnessGoal === "muscle_gain" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                   }`}
                 >
                   <Dumbbell className="mr-2 h-4 w-4" />
@@ -245,7 +251,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <Label
                   htmlFor="weight_loss"
                   className={`hashim-radio-item cursor-pointer ${
-                    formData.fitnessGoal === "weight_loss" ? "data-[state=checked]" : ""
+                    formData.fitnessGoal === "weight_loss" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                   }`}
                 >
                   <Weight className="mr-2 h-4 w-4" />
@@ -257,7 +263,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <Label
                   htmlFor="endurance"
                   className={`hashim-radio-item cursor-pointer ${
-                    formData.fitnessGoal === "endurance" ? "data-[state=checked]" : ""
+                    formData.fitnessGoal === "endurance" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                   }`}
                 >
                   <Activity className="mr-2 h-4 w-4" />
@@ -269,7 +275,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <Label
                   htmlFor="sport_specific"
                   className={`hashim-radio-item cursor-pointer ${
-                    formData.fitnessGoal === "sport_specific" ? "data-[state=checked]" : ""
+                    formData.fitnessGoal === "sport_specific" ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                   }`}
                 >
                   <Activity className="mr-2 h-4 w-4" />
@@ -292,7 +298,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                   <Label
                     htmlFor={`freq-${num}`}
                     className={`hashim-radio-item cursor-pointer ${
-                      formData.workoutFrequency === num ? "data-[state=checked]" : ""
+                      formData.workoutFrequency === num ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                     }`}
                   >
                     <Calendar className="mr-2 h-4 w-4" />
@@ -347,7 +353,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                   <Label
                     htmlFor={diet.id}
                     className={`hashim-radio-item cursor-pointer ${
-                      formData.diet === diet.id ? "data-[state=checked]" : ""
+                      formData.diet === diet.id ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                     }`}
                   >
                     <Apple className="mr-2 h-4 w-4" />
@@ -376,7 +382,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                   <Label
                     htmlFor={equipment.id}
                     className={`hashim-radio-item cursor-pointer ${
-                      formData.equipment === equipment.id ? "data-[state=checked]" : ""
+                      formData.equipment === equipment.id ? "data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white" : ""
                     }`}
                   >
                     <Dumbbell className="mr-2 h-4 w-4" />

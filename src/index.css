@@ -80,6 +80,17 @@
   html {
     @apply scroll-smooth;
   }
+  
+  /* Mobile-specific input styles */
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
 }
 
 @layer components {
@@ -141,6 +152,16 @@
            data-[state=checked]:bg-hashim-100 data-[state=checked]:text-hashim-800 
            data-[state=checked]:border-hashim-200 px-4 py-2.5;
   }
+  
+  /* Add blue selection styles */
+  .hashim-radio-item.data-\[state\=checked\]\:bg-hashim-500 {
+    @apply data-[state=checked]:bg-hashim-500 data-[state=checked]:text-white data-[state=checked]:border-hashim-500;
+  }
+  
+  /* Mobile number input style */
+  .hashim-number-input {
+    @apply hashim-input text-center;
+  }
 }
 
 .microphone-ripple {
@@ -166,4 +187,58 @@
   100% {
     box-shadow: 0 0 0 20px rgba(14, 165, 233, 0);
   }
+}
+
+/* Scrollbar removal for mobile */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Animation for mobile */
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
 }

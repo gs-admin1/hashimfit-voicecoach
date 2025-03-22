@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { useUser } from "@/context/UserContext";
 import { 
   AnimatedCard, 
@@ -25,17 +26,76 @@ export function Dashboard() {
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const today = new Date();
   const currentDay = weekDays[today.getDay() === 0 ? 6 : today.getDay() - 1];
+  const [selectedDay, setSelectedDay] = useState(currentDay);
 
-  // Mock data for today's workout
-  const todaysWorkout = {
-    title: "Upper Body Strength",
-    exercises: [
-      { name: "Bench Press", sets: 4, reps: "8-10", weight: "70kg" },
-      { name: "Incline Dumbbell Press", sets: 4, reps: "10-12", weight: "25kg" },
-      { name: "Lat Pulldown", sets: 4, reps: "12-15", weight: "60kg" },
-      { name: "Cable Row", sets: 3, reps: "10-12", weight: "55kg" },
-      { name: "Shoulder Press", sets: 3, reps: "10-12", weight: "20kg" },
-    ],
+  // Mock workouts for different days
+  const workoutsByDay = {
+    Mon: {
+      title: "Upper Body Strength",
+      exercises: [
+        { name: "Bench Press", sets: 4, reps: "8-10", weight: "70kg" },
+        { name: "Incline Dumbbell Press", sets: 4, reps: "10-12", weight: "25kg" },
+        { name: "Lat Pulldown", sets: 4, reps: "12-15", weight: "60kg" },
+        { name: "Cable Row", sets: 3, reps: "10-12", weight: "55kg" },
+        { name: "Shoulder Press", sets: 3, reps: "10-12", weight: "20kg" },
+      ],
+    },
+    Tue: {
+      title: "Lower Body Focus",
+      exercises: [
+        { name: "Squats", sets: 5, reps: "6-8", weight: "100kg" },
+        { name: "Romanian Deadlift", sets: 4, reps: "8-10", weight: "80kg" },
+        { name: "Leg Press", sets: 3, reps: "10-12", weight: "150kg" },
+        { name: "Leg Extensions", sets: 3, reps: "12-15", weight: "40kg" },
+        { name: "Calf Raises", sets: 4, reps: "15-20", weight: "60kg" },
+      ],
+    },
+    Wed: {
+      title: "Rest & Recovery",
+      exercises: [
+        { name: "Stretching", sets: 1, reps: "10-15 mins", weight: "bodyweight" },
+        { name: "Foam Rolling", sets: 1, reps: "10 mins", weight: "bodyweight" },
+        { name: "Light Walking", sets: 1, reps: "20-30 mins", weight: "bodyweight" },
+      ],
+    },
+    Thu: {
+      title: "Push Workout",
+      exercises: [
+        { name: "Overhead Press", sets: 4, reps: "8-10", weight: "45kg" },
+        { name: "Dips", sets: 4, reps: "10-12", weight: "bodyweight" },
+        { name: "Incline Bench Press", sets: 3, reps: "8-10", weight: "60kg" },
+        { name: "Lateral Raises", sets: 3, reps: "12-15", weight: "12kg" },
+        { name: "Tricep Pushdowns", sets: 3, reps: "12-15", weight: "25kg" },
+      ],
+    },
+    Fri: {
+      title: "Pull Workout",
+      exercises: [
+        { name: "Pull-Ups", sets: 4, reps: "8-10", weight: "bodyweight" },
+        { name: "Barbell Rows", sets: 4, reps: "10-12", weight: "70kg" },
+        { name: "Face Pulls", sets: 3, reps: "15-20", weight: "25kg" },
+        { name: "Hammer Curls", sets: 3, reps: "10-12", weight: "15kg" },
+        { name: "Barbell Curls", sets: 3, reps: "10-12", weight: "30kg" },
+      ],
+    },
+    Sat: {
+      title: "Legs & Core",
+      exercises: [
+        { name: "Front Squats", sets: 4, reps: "8-10", weight: "80kg" },
+        { name: "Lunges", sets: 3, reps: "10 each leg", weight: "20kg" },
+        { name: "Leg Curls", sets: 3, reps: "12-15", weight: "35kg" },
+        { name: "Plank", sets: 3, reps: "60 seconds", weight: "bodyweight" },
+        { name: "Russian Twists", sets: 3, reps: "20 each side", weight: "10kg" },
+      ],
+    },
+    Sun: {
+      title: "Active Recovery",
+      exercises: [
+        { name: "Swimming", sets: 1, reps: "30 mins", weight: "bodyweight" },
+        { name: "Yoga", sets: 1, reps: "30 mins", weight: "bodyweight" },
+        { name: "Mobility Work", sets: 1, reps: "15 mins", weight: "bodyweight" },
+      ],
+    },
   };
 
   // Mock nutrition data
@@ -65,7 +125,8 @@ export function Dashboard() {
             <Chip 
               key={day} 
               label={day} 
-              active={day === currentDay}
+              active={day === selectedDay}
+              onClick={() => setSelectedDay(day)}
             />
           ))}
         </div>
@@ -92,8 +153,8 @@ export function Dashboard() {
 
       <div className="mb-8">
         <SectionTitle
-          title="Today's Workout"
-          subtitle="Upper Body Focus"
+          title={`${selectedDay}'s Workout`}
+          subtitle={workoutsByDay[selectedDay as keyof typeof workoutsByDay]?.title || "Rest Day"}
           action={
             <Button variant="ghost" size="sm" className="flex items-center">
               <span className="mr-1">View all</span>
@@ -102,7 +163,7 @@ export function Dashboard() {
           }
         />
         
-        <WorkoutCard workout={todaysWorkout} />
+        <WorkoutCard workout={workoutsByDay[selectedDay as keyof typeof workoutsByDay]} />
       </div>
 
       <div className="mb-8">
