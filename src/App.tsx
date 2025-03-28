@@ -14,30 +14,66 @@ import Planner from "./pages/Planner";
 import Progress from "./pages/Progress";
 import { UserProvider } from "./context/UserContext";
 import { AuthProvider } from "./hooks/useAuth";
+import { AuthGuard } from "./components/AuthGuard";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <UserProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
             <Routes>
+              {/* Public routes */}
               <Route path="/" element={<Index />} />
-              <Route path="/assessment" element={<Assessment />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/workouts" element={<Workouts />} />
-              <Route path="/planner" element={<Planner />} />
-              <Route path="/progress" element={<Progress />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              
+              {/* Protected routes */}
+              <Route path="/assessment" element={
+                <AuthGuard>
+                  <Assessment />
+                </AuthGuard>
+              } />
+              <Route path="/dashboard" element={
+                <AuthGuard>
+                  <Dashboard />
+                </AuthGuard>
+              } />
+              <Route path="/profile" element={
+                <AuthGuard>
+                  <Profile />
+                </AuthGuard>
+              } />
+              <Route path="/workouts" element={
+                <AuthGuard>
+                  <Workouts />
+                </AuthGuard>
+              } />
+              <Route path="/planner" element={
+                <AuthGuard>
+                  <Planner />
+                </AuthGuard>
+              } />
+              <Route path="/progress" element={
+                <AuthGuard>
+                  <Progress />
+                </AuthGuard>
+              } />
+              
+              {/* 404 page */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
+          </TooltipProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </UserProvider>
   </QueryClientProvider>
 );

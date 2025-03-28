@@ -3,6 +3,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import supabase from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
 import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextProps {
   isAuthenticated: boolean;
@@ -10,6 +11,8 @@ interface AuthContextProps {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -20,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { user, setUser } = useUser();
+  const navigate = useNavigate();
   
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -32,6 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Sync user profile with UserContext when authenticated
         if (isAuthed && session?.user.id) {
           fetchUserProfile(session.user.id);
+        } else if (!isAuthed) {
+          // Redirect to index page if not authenticated
+          navigate('/');
         }
       }
     );
@@ -69,7 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single();
         
-      if (error) throw error;
+      if (error) {
+        // If profile doesn't exist yet, create it
+        if (error.code === 'PGRST116') {
+          await createUserProfile(userId);
+          return;
+        }
+        throw error;
+      }
       
       if (data) {
         // Map Supabase profile to UserContext format
@@ -90,6 +104,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      toast({
+        title: "Profile Error",
+        description: "Could not load your profile data",
+        variant: "destructive"
+      });
+    }
+  }
+  
+  async function createUserProfile(userId: string) {
+    try {
+      // Create a default profile for new users
+      const defaultProfile = {
+        id: userId,
+        name: '',
+        age: 30,
+        gender: 'male',
+        height: 175,
+        weight: 75,
+        fitness_goal: 'muscle_gain',
+        workout_frequency: 3,
+        diet: 'standard',
+        equipment: 'full_gym',
+        has_completed_assessment: false,
+        created_at: new Date()
+      };
+      
+      const { error } = await supabase
+        .from('profiles')
+        .insert([defaultProfile]);
+        
+      if (error) throw error;
+      
+      // Set default user in context
+      setUser({
+        name: '',
+        age: 30,
+        gender: 'male',
+        height: 175,
+        weight: 75,
+        fitnessGoal: 'muscle_gain',
+        workoutFrequency: 3,
+        diet: 'standard',
+        equipment: 'full_gym',
+        hasCompletedAssessment: false
+      });
+      
+    } catch (error) {
+      console.error('Error creating user profile:', error);
     }
   }
   
@@ -104,6 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Welcome back!",
         description: "You've successfully signed in."
       });
+      
+      navigate('/dashboard');
     } catch (error: any) {
       toast({
         title: "Authentication failed",
@@ -119,9 +183,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signUp(email: string, password: string) {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error, data } = await supabase.auth.signUp({ email, password });
       
       if (error) throw error;
+      
+      // Create profile if sign up was successful and user was created
+      if (data.user) {
+        await createUserProfile(data.user.id);
+      }
       
       toast({
         title: "Account created",
@@ -150,6 +219,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Signed out",
         description: "You've been successfully signed out."
       });
+      
+      navigate('/');
     } catch (error: any) {
       toast({
         title: "Sign out failed",
@@ -162,6 +233,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
   
+  async function resetPassword(email: string) {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password reset email sent",
+        description: "Check your inbox for password reset instructions."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Password reset failed",
+        description: error.message,
+        variant: "destructive"
+      });
+      console.error('Error requesting password reset:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+  
+  async function updatePassword(password: string) {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.updateUser({ password });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Password updated",
+        description: "Your password has been successfully updated."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Password update failed",
+        description: error.message,
+        variant: "destructive"
+      });
+      console.error('Error updating password:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+  
   return (
     <AuthContext.Provider value={{ 
       isAuthenticated, 
@@ -169,6 +288,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn, 
       signUp, 
       signOut,
+      resetPassword,
+      updatePassword,
       isLoading 
     }}>
       {children}

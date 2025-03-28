@@ -5,21 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { ChevronRight, Dumbbell, Mic, User, Apple } from "lucide-react";
 import { useUser } from "@/context/UserContext";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Index() {
   const navigate = useNavigate();
   const { user } = useUser();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Check if user has already completed assessment
-    const savedUser = localStorage.getItem("hashimfit_user");
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      if (parsedUser.hasCompletedAssessment) {
-        navigate("/dashboard");
-      }
+    // Check if user has already completed assessment and is authenticated
+    if (isAuthenticated && user?.hasCompletedAssessment) {
+      navigate("/dashboard");
     }
-  }, [navigate, user]);
+  }, [navigate, user, isAuthenticated]);
 
   const features = [
     {
@@ -47,8 +45,36 @@ export default function Index() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-hashim-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="flex-1 flex flex-col">
-        <header className="container pt-8 animate-fade-in">
+        <header className="container pt-8 flex justify-between items-center animate-fade-in">
           <Logo size="lg" />
+          
+          <div className="flex gap-3">
+            {isAuthenticated ? (
+              <Button 
+                onClick={() => navigate("/dashboard")}
+                className="bg-hashim-600 hover:bg-hashim-700 text-white"
+              >
+                Dashboard
+                <ChevronRight className="ml-1" size={16} />
+              </Button>
+            ) : (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate("/login")}
+                  className="border-hashim-300 text-hashim-700 hover:bg-hashim-50"
+                >
+                  Sign In
+                </Button>
+                <Button 
+                  onClick={() => navigate("/signup")}
+                  className="bg-hashim-600 hover:bg-hashim-700 text-white"
+                >
+                  Sign Up
+                </Button>
+              </>
+            )}
+          </div>
         </header>
         
         <main className="flex-1 flex flex-col items-center justify-center px-4 text-center">
@@ -64,10 +90,10 @@ export default function Index() {
             </p>
             
             <Button 
-              className="hashim-button-primary text-lg py-6 px-8 animate-pulse-slow"
-              onClick={() => navigate("/assessment")}
+              className="hashim-button-primary text-lg py-6 px-8 animate-pulse-slow bg-hashim-600 hover:bg-hashim-700 text-white"
+              onClick={() => isAuthenticated ? navigate("/dashboard") : navigate("/signup")}
             >
-              Start Your Fitness Journey
+              {isAuthenticated ? "Go to Dashboard" : "Start Your Fitness Journey"}
               <ChevronRight className="ml-2" />
             </Button>
           </div>
