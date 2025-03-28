@@ -4,8 +4,9 @@
 -- Enable the pgcrypto extension for UUID generation
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Enable RLS (Row Level Security)
-ALTER DATABASE postgres SET "app.jwt_secret" TO 'your-jwt-secret';
+-- Note: You don't need to manually set the JWT secret as Supabase manages this for you
+-- The following line should be removed or commented out in production:
+-- ALTER DATABASE postgres SET "app.jwt_secret" TO 'your-jwt-secret';
 
 -- PROFILES TABLE
 -- Stores user profile information
@@ -396,8 +397,191 @@ CREATE POLICY "Users can delete own workout plans"
   ON workout_plans FOR DELETE 
   USING (auth.uid() = user_id);
 
--- Similarly create RLS policies for all other tables
--- This is a template - repeat for each table
+-- Workout Exercises RLS
+CREATE POLICY "Users can view own workout exercises" 
+  ON workout_exercises FOR SELECT 
+  USING (auth.uid() IN (
+    SELECT user_id FROM workout_plans wp WHERE wp.id = workout_exercises.workout_plan_id
+  ));
+
+CREATE POLICY "Users can insert own workout exercises" 
+  ON workout_exercises FOR INSERT 
+  WITH CHECK (auth.uid() IN (
+    SELECT user_id FROM workout_plans wp WHERE wp.id = workout_exercises.workout_plan_id
+  ));
+
+CREATE POLICY "Users can update own workout exercises" 
+  ON workout_exercises FOR UPDATE 
+  USING (auth.uid() IN (
+    SELECT user_id FROM workout_plans wp WHERE wp.id = workout_exercises.workout_plan_id
+  ));
+
+CREATE POLICY "Users can delete own workout exercises" 
+  ON workout_exercises FOR DELETE 
+  USING (auth.uid() IN (
+    SELECT user_id FROM workout_plans wp WHERE wp.id = workout_exercises.workout_plan_id
+  ));
+
+-- Workout Logs RLS
+CREATE POLICY "Users can view own workout logs" 
+  ON workout_logs FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own workout logs" 
+  ON workout_logs FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own workout logs" 
+  ON workout_logs FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own workout logs" 
+  ON workout_logs FOR DELETE 
+  USING (auth.uid() = user_id);
+
+-- Exercise Logs RLS
+CREATE POLICY "Users can view own exercise logs" 
+  ON exercise_logs FOR SELECT 
+  USING (auth.uid() IN (
+    SELECT user_id FROM workout_logs wl WHERE wl.id = exercise_logs.workout_log_id
+  ));
+
+CREATE POLICY "Users can insert own exercise logs" 
+  ON exercise_logs FOR INSERT 
+  WITH CHECK (auth.uid() IN (
+    SELECT user_id FROM workout_logs wl WHERE wl.id = exercise_logs.workout_log_id
+  ));
+
+CREATE POLICY "Users can update own exercise logs" 
+  ON exercise_logs FOR UPDATE 
+  USING (auth.uid() IN (
+    SELECT user_id FROM workout_logs wl WHERE wl.id = exercise_logs.workout_log_id
+  ));
+
+CREATE POLICY "Users can delete own exercise logs" 
+  ON exercise_logs FOR DELETE 
+  USING (auth.uid() IN (
+    SELECT user_id FROM workout_logs wl WHERE wl.id = exercise_logs.workout_log_id
+  ));
+
+-- Workout Schedule RLS
+CREATE POLICY "Users can view own workout schedule" 
+  ON workout_schedule FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own workout schedule" 
+  ON workout_schedule FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own workout schedule" 
+  ON workout_schedule FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own workout schedule" 
+  ON workout_schedule FOR DELETE 
+  USING (auth.uid() = user_id);
+
+-- Nutrition Plans RLS
+CREATE POLICY "Users can view own nutrition plans" 
+  ON nutrition_plans FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own nutrition plans" 
+  ON nutrition_plans FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own nutrition plans" 
+  ON nutrition_plans FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own nutrition plans" 
+  ON nutrition_plans FOR DELETE 
+  USING (auth.uid() = user_id);
+
+-- Meal Plans RLS
+CREATE POLICY "Users can view own meal plans" 
+  ON meal_plans FOR SELECT 
+  USING (auth.uid() IN (
+    SELECT user_id FROM nutrition_plans np WHERE np.id = meal_plans.nutrition_plan_id
+  ));
+
+CREATE POLICY "Users can insert own meal plans" 
+  ON meal_plans FOR INSERT 
+  WITH CHECK (auth.uid() IN (
+    SELECT user_id FROM nutrition_plans np WHERE np.id = meal_plans.nutrition_plan_id
+  ));
+
+CREATE POLICY "Users can update own meal plans" 
+  ON meal_plans FOR UPDATE 
+  USING (auth.uid() IN (
+    SELECT user_id FROM nutrition_plans np WHERE np.id = meal_plans.nutrition_plan_id
+  ));
+
+CREATE POLICY "Users can delete own meal plans" 
+  ON meal_plans FOR DELETE 
+  USING (auth.uid() IN (
+    SELECT user_id FROM nutrition_plans np WHERE np.id = meal_plans.nutrition_plan_id
+  ));
+
+-- Nutrition Logs RLS
+CREATE POLICY "Users can view own nutrition logs" 
+  ON nutrition_logs FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own nutrition logs" 
+  ON nutrition_logs FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own nutrition logs" 
+  ON nutrition_logs FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own nutrition logs" 
+  ON nutrition_logs FOR DELETE 
+  USING (auth.uid() = user_id);
+
+-- Meal Logs RLS
+CREATE POLICY "Users can view own meal logs" 
+  ON meal_logs FOR SELECT 
+  USING (auth.uid() IN (
+    SELECT user_id FROM nutrition_logs nl WHERE nl.id = meal_logs.nutrition_log_id
+  ));
+
+CREATE POLICY "Users can insert own meal logs" 
+  ON meal_logs FOR INSERT 
+  WITH CHECK (auth.uid() IN (
+    SELECT user_id FROM nutrition_logs nl WHERE nl.id = meal_logs.nutrition_log_id
+  ));
+
+CREATE POLICY "Users can update own meal logs" 
+  ON meal_logs FOR UPDATE 
+  USING (auth.uid() IN (
+    SELECT user_id FROM nutrition_logs nl WHERE nl.id = meal_logs.nutrition_log_id
+  ));
+
+CREATE POLICY "Users can delete own meal logs" 
+  ON meal_logs FOR DELETE 
+  USING (auth.uid() IN (
+    SELECT user_id FROM nutrition_logs nl WHERE nl.id = meal_logs.nutrition_log_id
+  ));
+
+-- Chat Messages RLS
+CREATE POLICY "Users can view own chat messages" 
+  ON chat_messages FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own chat messages" 
+  ON chat_messages FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- User Settings RLS
+CREATE POLICY "Users can view own settings" 
+  ON user_settings FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own settings" 
+  ON user_settings FOR UPDATE 
+  USING (auth.uid() = user_id);
 
 -- Create trigger functions for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_modified_column()
