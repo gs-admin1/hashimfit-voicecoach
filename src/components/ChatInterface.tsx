@@ -7,6 +7,7 @@ import { AnimatedCard } from "./ui-components";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ChatService, ChatMessage } from "@/lib/supabase/services/ChatService";
+import { sendChatMessage } from "@/lib/supabase/edge-functions/ai-chat";
 
 interface ChatInterfaceProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, userId } = useAuth();
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -66,10 +68,14 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
 
   // Set up real-time subscription for new messages
   useEffect(() => {
-    let unsubscribe: () => void;
+    // Clean up previous subscription if it exists
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
 
     if (isAuthenticated && userId) {
-      unsubscribe = ChatService.subscribeToNewMessages(userId, (newMessage) => {
+      const unsubscribe = ChatService.subscribeToNewMessages(userId, (newMessage) => {
         // Only add the message if it's not already in the list
         setMessages(prevMessages => {
           if (!prevMessages.some(msg => msg.id === newMessage.id)) {
@@ -78,10 +84,15 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
           return prevMessages;
         });
       });
+      
+      unsubscribeRef.current = unsubscribe;
     }
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
     };
   }, [isAuthenticated, userId]);
 
@@ -112,34 +123,24 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
       // Save user message to Supabase
       await ChatService.saveChatMessage(userMessage);
 
-      // This would ideally call your Supabase Edge function, but for now let's use the fallback
-      setTimeout(async () => {
-        const fitnessTips = [
-          "Try to get at least 150 minutes of moderate aerobic activity or 75 minutes of vigorous aerobic activity a week.",
-          "Strength training exercises for all major muscle groups at least twice a week.",
-          "Drink water before, during, and after your workout.",
-          "Get adequate sleep to allow your body to recover and repair.",
-          "Include a mix of cardio, strength, flexibility, and balance exercises in your routine.",
-          "Start slowly and gradually increase the intensity of your workouts.",
-          "Listen to your body and rest when needed.",
-          "Proper form prevents injuries. Consider working with a trainer initially.",
-          "Set specific, measurable, achievable, relevant, and time-bound (SMART) goals.",
-        ];
-
-        const randomResponse = fitnessTips[Math.floor(Math.random() * fitnessTips.length)];
-
-        const assistantMessage: ChatMessage = {
+      // Try to call the edge function
+      try {
+        // Call our edge function wrapper
+        await sendChatMessage(input);
+        // The actual assistant message will come through the real-time subscription
+      } catch (edgeFunctionError) {
+        console.error('Edge function error:', edgeFunctionError);
+        // Fallback if the edge function fails
+        const fallbackResponse: ChatMessage = {
           user_id: userId,
-          content: randomResponse,
+          content: "I'm having trouble connecting to my training knowledge. Here's a fitness tip: Stay consistent with your workouts and ensure you're getting adequate rest for recovery.",
           role: "assistant",
           created_at: new Date().toISOString()
         };
-
-        // Save assistant message to Supabase
-        await ChatService.saveChatMessage(assistantMessage);
         
-        setIsLoading(false);
-      }, 1500);
+        // Save fallback response to Supabase
+        await ChatService.saveChatMessage(fallbackResponse);
+      }
     } catch (error) {
       console.error('Error in chat flow:', error);
       toast({
@@ -147,6 +148,7 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
         description: "Failed to process your message. Please try again.",
         variant: "destructive"
       });
+    } finally {
       setIsLoading(false);
     }
   };

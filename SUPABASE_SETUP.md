@@ -81,16 +81,21 @@ USING (
    ```
    supabase link --project-ref YOUR_PROJECT_REF
    ```
-4. Create and deploy edge functions:
+4. Create edge functions directory structure:
    ```
-   # Create functions directory
-   mkdir -p supabase/functions
+   mkdir -p supabase/functions/ai-chat
+   mkdir -p supabase/functions/generate-workout
+   ```
+5. Copy the edge function templates to the appropriate directories:
+   ```
+   # Copy the content from src/lib/supabase/edge-function-templates/ai-chat.txt
+   # to supabase/functions/ai-chat/index.ts
    
-   # Copy functions
-   cp src/lib/supabase/edge-functions/ai-chat.ts supabase/functions/ai-chat/index.ts
-   cp src/lib/supabase/edge-functions/generate-workout.ts supabase/functions/generate-workout/index.ts
-   
-   # Deploy functions
+   # Copy the content from src/lib/supabase/edge-function-templates/generate-workout.txt
+   # to supabase/functions/generate-workout/index.ts
+   ```
+6. Deploy the functions:
+   ```
    supabase functions deploy ai-chat
    supabase functions deploy generate-workout
    ```

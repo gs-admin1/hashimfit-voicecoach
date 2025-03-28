@@ -50,7 +50,8 @@ export class ChatService {
     }
   }
 
-  static async subscribeToNewMessages(userId: string, callback: (message: ChatMessage) => void): Promise<() => void> {
+  // Changed return type to be synchronous
+  static subscribeToNewMessages(userId: string, callback: (message: ChatMessage) => void): () => void {
     const subscription = supabase
       .channel('chat_messages')
       .on(
