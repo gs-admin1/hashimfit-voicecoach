@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useUser } from "@/context/UserContext";
 import { 
@@ -23,7 +22,7 @@ import {
   ChartBar,
   ChevronDown,
   ChevronUp,
-  Stats
+  BarChart2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -134,7 +133,7 @@ export function Dashboard() {
             onClick={() => setShowStatsModal(true)}
             className="flex items-center border-hashim-300 text-hashim-700 hover:bg-hashim-50"
           >
-            <Stats size={16} className="mr-1" />
+            <BarChart2 size={16} className="mr-1" />
             Stats
           </Button>
         </div>
