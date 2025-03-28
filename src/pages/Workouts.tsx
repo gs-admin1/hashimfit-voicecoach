@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle, Chip } from "@/components/ui-components";
 import { WorkoutCard } from "@/components/WorkoutCard";
@@ -7,72 +7,113 @@ import { Button } from "@/components/ui/button";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 import { ChatFAB } from "@/components/ChatFAB";
 import { Plus, Filter, ArrowUpDown } from "lucide-react";
-
-interface Exercise {
-  name: string;
-  sets: number;
-  reps: string;
-  weight: string;
-}
-
-interface Workout {
-  title: string;
-  exercises: Exercise[];
-  category: string;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { WorkoutService, WorkoutPlan } from "@/lib/supabase/services/WorkoutService";
+import { toast } from "@/hooks/use-toast";
 
 export default function WorkoutsPage() {
   const [filter, setFilter] = useState("all");
   const [showAddWorkout, setShowAddWorkout] = useState(false);
+  const [workouts, setWorkouts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated, userId } = useAuth();
   
-  // Mock workout data
-  const [workouts, setWorkouts] = useState<Workout[]>([
-    {
-      title: "Upper Body Strength",
-      exercises: [
-        { name: "Bench Press", sets: 4, reps: "8-10", weight: "70kg" },
-        { name: "Incline Dumbbell Press", sets: 4, reps: "10-12", weight: "25kg" },
-        { name: "Lat Pulldown", sets: 4, reps: "12-15", weight: "60kg" },
-        { name: "Cable Row", sets: 3, reps: "10-12", weight: "55kg" },
-        { name: "Shoulder Press", sets: 3, reps: "10-12", weight: "20kg" },
-      ],
-      category: "strength"
-    },
-    {
-      title: "Lower Body Focus",
-      exercises: [
-        { name: "Squats", sets: 5, reps: "6-8", weight: "100kg" },
-        { name: "Romanian Deadlift", sets: 4, reps: "8-10", weight: "80kg" },
-        { name: "Leg Press", sets: 3, reps: "10-12", weight: "150kg" },
-        { name: "Leg Extensions", sets: 3, reps: "12-15", weight: "40kg" },
-        { name: "Calf Raises", sets: 4, reps: "15-20", weight: "60kg" },
-      ],
-      category: "strength"
-    },
-    {
-      title: "HIIT Cardio",
-      exercises: [
-        { name: "Burpees", sets: 4, reps: "45 seconds", weight: "bodyweight" },
-        { name: "Mountain Climbers", sets: 4, reps: "45 seconds", weight: "bodyweight" },
-        { name: "Jump Squats", sets: 4, reps: "45 seconds", weight: "bodyweight" },
-        { name: "High Knees", sets: 4, reps: "45 seconds", weight: "bodyweight" },
-        { name: "Plank Jacks", sets: 4, reps: "45 seconds", weight: "bodyweight" },
-      ],
-      category: "cardio"
-    },
-    {
-      title: "Mobility & Recovery",
-      exercises: [
-        { name: "Stretching", sets: 1, reps: "10-15 mins", weight: "bodyweight" },
-        { name: "Foam Rolling", sets: 1, reps: "10 mins", weight: "bodyweight" },
-        { name: "Light Walking", sets: 1, reps: "20-30 mins", weight: "bodyweight" },
-      ],
-      category: "recovery"
-    },
-  ]);
+  useEffect(() => {
+    if (isAuthenticated && userId) {
+      fetchWorkouts();
+    } else {
+      setWorkouts([]);
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, userId]);
   
-  const addWorkout = (workout: Workout) => {
-    setWorkouts([...workouts, workout]);
+  const fetchWorkouts = async () => {
+    try {
+      setIsLoading(true);
+      const workoutPlans = await WorkoutService.getWorkoutPlans(userId!);
+      
+      // Fetch exercises for each workout plan
+      const workoutsWithExercises = await Promise.all(
+        workoutPlans.map(async (plan) => {
+          const exercises = await WorkoutService.getWorkoutExercises(plan.id!);
+          return {
+            title: plan.title,
+            exercises: exercises.map(ex => ({
+              name: ex.name,
+              sets: ex.sets,
+              reps: ex.reps,
+              weight: ex.weight || 'bodyweight'
+            })),
+            category: plan.category
+          };
+        })
+      );
+      
+      setWorkouts(workoutsWithExercises);
+    } catch (error) {
+      console.error('Error fetching workouts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load workouts. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const addWorkout = async (workout: any) => {
+    if (!userId) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to add workouts.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      // Create workout plan in Supabase
+      const workoutPlan: WorkoutPlan = {
+        user_id: userId,
+        title: workout.title,
+        category: workout.category || 'strength',
+        difficulty: 3
+      };
+      
+      const createdPlan = await WorkoutService.createWorkoutPlan(workoutPlan);
+      
+      if (!createdPlan || !createdPlan.id) {
+        throw new Error('Failed to create workout plan');
+      }
+      
+      // Create exercises
+      const exercises = workout.exercises.map((ex: any, index: number) => ({
+        workout_plan_id: createdPlan.id!,
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight,
+        order_index: index
+      }));
+      
+      await WorkoutService.createWorkoutExercises(exercises);
+      
+      // Add to local state
+      setWorkouts([...workouts, workout]);
+      
+      toast({
+        title: "Workout Added",
+        description: "Your workout has been added successfully."
+      });
+    } catch (error) {
+      console.error('Error adding workout:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add workout. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredWorkouts = filter === "all" 
@@ -131,11 +172,31 @@ export default function WorkoutsPage() {
             />
           </div>
           
-          <div className="space-y-4">
-            {filteredWorkouts.map((workout, index) => (
-              <WorkoutCard key={index} workout={workout} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredWorkouts.length > 0 ? (
+                filteredWorkouts.map((workout, index) => (
+                  <WorkoutCard key={index} workout={workout} />
+                ))
+              ) : (
+                <AnimatedCard className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">No workouts found</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowAddWorkout(true)}
+                    className="flex items-center mx-auto"
+                  >
+                    <Plus size={16} className="mr-1" />
+                    Add your first workout
+                  </Button>
+                </AnimatedCard>
+              )}
+            </div>
+          )}
         </div>
       </main>
       

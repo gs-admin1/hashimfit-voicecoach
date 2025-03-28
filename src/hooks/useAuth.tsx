@@ -4,6 +4,7 @@ import supabase from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { ProfileService } from '@/lib/supabase/services/ProfileService';
 
 interface AuthContextProps {
   isAuthenticated: boolean;
@@ -22,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, setUser } = useUser();
+  const { setUser } = useUser();
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -37,8 +38,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isAuthed && session?.user.id) {
           fetchUserProfile(session.user.id);
         } else if (!isAuthed) {
-          // Redirect to index page if not authenticated
-          navigate('/');
+          // Clear user data when not authenticated
+          setUser({
+            name: '',
+            age: 30,
+            gender: 'male',
+            height: 175,
+            weight: 75,
+            fitnessGoal: 'muscle_gain',
+            workoutFrequency: 3,
+            diet: 'standard',
+            equipment: 'full_gym',
+            hasCompletedAssessment: false,
+            allergies: []
+          });
         }
       }
     );
@@ -70,37 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   async function fetchUserProfile(userId: string) {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-        
-      if (error) {
-        // If profile doesn't exist yet, create it
-        if (error.code === 'PGRST116') {
-          await createUserProfile(userId);
-          return;
-        }
-        throw error;
-      }
+      const profileData = await ProfileService.getProfile(userId);
       
-      if (data) {
-        // Map Supabase profile to UserContext format
-        setUser({
-          name: data.name || '',
-          age: data.age || 30,
-          gender: data.gender || 'male',
-          height: data.height || 175,
-          weight: data.weight || 75,
-          fitnessGoal: data.fitness_goal || 'muscle_gain',
-          workoutFrequency: data.workout_frequency || 3,
-          diet: data.diet || 'standard',
-          equipment: data.equipment || 'full_gym',
-          targetWeight: data.target_weight,
-          sportsPlayed: data.sports_played,
-          hasCompletedAssessment: data.has_completed_assessment || false
-        });
+      if (profileData) {
+        const userProfile = ProfileService.mapProfileToUserContext(profileData);
+        setUser(userProfile);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -109,49 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Could not load your profile data",
         variant: "destructive"
       });
-    }
-  }
-  
-  async function createUserProfile(userId: string) {
-    try {
-      // Create a default profile for new users
-      const defaultProfile = {
-        id: userId,
-        name: '',
-        age: 30,
-        gender: 'male',
-        height: 175,
-        weight: 75,
-        fitness_goal: 'muscle_gain',
-        workout_frequency: 3,
-        diet: 'standard',
-        equipment: 'full_gym',
-        has_completed_assessment: false,
-        created_at: new Date()
-      };
-      
-      const { error } = await supabase
-        .from('profiles')
-        .insert([defaultProfile]);
-        
-      if (error) throw error;
-      
-      // Set default user in context
-      setUser({
-        name: '',
-        age: 30,
-        gender: 'male',
-        height: 175,
-        weight: 75,
-        fitnessGoal: 'muscle_gain',
-        workoutFrequency: 3,
-        diet: 'standard',
-        equipment: 'full_gym',
-        hasCompletedAssessment: false
-      });
-      
-    } catch (error) {
-      console.error('Error creating user profile:', error);
     }
   }
   
@@ -183,14 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signUp(email: string, password: string) {
     try {
       setIsLoading(true);
-      const { error, data } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({ email, password });
       
       if (error) throw error;
-      
-      // Create profile if sign up was successful and user was created
-      if (data.user) {
-        await createUserProfile(data.user.id);
-      }
       
       toast({
         title: "Account created",

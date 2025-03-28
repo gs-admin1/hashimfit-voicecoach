@@ -5,15 +5,8 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { AnimatedCard } from "./ui-components";
 import { toast } from "@/hooks/use-toast";
-import supabase from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-
-type Message = {
-  id: string;
-  content: string;
-  role: "user" | "assistant";
-  timestamp: Date;
-};
+import { ChatService, ChatMessage } from "@/lib/supabase/services/ChatService";
 
 interface ChatInterfaceProps {
   isOpen: boolean;
@@ -21,12 +14,13 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
+      user_id: "",
       content: "Hello! I'm your AI fitness assistant. How can I help you today?",
       role: "assistant",
-      timestamp: new Date(),
+      created_at: new Date().toISOString()
     },
   ]);
   const [input, setInput] = useState("");
@@ -42,74 +36,72 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
 
   useEffect(() => {
     // Load chat history from Supabase when authenticated
-    if (isAuthenticated && userId) {
+    if (isAuthenticated && userId && isOpen) {
       fetchChatHistory();
     }
   }, [isAuthenticated, userId, isOpen]);
 
   const fetchChatHistory = async () => {
+    if (!userId) return;
+    
     try {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true })
-        .limit(50);
+      const chatHistory = await ChatService.getChatHistory(userId, 50);
       
-      if (error) {
-        console.error('Error fetching chat history:', error);
-        return;
-      }
-      
-      if (data && data.length > 0) {
-        const formattedMessages = data.map(msg => ({
-          id: msg.id,
-          content: msg.content,
-          role: msg.role as "user" | "assistant",
-          timestamp: new Date(msg.created_at)
-        }));
-        
-        setMessages(formattedMessages);
+      if (chatHistory && chatHistory.length > 0) {
+        setMessages([
+          {
+            id: "welcome",
+            user_id: userId,
+            content: "Hello! I'm your AI fitness assistant. How can I help you today?",
+            role: "assistant",
+            created_at: new Date().toISOString()
+          },
+          ...chatHistory
+        ]);
       }
     } catch (error) {
       console.error('Error in fetchChatHistory:', error);
     }
   };
 
-  const saveChatMessage = async (message: Omit<Message, 'id' | 'timestamp'>) => {
-    try {
-      if (!userId) return;
-      
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .insert([
-          {
-            user_id: userId,
-            content: message.content,
-            role: message.role
+  // Set up real-time subscription for new messages
+  useEffect(() => {
+    let unsubscribe: () => void;
+
+    if (isAuthenticated && userId) {
+      unsubscribe = ChatService.subscribeToNewMessages(userId, (newMessage) => {
+        // Only add the message if it's not already in the list
+        setMessages(prevMessages => {
+          if (!prevMessages.some(msg => msg.id === newMessage.id)) {
+            return [...prevMessages, newMessage];
           }
-        ])
-        .select();
-      
-      if (error) {
-        console.error('Error saving message:', error);
-      }
-      
-      return data?.[0]?.id;
-    } catch (error) {
-      console.error('Error in saveChatMessage:', error);
+          return prevMessages;
+        });
+      });
     }
-  };
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [isAuthenticated, userId]);
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
+    if (!userId) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to use the chat feature.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     // Create user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    const userMessage: ChatMessage = {
+      user_id: userId,
       content: input,
       role: "user",
-      timestamp: new Date(),
+      created_at: new Date().toISOString()
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -117,15 +109,10 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
     setIsLoading(true);
 
     try {
-      // Save user message to Supabase if authenticated
-      if (isAuthenticated && userId) {
-        await saveChatMessage({
-          content: userMessage.content,
-          role: userMessage.role
-        });
-      }
+      // Save user message to Supabase
+      await ChatService.saveChatMessage(userMessage);
 
-      // This would ideally call your edge function, but for now let's use the fallback
+      // This would ideally call your Supabase Edge function, but for now let's use the fallback
       setTimeout(async () => {
         const fitnessTips = [
           "Try to get at least 150 minutes of moderate aerobic activity or 75 minutes of vigorous aerobic activity a week.",
@@ -141,22 +128,15 @@ export function ChatInterface({ isOpen, onClose }: ChatInterfaceProps) {
 
         const randomResponse = fitnessTips[Math.floor(Math.random() * fitnessTips.length)];
 
-        const assistantMessage: Message = {
-          id: Date.now().toString(),
+        const assistantMessage: ChatMessage = {
+          user_id: userId,
           content: randomResponse,
           role: "assistant",
-          timestamp: new Date(),
+          created_at: new Date().toISOString()
         };
 
-        setMessages((prev) => [...prev, assistantMessage]);
-        
-        // Save assistant message to Supabase if authenticated
-        if (isAuthenticated && userId) {
-          await saveChatMessage({
-            content: assistantMessage.content,
-            role: assistantMessage.role
-          });
-        }
+        // Save assistant message to Supabase
+        await ChatService.saveChatMessage(assistantMessage);
         
         setIsLoading(false);
       }, 1500);
