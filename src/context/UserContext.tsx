@@ -50,7 +50,10 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserProfile | null>(null);
-  const { isAuthenticated, userId } = useAuth();
+  const auth = useAuth();
+  // Safely destructure auth properties with default values to prevent errors
+  const isAuthenticated = auth?.isAuthenticated || false;
+  const userId = auth?.userId || null;
 
   const setUser = (newUser: UserProfile) => {
     setUserState(newUser);
