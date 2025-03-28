@@ -1,10 +1,9 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import supabase from '@/lib/supabase';
-import { useUser } from '@/context/UserContext';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { ProfileService } from '@/lib/supabase/services/ProfileService';
+import { UserProfile } from '@/context/UserContext';
 
 interface AuthContextProps {
   isAuthenticated: boolean;
@@ -15,7 +14,23 @@ interface AuthContextProps {
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   isLoading: boolean;
+  userProfile: UserProfile | null;
+  updateUserProfile: (profile: UserProfile) => void;
 }
+
+const defaultUserProfile: UserProfile = {
+  name: '',
+  age: 30,
+  gender: 'male',
+  height: 175,
+  weight: 75,
+  fitnessGoal: 'muscle_gain',
+  workoutFrequency: 3,
+  diet: 'standard',
+  equipment: 'full_gym',
+  hasCompletedAssessment: false,
+  allergies: []
+};
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
@@ -23,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { setUser } = useUser();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -34,24 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserId(session?.user.id || null);
         setIsLoading(false);
         
-        // Sync user profile with UserContext when authenticated
+        // Sync user profile when authenticated
         if (isAuthed && session?.user.id) {
           fetchUserProfile(session.user.id);
         } else if (!isAuthed) {
           // Clear user data when not authenticated
-          setUser({
-            name: '',
-            age: 30,
-            gender: 'male',
-            height: 175,
-            weight: 75,
-            fitnessGoal: 'muscle_gain',
-            workoutFrequency: 3,
-            diet: 'standard',
-            equipment: 'full_gym',
-            hasCompletedAssessment: false,
-            allergies: []
-          });
+          setUserProfile(null);
         }
       }
     );
@@ -87,7 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (profileData) {
         const userProfile = ProfileService.mapProfileToUserContext(profileData);
-        setUser(userProfile);
+        setUserProfile(userProfile);
+      } else {
+        // If no profile exists yet, set default values
+        setUserProfile(defaultUserProfile);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -98,6 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
   }
+
+  const updateUserProfile = (profile: UserProfile) => {
+    setUserProfile(profile);
+  };
   
   async function signIn(email: string, password: string) {
     try {
@@ -229,7 +239,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       resetPassword,
       updatePassword,
-      isLoading 
+      isLoading,
+      userProfile,
+      updateUserProfile
     }}>
       {children}
     </AuthContext.Provider>

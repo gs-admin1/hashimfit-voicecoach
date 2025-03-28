@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useContext, ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { ProfileService } from "@/lib/supabase/services/ProfileService";
 
@@ -32,37 +32,19 @@ interface UserContextType {
   completeAssessment: (profile: Partial<UserProfile>) => Promise<boolean>;
 }
 
-const defaultUser: UserProfile = {
-  name: "",
-  age: 30,
-  gender: "male",
-  height: 175,
-  weight: 75,
-  fitnessGoal: "muscle_gain",
-  workoutFrequency: 3,
-  diet: "standard",
-  equipment: "full_gym",
-  hasCompletedAssessment: false,
-  allergies: [],
-};
-
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = useState<UserProfile | null>(null);
-  const auth = useAuth();
-  // Safely destructure auth properties with default values to prevent errors
-  const isAuthenticated = auth?.isAuthenticated || false;
-  const userId = auth?.userId || null;
+  const { isAuthenticated, userId, userProfile, updateUserProfile } = useAuth();
 
   const setUser = (newUser: UserProfile) => {
-    setUserState(newUser);
+    updateUserProfile(newUser);
   };
 
   const updateUser = async (updates: Partial<UserProfile>): Promise<boolean> => {
-    if (user && userId) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
+    if (userProfile && userId) {
+      const updatedUser = { ...userProfile, ...updates };
+      updateUserProfile(updatedUser);
       
       // Update profile in Supabase
       const profileData = ProfileService.mapUserContextToProfile(updatedUser);
@@ -73,12 +55,27 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const completeAssessment = async (profile: Partial<UserProfile>): Promise<boolean> => {
     if (userId) {
+      const defaultUser = {
+        name: "",
+        age: 30,
+        gender: "male" as const,
+        height: 175,
+        weight: 75,
+        fitnessGoal: "muscle_gain" as const,
+        workoutFrequency: 3 as const,
+        diet: "standard" as const,
+        equipment: "full_gym" as const,
+        hasCompletedAssessment: false,
+        allergies: [],
+      };
+      
       const newUser = {
         ...defaultUser,
         ...profile,
         hasCompletedAssessment: true,
       };
-      setUser(newUser);
+      
+      updateUserProfile(newUser);
       
       // Update profile in Supabase
       const profileData = ProfileService.mapUserContextToProfile(newUser);
@@ -91,7 +88,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   return (
     <UserContext.Provider
       value={{
-        user,
+        user: userProfile,
         setUser,
         updateUser,
         isAuthenticated,
