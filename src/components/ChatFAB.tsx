@@ -11,7 +11,7 @@ export function ChatFAB() {
     <>
       <Button
         onClick={() => setIsOpen(prev => !prev)}
-        className={`fixed bottom-24 right-4 sm:right-6 z-40 rounded-full w-14 h-14 p-0 shadow-lg ${
+        className={`fixed bottom-24 right-4 sm:right-6 z-50 rounded-full w-14 h-14 p-0 shadow-lg ${
           isOpen ? "bg-hashim-700" : "bg-hashim-600 hover:bg-hashim-700"
         }`}
       >

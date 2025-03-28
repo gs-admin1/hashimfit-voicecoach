@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle, Chip } from "@/components/ui-components";
 import { ProgressChart } from "@/components/ProgressChart";
+import { ChatFAB } from "@/components/ChatFAB";
 import { 
   Activity, 
   Weight, 
@@ -29,6 +30,8 @@ export default function ProgressPage() {
     { exercise: "Deadlift", previous: "120kg", current: "125kg", change: "up" },
     { exercise: "Overhead Press", previous: "40kg", current: "40kg", change: "neutral" },
     { exercise: "Pull-ups", previous: "8 reps", current: "10 reps", change: "up" },
+    { exercise: "Mile Run", previous: "8:45", current: "8:20", change: "up" },
+    { exercise: "Dips", previous: "12 reps", current: "15 reps", change: "up" },
   ];
   
   const measurementsData = [
@@ -36,6 +39,8 @@ export default function ProgressPage() {
     { part: "Waist", previous: "86cm", current: "84cm", change: "down" },
     { part: "Arms", previous: "36cm", current: "37cm", change: "up" },
     { part: "Thighs", previous: "58cm", current: "59cm", change: "up" },
+    { part: "Calves", previous: "38cm", current: "39cm", change: "up" },
+    { part: "Shoulders", previous: "120cm", current: "122cm", change: "up" },
   ];
 
   return (
@@ -70,6 +75,11 @@ export default function ProgressPage() {
               onClick={() => setTimeRange("quarter")}
             />
             <Chip 
+              label="6 Months" 
+              active={timeRange === "half-year"}
+              onClick={() => setTimeRange("half-year")}
+            />
+            <Chip 
               label="Year" 
               active={timeRange === "year"}
               onClick={() => setTimeRange("year")}
@@ -79,7 +89,7 @@ export default function ProgressPage() {
           <AnimatedCard className="mb-6">
             <div className="flex items-center mb-4">
               <Weight className="mr-2 text-hashim-600" size={20} />
-              <h3 className="font-semibold">Weight Progress</h3>
+              <h3 className="font-semibold">Nutrition & Weight Progress</h3>
             </div>
             <div className="h-48 overflow-hidden">
               <ProgressChart />
@@ -89,7 +99,7 @@ export default function ProgressPage() {
           <AnimatedCard className="mb-6" delay={100}>
             <div className="flex items-center mb-4">
               <Dumbbell className="mr-2 text-hashim-600" size={20} />
-              <h3 className="font-semibold">Strength Progress</h3>
+              <h3 className="font-semibold">Exercise Progress</h3>
             </div>
             <div className="space-y-3">
               {strengthData.map((item, index) => (
@@ -137,6 +147,7 @@ export default function ProgressPage() {
       </main>
       
       <NavigationBar />
+      <ChatFAB />
     </div>
   );
 }

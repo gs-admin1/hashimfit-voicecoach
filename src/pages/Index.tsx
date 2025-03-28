@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import { ChevronRight, Dumbbell, Mic, User } from "lucide-react";
+import { ChevronRight, Dumbbell, Mic, User, Apple } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 
 export default function Index() {
@@ -36,6 +36,11 @@ export default function Index() {
       icon: User,
       title: "Progress Tracking",
       description: "Track your fitness journey with detailed progress analytics"
+    },
+    {
+      icon: Apple,
+      title: "Personalized Diets",
+      description: "Receive customized nutrition plans tailored to your body and goals"
     }
   ];
 
@@ -67,7 +72,7 @@ export default function Index() {
             </Button>
           </div>
           
-          <div className="mt-16 grid gap-6 md:grid-cols-3 max-w-3xl mx-auto">
+          <div className="mt-16 grid gap-6 grid-cols-2 md:grid-cols-4 max-w-3xl mx-auto">
             {features.map((feature, i) => (
               <div 
                 key={feature.title}

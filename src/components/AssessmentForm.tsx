@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useUser, FitnessGoal, WorkoutFrequency, Diet, Equipment } from "@/context/UserContext";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -5,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AnimatedCard } from "./ui-components";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Dumbbell, 
   Weight, 
@@ -15,6 +18,7 @@ import {
   CheckCircle,
   Activity
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
   const { completeAssessment } = useUser();
@@ -24,19 +28,73 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
     age: 30,
     gender: "male" as "male" | "female" | "other",
     height: 175,
-    weight: 75,
+    weightKg: 75,
+    weightLbs: 165,
+    heightCm: 175,
+    heightFt: 5,
+    heightIn: 9,
+    useMetric: true,
     fitnessGoal: "muscle_gain" as FitnessGoal,
     workoutFrequency: 3 as WorkoutFrequency,
     diet: "standard" as Diet,
     equipment: "full_gym" as Equipment,
+    allergies: [] as string[],
+    otherAllergies: ""
   });
 
   const updateFormData = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      
+      // Update conversions when measurement system changes
+      if (field === "useMetric") {
+        if (value) {
+          // Convert from imperial to metric
+          newData.heightCm = Math.round((prev.heightFt * 30.48) + (prev.heightIn * 2.54));
+          newData.weightKg = Math.round(prev.weightLbs / 2.205);
+        } else {
+          // Convert from metric to imperial
+          const totalInches = Math.round(prev.heightCm / 2.54);
+          newData.heightFt = Math.floor(totalInches / 12);
+          newData.heightIn = totalInches % 12;
+          newData.weightLbs = Math.round(prev.weightKg * 2.205);
+        }
+      }
+      
+      // Update metric values when imperial values change
+      if (field === "heightFt" || field === "heightIn") {
+        newData.heightCm = Math.round((newData.heightFt * 30.48) + (newData.heightIn * 2.54));
+      }
+      
+      if (field === "weightLbs") {
+        newData.weightKg = Math.round(value / 2.205);
+      }
+      
+      // Update imperial values when metric values change
+      if (field === "heightCm") {
+        const totalInches = Math.round(value / 2.54);
+        newData.heightFt = Math.floor(totalInches / 12);
+        newData.heightIn = totalInches % 12;
+      }
+      
+      if (field === "weightKg") {
+        newData.weightLbs = Math.round(value * 2.205);
+      }
+      
+      return newData;
+    });
   };
 
   const handleSubmit = () => {
-    completeAssessment(formData);
+    // Use metric values for the API
+    const submitData = {
+      ...formData,
+      height: formData.heightCm,
+      weight: formData.weightKg,
+      allergies: [...formData.allergies, formData.otherAllergies].filter(Boolean)
+    };
+    
+    completeAssessment(submitData);
     onComplete();
   };
 
@@ -46,6 +104,17 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
 
   const prevStep = () => {
     setCurrentStep((prev) => Math.max(1, prev - 1));
+  };
+
+  const toggleAllergy = (allergy: string) => {
+    setFormData(prev => {
+      const allergies = [...prev.allergies];
+      if (allergies.includes(allergy)) {
+        return { ...prev, allergies: allergies.filter(a => a !== allergy) };
+      } else {
+        return { ...prev, allergies: [...allergies, allergy] };
+      }
+    });
   };
 
   const renderStepIndicator = () => {
@@ -118,13 +187,17 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
             <RadioGroup 
               value={formData.gender}
               onValueChange={(value) => updateFormData("gender", value)}
-              className="hashim-radio-group"
+              className="grid grid-cols-3 gap-2"
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="male" id="male" className="sr-only" />
                 <Label
                   htmlFor="male"
-                  className="hashim-radio-item-blue"
+                  className={`flex items-center justify-center px-4 py-2 rounded-md border-2 w-full transition-all ${
+                    formData.gender === "male" 
+                      ? "border-hashim-600 bg-hashim-50 text-hashim-700 font-medium" 
+                      : "border-gray-200 hover:border-hashim-300"
+                  }`}
                 >
                   <User className="mr-2 h-4 w-4" />
                   Male
@@ -134,7 +207,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <RadioGroupItem value="female" id="female" className="sr-only" />
                 <Label
                   htmlFor="female"
-                  className="hashim-radio-item-blue"
+                  className={`flex items-center justify-center px-4 py-2 rounded-md border-2 w-full transition-all ${
+                    formData.gender === "female" 
+                      ? "border-hashim-600 bg-hashim-50 text-hashim-700 font-medium" 
+                      : "border-gray-200 hover:border-hashim-300"
+                  }`}
                 >
                   <User className="mr-2 h-4 w-4" />
                   Female
@@ -144,7 +221,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                 <RadioGroupItem value="other" id="other" className="sr-only" />
                 <Label
                   htmlFor="other"
-                  className="hashim-radio-item-blue"
+                  className={`flex items-center justify-center px-4 py-2 rounded-md border-2 w-full transition-all ${
+                    formData.gender === "other" 
+                      ? "border-hashim-600 bg-hashim-50 text-hashim-700 font-medium" 
+                      : "border-gray-200 hover:border-hashim-300"
+                  }`}
                 >
                   <User className="mr-2 h-4 w-4" />
                   Other
@@ -155,7 +236,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
 
           <Button 
             onClick={nextStep} 
-            className="hashim-button-primary w-full mt-8"
+            className="w-full mt-8 bg-hashim-600 hover:bg-hashim-700 text-white"
           >
             Next <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
@@ -168,45 +249,106 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
     return (
       <AnimatedCard className="w-full max-w-md">
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="height">Height (cm)</Label>
-            <Input
-              id="height"
-              type="number"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="Enter your height in cm"
-              value={formData.height.toString()}
-              onChange={(e) => updateFormData("height", parseInt(e.target.value) || 0)}
-              className="hashim-input"
+          <div className="flex items-center justify-end mb-2">
+            <Label htmlFor="useMetric" className="text-sm mr-2">Metric</Label>
+            <input
+              type="checkbox"
+              id="useMetric"
+              checked={formData.useMetric}
+              onChange={(e) => updateFormData("useMetric", e.target.checked)}
+              className="toggle-checkbox"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="weight">Weight (kg)</Label>
-            <Input
-              id="weight"
-              type="number"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="Enter your weight in kg"
-              value={formData.weight.toString()}
-              onChange={(e) => updateFormData("weight", parseInt(e.target.value) || 0)}
-              className="hashim-input"
-            />
+            <Label>Height</Label>
+            {formData.useMetric ? (
+              <div className="relative">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Enter height in cm"
+                  value={formData.heightCm}
+                  onChange={(e) => updateFormData("heightCm", parseInt(e.target.value) || 0)}
+                  className="hashim-input pr-10"
+                />
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">cm</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Feet"
+                    value={formData.heightFt}
+                    onChange={(e) => updateFormData("heightFt", parseInt(e.target.value) || 0)}
+                    className="hashim-input pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">ft</span>
+                </div>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Inches"
+                    value={formData.heightIn}
+                    onChange={(e) => updateFormData("heightIn", parseInt(e.target.value) || 0)}
+                    className="hashim-input pr-8"
+                    min="0"
+                    max="11"
+                  />
+                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">in</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Weight</Label>
+            {formData.useMetric ? (
+              <div className="relative">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Enter weight in kg"
+                  value={formData.weightKg}
+                  onChange={(e) => updateFormData("weightKg", parseInt(e.target.value) || 0)}
+                  className="hashim-input pr-10"
+                />
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">kg</span>
+              </div>
+            ) : (
+              <div className="relative">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Enter weight in lbs"
+                  value={formData.weightLbs}
+                  onChange={(e) => updateFormData("weightLbs", parseInt(e.target.value) || 0)}
+                  className="hashim-input pr-10"
+                />
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">lbs</span>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between mt-8">
             <Button 
               onClick={prevStep} 
               variant="outline" 
-              className="hashim-button-outline"
+              className="border-hashim-300 text-hashim-700 hover:bg-hashim-50"
             >
               Back
             </Button>
             <Button 
               onClick={nextStep} 
-              className="hashim-button-primary"
+              className="bg-hashim-600 hover:bg-hashim-700 text-white"
             >
               Next <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
@@ -225,48 +367,29 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
             <RadioGroup 
               value={formData.fitnessGoal}
               onValueChange={(value) => updateFormData("fitnessGoal", value)}
-              className="hashim-radio-group"
+              className="space-y-2"
             >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="muscle_gain" id="muscle_gain" className="sr-only" />
-                <Label
-                  htmlFor="muscle_gain"
-                  className="hashim-radio-item-blue"
-                >
-                  <Dumbbell className="mr-2 h-4 w-4" />
-                  Muscle Gain
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="weight_loss" id="weight_loss" className="sr-only" />
-                <Label
-                  htmlFor="weight_loss"
-                  className="hashim-radio-item-blue"
-                >
-                  <Weight className="mr-2 h-4 w-4" />
-                  Weight Loss
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="endurance" id="endurance" className="sr-only" />
-                <Label
-                  htmlFor="endurance"
-                  className="hashim-radio-item-blue"
-                >
-                  <Activity className="mr-2 h-4 w-4" />
-                  Endurance
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="sport_specific" id="sport_specific" className="sr-only" />
-                <Label
-                  htmlFor="sport_specific"
-                  className="hashim-radio-item-blue"
-                >
-                  <Activity className="mr-2 h-4 w-4" />
-                  Sport Specific
-                </Label>
-              </div>
+              {[
+                { id: "muscle_gain", label: "Muscle Gain", icon: Dumbbell },
+                { id: "weight_loss", label: "Weight Loss", icon: Weight },
+                { id: "endurance", label: "Endurance", icon: Activity },
+                { id: "sport_specific", label: "Sport Specific", icon: Activity },
+              ].map((goal) => (
+                <div key={goal.id} className="flex items-center space-x-2">
+                  <RadioGroupItem value={goal.id} id={goal.id} className="sr-only" />
+                  <Label
+                    htmlFor={goal.id}
+                    className={`flex items-center px-4 py-3 rounded-md border-2 w-full transition-all ${
+                      formData.fitnessGoal === goal.id 
+                        ? "border-hashim-600 bg-hashim-50 text-hashim-700 font-medium" 
+                        : "border-gray-200 hover:border-hashim-300"
+                    }`}
+                  >
+                    <goal.icon className="mr-2 h-4 w-4" />
+                    {goal.label}
+                  </Label>
+                </div>
+              ))}
             </RadioGroup>
           </div>
 
@@ -275,34 +398,40 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
             <RadioGroup 
               value={formData.workoutFrequency.toString()}
               onValueChange={(value) => updateFormData("workoutFrequency", parseInt(value) as WorkoutFrequency)}
-              className="hashim-radio-group"
+              className="grid grid-cols-7 gap-1"
             >
               {[1, 2, 3, 4, 5, 6, 7].map((num) => (
-                <div key={num} className="flex items-center space-x-2">
+                <div key={num} className="flex items-center">
                   <RadioGroupItem value={num.toString()} id={`freq-${num}`} className="sr-only" />
                   <Label
                     htmlFor={`freq-${num}`}
-                    className="hashim-radio-item-blue"
+                    className={`flex items-center justify-center p-2 rounded-md border-2 w-full transition-all ${
+                      formData.workoutFrequency === num 
+                        ? "border-hashim-600 bg-hashim-50 text-hashim-700 font-medium" 
+                        : "border-gray-200 hover:border-hashim-300"
+                    }`}
                   >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {num} {num === 1 ? 'day' : 'days'}
+                    {num}
                   </Label>
                 </div>
               ))}
             </RadioGroup>
+            <div className="text-xs text-center text-muted-foreground mt-1">
+              Days per week
+            </div>
           </div>
 
           <div className="flex justify-between mt-8">
             <Button 
               onClick={prevStep} 
               variant="outline" 
-              className="hashim-button-outline"
+              className="border-hashim-300 text-hashim-700 hover:bg-hashim-50"
             >
               Back
             </Button>
             <Button 
               onClick={nextStep} 
-              className="hashim-button-primary"
+              className="bg-hashim-600 hover:bg-hashim-700 text-white"
             >
               Next <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
@@ -313,6 +442,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
   };
 
   const renderFinalStep = () => {
+    const allergies = [
+      "Dairy", "Eggs", "Peanuts", "Tree nuts", "Soy", 
+      "Wheat/Gluten", "Fish", "Shellfish"
+    ];
+    
     return (
       <AnimatedCard className="w-full max-w-md">
         <div className="space-y-4">
@@ -321,7 +455,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
             <RadioGroup 
               value={formData.diet}
               onValueChange={(value) => updateFormData("diet", value)}
-              className="hashim-radio-group"
+              className="space-y-2"
             >
               {[
                 { id: "standard", label: "Standard"},
@@ -335,7 +469,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                   <RadioGroupItem value={diet.id} id={diet.id} className="sr-only" />
                   <Label
                     htmlFor={diet.id}
-                    className="hashim-radio-item-blue"
+                    className={`flex items-center px-4 py-3 rounded-md border-2 w-full transition-all ${
+                      formData.diet === diet.id 
+                        ? "border-hashim-600 bg-hashim-50 text-hashim-700 font-medium" 
+                        : "border-gray-200 hover:border-hashim-300"
+                    }`}
                   >
                     <Apple className="mr-2 h-4 w-4" />
                     {diet.label}
@@ -346,11 +484,40 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
           </div>
 
           <div className="space-y-2">
+            <Label>Allergies & Intolerances</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {allergies.map((allergy) => (
+                <div key={allergy} className="flex items-center space-x-2">
+                  <Checkbox 
+                    id={`allergy-${allergy}`} 
+                    checked={formData.allergies.includes(allergy)}
+                    onCheckedChange={() => toggleAllergy(allergy)}
+                    className="data-[state=checked]:bg-hashim-600 data-[state=checked]:border-hashim-600"
+                  />
+                  <Label htmlFor={`allergy-${allergy}`} className="text-sm">
+                    {allergy}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2">
+              <Label htmlFor="otherAllergies">Other Allergies</Label>
+              <Textarea 
+                id="otherAllergies"
+                placeholder="Enter any other allergies or intolerances"
+                value={formData.otherAllergies}
+                onChange={(e) => updateFormData("otherAllergies", e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <Label>Equipment Available</Label>
             <RadioGroup 
               value={formData.equipment}
               onValueChange={(value) => updateFormData("equipment", value)}
-              className="hashim-radio-group"
+              className="space-y-2"
             >
               {[
                 { id: "full_gym", label: "Full Gym Access"},
@@ -362,7 +529,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
                   <RadioGroupItem value={equipment.id} id={equipment.id} className="sr-only" />
                   <Label
                     htmlFor={equipment.id}
-                    className="hashim-radio-item-blue"
+                    className={`flex items-center px-4 py-3 rounded-md border-2 w-full transition-all ${
+                      formData.equipment === equipment.id 
+                        ? "border-hashim-600 bg-hashim-50 text-hashim-700 font-medium" 
+                        : "border-gray-200 hover:border-hashim-300"
+                    }`}
                   >
                     <Dumbbell className="mr-2 h-4 w-4" />
                     {equipment.label}
@@ -376,13 +547,13 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
             <Button 
               onClick={prevStep} 
               variant="outline" 
-              className="hashim-button-outline"
+              className="border-hashim-300 text-hashim-700 hover:bg-hashim-50"
             >
               Back
             </Button>
             <Button 
               onClick={handleSubmit} 
-              className="hashim-button-primary"
+              className="bg-hashim-600 hover:bg-hashim-700 text-white"
             >
               Complete
             </Button>

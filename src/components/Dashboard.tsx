@@ -12,6 +12,7 @@ import { WorkoutCard } from "./WorkoutCard";
 import { ProgressChart } from "./ProgressChart";
 import { VoiceInput } from "./VoiceInput";
 import { MealCaptureCard } from "./MealCaptureCard";
+import { UserStatsModal } from "./UserStatsModal";
 import { 
   Activity, 
   Weight, 
@@ -19,9 +20,13 @@ import {
   ChevronRight, 
   Plus, 
   Dumbbell,
-  ChartBar
+  ChartBar,
+  ChevronDown,
+  ChevronUp,
+  Stats
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 
 export function Dashboard() {
   const { user } = useUser();
@@ -29,6 +34,9 @@ export function Dashboard() {
   const today = new Date();
   const currentDay = weekDays[today.getDay() === 0 ? 6 : today.getDay() - 1];
   const [selectedDay, setSelectedDay] = useState(currentDay);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [isProgressOpen, setIsProgressOpen] = useState(true);
+  const [isNutritionOpen, setIsNutritionOpen] = useState(true);
 
   // Mock workouts for different days
   const workoutsByDay = {
@@ -120,6 +128,15 @@ export function Dashboard() {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold">Welcome, {user?.name || "Athlete"}</h1>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowStatsModal(true)}
+            className="flex items-center border-hashim-300 text-hashim-700 hover:bg-hashim-50"
+          >
+            <Stats size={16} className="mr-1" />
+            Stats
+          </Button>
         </div>
         
         <div className="flex space-x-3 mb-6 overflow-x-auto pb-2 scrollbar-none">
@@ -157,76 +174,115 @@ export function Dashboard() {
       </div>
 
       <div className="mb-8">
-        <SectionTitle
-          title={`${selectedDay}'s Workout`}
-          subtitle={workoutsByDay[selectedDay as keyof typeof workoutsByDay]?.title || "Rest Day"}
-          action={
-            <Button variant="ghost" size="sm" className="flex items-center">
-              <span className="mr-1">View all</span>
-              <ChevronRight size={16} />
-            </Button>
-          }
-        />
+        <div className="flex justify-between items-center">
+          <SectionTitle
+            title={`${selectedDay}'s Workout`}
+            subtitle={workoutsByDay[selectedDay as keyof typeof workoutsByDay]?.title || "Rest Day"}
+          />
+          <Button variant="ghost" size="sm" className="flex items-center">
+            <span className="mr-1">View all</span>
+            <ChevronRight size={16} />
+          </Button>
+        </div>
         
         <WorkoutCard workout={workoutsByDay[selectedDay as keyof typeof workoutsByDay]} />
       </div>
 
-      <div className="mb-8">
-        <SectionTitle
-          title="Progress"
-          subtitle="Last 4 weeks"
-        />
-        
-        <AnimatedCard className="overflow-hidden">
-          <ProgressChart />
-        </AnimatedCard>
-      </div>
-
-      <div className="mb-8">
-        <SectionTitle
-          title="Nutrition Plan"
-          subtitle="Based on your goals"
-          action={
+      <Collapsible
+        open={isProgressOpen}
+        onOpenChange={setIsProgressOpen}
+        className="mb-8"
+      >
+        <div className="flex justify-between items-center">
+          <SectionTitle
+            title="Progress"
+            subtitle="Last 4 weeks"
+          />
+          <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="flex items-center">
+              {isProgressOpen ? (
+                <ChevronUp size={16} />
+              ) : (
+                <ChevronDown size={16} />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+        
+        <CollapsibleContent>
+          <AnimatedCard className="overflow-hidden">
+            <ProgressChart />
+          </AnimatedCard>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible
+        open={isNutritionOpen}
+        onOpenChange={setIsNutritionOpen}
+        className="mb-8"
+      >
+        <div className="flex justify-between items-center">
+          <SectionTitle
+            title="Nutrition Plan"
+            subtitle="Based on your goals"
+          />
+          <div className="flex items-center">
+            <Button variant="ghost" size="sm" className="flex items-center mr-2">
               <span className="mr-1">Adjust</span>
               <ChevronRight size={16} />
             </Button>
-          }
-        />
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="flex items-center">
+                {isNutritionOpen ? (
+                  <ChevronUp size={16} />
+                ) : (
+                  <ChevronDown size={16} />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+        </div>
         
-        <AnimatedCard>
-          <div className="flex justify-between mb-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Calories</p>
-              <p className="font-bold">{nutritionPlan.calories}</p>
+        <CollapsibleContent>
+          <AnimatedCard>
+            <div className="flex justify-between mb-4">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Calories</p>
+                <p className="font-bold">{nutritionPlan.calories}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Protein</p>
+                <p className="font-bold">{nutritionPlan.protein}g</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Carbs</p>
+                <p className="font-bold">{nutritionPlan.carbs}g</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Fat</p>
+                <p className="font-bold">{nutritionPlan.fat}g</p>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Protein</p>
-              <p className="font-bold">{nutritionPlan.protein}g</p>
+            
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-2">Today's Meal Plan</h4>
+              <ul className="space-y-2">
+                {nutritionPlan.meals.map((meal, index) => (
+                  <li key={index} className="text-sm flex">
+                    <span className="text-hashim-600 mr-2">•</span>
+                    {meal}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Carbs</p>
-              <p className="font-bold">{nutritionPlan.carbs}g</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Fat</p>
-              <p className="font-bold">{nutritionPlan.fat}g</p>
-            </div>
-          </div>
-          
-          <div className="border-t pt-4">
-            <h4 className="font-medium mb-2">Today's Meal Plan</h4>
-            <ul className="space-y-2">
-              {nutritionPlan.meals.map((meal, index) => (
-                <li key={index} className="text-sm flex">
-                  <span className="text-hashim-600 mr-2">•</span>
-                  {meal}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </AnimatedCard>
-      </div>
+          </AnimatedCard>
+        </CollapsibleContent>
+      </Collapsible>
+      
+      <UserStatsModal 
+        isOpen={showStatsModal} 
+        onClose={() => setShowStatsModal(false)} 
+      />
     </div>
   );
 }

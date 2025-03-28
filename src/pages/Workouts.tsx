@@ -4,13 +4,29 @@ import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle, Chip } from "@/components/ui-components";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { Button } from "@/components/ui/button";
+import { AddWorkoutModal } from "@/components/AddWorkoutModal";
+import { ChatFAB } from "@/components/ChatFAB";
 import { Plus, Filter, ArrowUpDown } from "lucide-react";
+
+interface Exercise {
+  name: string;
+  sets: number;
+  reps: string;
+  weight: string;
+}
+
+interface Workout {
+  title: string;
+  exercises: Exercise[];
+  category: string;
+}
 
 export default function WorkoutsPage() {
   const [filter, setFilter] = useState("all");
+  const [showAddWorkout, setShowAddWorkout] = useState(false);
   
   // Mock workout data
-  const workouts = [
+  const [workouts, setWorkouts] = useState<Workout[]>([
     {
       title: "Upper Body Strength",
       exercises: [
@@ -53,8 +69,12 @@ export default function WorkoutsPage() {
       ],
       category: "recovery"
     },
-  ];
+  ]);
   
+  const addWorkout = (workout: Workout) => {
+    setWorkouts([...workouts, workout]);
+  };
+
   const filteredWorkouts = filter === "all" 
     ? workouts 
     : workouts.filter(workout => workout.category === filter);
@@ -77,7 +97,11 @@ export default function WorkoutsPage() {
             title="Workouts" 
             subtitle="Browse all workout programs" 
             action={
-              <Button size="sm" className="flex items-center">
+              <Button 
+                size="sm" 
+                className="flex items-center bg-hashim-600 hover:bg-hashim-700 text-white"
+                onClick={() => setShowAddWorkout(true)}
+              >
                 <Plus size={16} className="mr-1" />
                 Add
               </Button>
@@ -115,7 +139,14 @@ export default function WorkoutsPage() {
         </div>
       </main>
       
+      <AddWorkoutModal 
+        isOpen={showAddWorkout} 
+        onClose={() => setShowAddWorkout(false)}
+        onAdd={addWorkout}
+      />
+      
       <NavigationBar />
+      <ChatFAB />
     </div>
   );
 }
