@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -100,7 +101,57 @@ export default function ProgressPage() {
       // For now, we'll just simulate a delay
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // You would update the state with real data here
+      // Update data based on the selected range
+      // In a real app, this would be API data
+      if (range === "month") {
+        setWeightData([
+          { date: "Week 1", value: 82 },
+          { date: "Week 2", value: 81.2 },
+          { date: "Week 3", value: 80.5 },
+          { date: "Week 4", value: 79.8 },
+        ]);
+      } else if (range === "quarter") {
+        setWeightData([
+          { date: "Jan", value: 83 },
+          { date: "Feb", value: 82 },
+          { date: "Mar", value: 80.5 },
+        ]);
+      } else if (range === "half-year") {
+        setWeightData([
+          { date: "Jan", value: 85 },
+          { date: "Feb", value: 84 },
+          { date: "Mar", value: 83 },
+          { date: "Apr", value: 82 },
+          { date: "May", value: 81 },
+          { date: "Jun", value: 80.5 },
+        ]);
+      } else if (range === "year") {
+        setWeightData([
+          { date: "Jan", value: 85 },
+          { date: "Feb", value: 84 },
+          { date: "Mar", value: 83 },
+          { date: "Apr", value: 82 },
+          { date: "May", value: 81 },
+          { date: "Jun", value: 80.5 },
+          { date: "Jul", value: 80 },
+          { date: "Aug", value: 79.5 },
+          { date: "Sep", value: 79 },
+          { date: "Oct", value: 78.5 },
+          { date: "Nov", value: 78 },
+          { date: "Dec", value: 77.5 },
+        ]);
+      } else {
+        // week is default
+        setWeightData([
+          { date: "Mon", value: 80.8 },
+          { date: "Tue", value: 80.5 },
+          { date: "Wed", value: 80.3 },
+          { date: "Thu", value: 80.0 },
+          { date: "Fri", value: 79.8 },
+          { date: "Sat", value: 79.5 },
+          { date: "Sun", value: 79.3 },
+        ]);
+      }
       
       setTimeRange(range);
     } catch (error) {
@@ -229,7 +280,10 @@ export default function ProgressPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hashim-600"></div>
                 </div>
               ) : (
-                <ProgressChart data={getChartData()} />
+                <ProgressChart 
+                  data={getChartData()} 
+                  metric={chartType as 'weight' | 'calories' | 'protein' | 'carbs' | 'fat'} 
+                />
               )}
             </div>
           </AnimatedCard>

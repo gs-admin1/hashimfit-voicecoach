@@ -1,216 +1,132 @@
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { X, Plus, Trash2 } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Search, Dumbbell, X } from "lucide-react";
+import { AnimatedCard } from "./ui-components";
 import { toast } from "@/hooks/use-toast";
 
-interface Exercise {
-  name: string;
-  sets: number;
-  reps: string;
-  weight: string;
+interface Workout {
+  id: string;
+  title: string;
+  category: string;
+  exercises: {
+    name: string;
+    sets: number;
+    reps: string;
+    weight?: string;
+  }[];
 }
 
-interface WorkoutDialogProps {
+interface AddWorkoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (workout: { title: string; exercises: Exercise[]; category: string }) => void;
+  onAddWorkout: (workout: Workout) => void;
+  selectedDay: string;
 }
 
-export function AddWorkoutModal({ isOpen, onClose, onAdd }: WorkoutDialogProps) {
-  const [title, setTitle] = useState("");
-  const [exercises, setExercises] = useState<Exercise[]>([
-    { name: "", sets: 3, reps: "8-12", weight: "kg" }
+export function AddWorkoutModal({ isOpen, onClose, onAddWorkout, selectedDay }: AddWorkoutModalProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [workouts, setWorkouts] = useState<Workout[]>([
+    {
+      id: "w1",
+      title: "Upper Body Strength",
+      category: "strength",
+      exercises: [
+        { name: "Bench Press", sets: 4, reps: "8-10", weight: "60kg" },
+        { name: "Shoulder Press", sets: 3, reps: "10-12", weight: "40kg" },
+        { name: "Pull-ups", sets: 3, reps: "8-10" },
+        { name: "Tricep Dips", sets: 3, reps: "12-15" }
+      ]
+    },
+    {
+      id: "w2",
+      title: "Lower Body Power",
+      category: "strength",
+      exercises: [
+        { name: "Squats", sets: 4, reps: "8-10", weight: "80kg" },
+        { name: "Deadlifts", sets: 3, reps: "8-10", weight: "100kg" },
+        { name: "Lunges", sets: 3, reps: "10-12", weight: "40kg" },
+        { name: "Calf Raises", sets: 3, reps: "15-20", weight: "60kg" }
+      ]
+    },
+    {
+      id: "w3",
+      title: "HIIT Cardio",
+      category: "cardio",
+      exercises: [
+        { name: "Burpees", sets: 3, reps: "45 sec" },
+        { name: "Mountain Climbers", sets: 3, reps: "45 sec" },
+        { name: "Jump Squats", sets: 3, reps: "45 sec" },
+        { name: "Jumping Jacks", sets: 3, reps: "45 sec" }
+      ]
+    }
   ]);
-  const [category, setCategory] = useState("strength");
 
-  const addExercise = () => {
-    setExercises([...exercises, { name: "", sets: 3, reps: "8-12", weight: "kg" }]);
-  };
+  // Filter workouts based on search term
+  const filteredWorkouts = workouts.filter(workout => 
+    workout.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    workout.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const removeExercise = (index: number) => {
-    setExercises(exercises.filter((_, i) => i !== index));
-  };
-
-  const updateExercise = (index: number, field: keyof Exercise, value: string | number) => {
-    const updatedExercises = [...exercises];
-    updatedExercises[index] = { ...updatedExercises[index], [field]: value };
-    setExercises(updatedExercises);
-  };
-
-  const handleSubmit = () => {
-    if (!title.trim()) {
-      toast({
-        title: "Missing information",
-        description: "Please provide a workout title",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (exercises.some(ex => !ex.name.trim())) {
-      toast({
-        title: "Missing information",
-        description: "Please provide a name for all exercises",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    onAdd({
-      title,
-      exercises,
-      category
+  const handleSelectWorkout = (workout: Workout) => {
+    onAddWorkout(workout);
+    toast({
+      title: "Workout Added",
+      description: `${workout.title} added to ${selectedDay}'s workout plan`,
     });
-    
-    // Reset form
-    setTitle("");
-    setExercises([{ name: "", sets: 3, reps: "8-12", weight: "kg" }]);
-    setCategory("strength");
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
-            Add New Workout
-          </DialogTitle>
-          <DialogClose className="absolute right-4 top-4">
-            <X size={18} />
-            <span className="sr-only">Close</span>
-          </DialogClose>
+          <DialogTitle className="text-center">Add Workout for {selectedDay}</DialogTitle>
         </DialogHeader>
         
-        <div className="mt-4 space-y-4">
-          <div>
-            <Label htmlFor="workout-title">Workout Title</Label>
-            <Input
-              id="workout-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Upper Body Strength"
-              className="mt-1"
-            />
-          </div>
-          
-          <div>
-            <Label>Category</Label>
-            <RadioGroup 
-              value={category}
-              onValueChange={setCategory}
-              className="flex space-x-4 mt-1"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="strength" id="strength" />
-                <Label htmlFor="strength">Strength</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="cardio" id="cardio" />
-                <Label htmlFor="cardio">Cardio</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="recovery" id="recovery" />
-                <Label htmlFor="recovery">Recovery</Label>
-              </div>
-            </RadioGroup>
-          </div>
-          
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label>Exercises</Label>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={addExercise}
-                className="h-8 text-hashim-600 border-hashim-300 hover:bg-hashim-50"
-              >
-                <Plus size={16} className="mr-1" />
-                Add Exercise
-              </Button>
-            </div>
-            
-            <div className="space-y-4">
-              {exercises.map((exercise, index) => (
-                <div key={index} className="border rounded-lg p-3 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor={`exercise-name-${index}`} className="text-sm font-medium">
-                      Exercise {index + 1}
-                    </Label>
-                    {exercises.length > 1 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => removeExercise(index)}
-                        className="h-6 w-6 p-0 text-hashim-600 hover:text-hashim-700 hover:bg-hashim-50"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <Input
-                    id={`exercise-name-${index}`}
-                    value={exercise.name}
-                    onChange={(e) => updateExercise(index, "name", e.target.value)}
-                    placeholder="Exercise name"
-                  />
-                  
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <Label htmlFor={`sets-${index}`} className="text-xs">Sets</Label>
-                      <Input
-                        id={`sets-${index}`}
-                        type="number"
-                        min="1"
-                        value={exercise.sets}
-                        onChange={(e) => updateExercise(index, "sets", parseInt(e.target.value) || 1)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`reps-${index}`} className="text-xs">Reps</Label>
-                      <Input
-                        id={`reps-${index}`}
-                        value={exercise.reps}
-                        onChange={(e) => updateExercise(index, "reps", e.target.value)}
-                        placeholder="e.g., 8-12 or 30s"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`weight-${index}`} className="text-xs">Weight</Label>
-                      <Input
-                        id={`weight-${index}`}
-                        value={exercise.weight}
-                        onChange={(e) => updateExercise(index, "weight", e.target.value)}
-                        placeholder="e.g., 50kg or BW"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit}
-              className="bg-hashim-600 hover:bg-hashim-700 text-white"
-            >
-              Add Workout
-            </Button>
-          </div>
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search workouts..."
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
+        
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {filteredWorkouts.length > 0 ? (
+            filteredWorkouts.map((workout) => (
+              <AnimatedCard 
+                key={workout.id} 
+                className="cursor-pointer hover:border-hashim-300"
+                onClick={() => handleSelectWorkout(workout)}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <Dumbbell size={18} className="text-hashim-600" />
+                  <h3 className="font-medium">{workout.title}</h3>
+                  <span className="text-xs px-2 py-1 bg-hashim-50 text-hashim-600 rounded-full ml-auto">
+                    {workout.category}
+                  </span>
+                </div>
+                
+                <div className="text-sm text-muted-foreground">
+                  {workout.exercises.length} exercises
+                </div>
+              </AnimatedCard>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No workouts found</p>
+            </div>
+          )}
+        </div>
+        
+        <DialogFooter>
+          <Button onClick={onClose} variant="outline">Cancel</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

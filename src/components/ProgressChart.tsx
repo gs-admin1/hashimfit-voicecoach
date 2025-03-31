@@ -12,15 +12,18 @@ import {
 
 interface ProgressChartProps {
   data: { date: string; value: number }[];
+  metric?: 'weight' | 'calories' | 'protein' | 'carbs' | 'fat';
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, metric }: any) => {
   if (active && payload && payload.length) {
+    const unit = getMetricUnit(metric);
+    
     return (
       <div className="glassmorphism-card p-3 shadow-md">
         <p className="font-medium">{label}</p>
         <p className="text-sm text-hashim-800">
-          {payload[0].name}: <span className="font-medium">{payload[0].value}{payload[0].name === "Weight" ? "kg" : "g"}</span>
+          {payload[0].name}: <span className="font-medium">{payload[0].value}{unit}</span>
         </p>
       </div>
     );
@@ -29,7 +32,42 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function ProgressChart({ data }: ProgressChartProps) {
+const getMetricUnit = (metric?: string) => {
+  switch(metric) {
+    case 'weight':
+      return 'kg';
+    case 'calories':
+      return '';
+    case 'protein':
+    case 'carbs':
+    case 'fat':
+      return 'g';
+    default:
+      return '';
+  }
+};
+
+const getMetricName = (metric?: string) => {
+  switch(metric) {
+    case 'weight':
+      return 'Weight';
+    case 'calories':
+      return 'Calories';
+    case 'protein':
+      return 'Protein';
+    case 'carbs':
+      return 'Carbs';
+    case 'fat':
+      return 'Fat';
+    default:
+      return 'Value';
+  }
+};
+
+export function ProgressChart({ data, metric = 'weight' }: ProgressChartProps) {
+  const metricName = getMetricName(metric);
+  const metricColor = getMetricColor(metric);
+  
   return (
     <div className="h-60 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -55,7 +93,7 @@ export function ProgressChart({ data }: ProgressChartProps) {
             axisLine={{ strokeOpacity: 0.3 }}
             domain={['dataMin - 1', 'dataMax + 1']}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip metric={metric} />} />
           <Legend 
             verticalAlign="top" 
             height={36} 
@@ -65,8 +103,8 @@ export function ProgressChart({ data }: ProgressChartProps) {
           <Line 
             type="monotone" 
             dataKey="value" 
-            name="Weight" 
-            stroke="#be123c" 
+            name={metricName} 
+            stroke={metricColor} 
             strokeWidth={2}
             dot={{ r: 4, strokeWidth: 2 }}
             activeDot={{ r: 6, strokeWidth: 2 }}
@@ -76,4 +114,21 @@ export function ProgressChart({ data }: ProgressChartProps) {
       </ResponsiveContainer>
     </div>
   );
+}
+
+function getMetricColor(metric?: string): string {
+  switch(metric) {
+    case 'weight':
+      return '#be123c'; // Red
+    case 'calories':
+      return '#0891b2'; // Blue
+    case 'protein':
+      return '#4d7c0f'; // Green
+    case 'carbs':
+      return '#b45309'; // Orange
+    case 'fat':
+      return '#7c3aed'; // Purple
+    default:
+      return '#be123c';
+  }
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +16,7 @@ import { ProgressChart } from "./ProgressChart";
 import { VoiceInput } from "./VoiceInput";
 import { MealCaptureCard } from "./MealCaptureCard";
 import { UserStatsModal } from "./UserStatsModal";
+import { AddWorkoutModal } from "./AddWorkoutModal";
 import { toast } from "@/hooks/use-toast";
 import { 
   Activity, 
@@ -35,6 +37,7 @@ export function Dashboard() {
   const { user } = useUser();
   const { isAuthenticated, userId } = useAuth();
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showAddWorkoutModal, setShowAddWorkoutModal] = useState(false);
   const [isProgressOpen, setIsProgressOpen] = useState(true);
   const [isNutritionOpen, setIsNutritionOpen] = useState(true);
   
@@ -53,14 +56,60 @@ export function Dashboard() {
   
   // Selected day state (default to today)
   const [selectedDay, setSelectedDay] = useState(weekDaysDefault[dayIndex]);
-
-  // Add a new state for progress chart data
+  
+  // Progress chart data with timeframe selection
+  const [timeframe, setTimeframe] = useState<'week' | 'month' | '3months' | '6months' | 'year'>('week');
+  
+  // State for different progress data types
   const [progressData, setProgressData] = useState([
     { date: "Week 1", value: 82 },
     { date: "Week 2", value: 81.2 },
     { date: "Week 3", value: 80.5 },
     { date: "Week 4", value: 79.8 },
   ]);
+  
+  const [caloriesData, setCaloriesData] = useState([
+    { date: "Day 1", value: 2400 },
+    { date: "Day 2", value: 2350 },
+    { date: "Day 3", value: 2450 },
+    { date: "Day 4", value: 2300 },
+    { date: "Day 5", value: 2380 },
+    { date: "Day 6", value: 2420 },
+    { date: "Day 7", value: 2350 },
+  ]);
+  
+  const [proteinData, setProteinData] = useState([
+    { date: "Day 1", value: 180 },
+    { date: "Day 2", value: 175 },
+    { date: "Day 3", value: 185 },
+    { date: "Day 4", value: 178 },
+    { date: "Day 5", value: 182 },
+    { date: "Day 6", value: 180 },
+    { date: "Day 7", value: 183 },
+  ]);
+  
+  const [carbsData, setCarbsData] = useState([
+    { date: "Day 1", value: 215 },
+    { date: "Day 2", value: 215 },
+    { date: "Day 3", value: 230 },
+    { date: "Day 4", value: 210 },
+    { date: "Day 5", value: 225 },
+    { date: "Day 6", value: 218 },
+    { date: "Day 7", value: 222 },
+  ]);
+  
+  const [fatData, setFatData] = useState([
+    { date: "Day 1", value: 80 },
+    { date: "Day 2", value: 78 },
+    { date: "Day 3", value: 82 },
+    { date: "Day 4", value: 76 },
+    { date: "Day 5", value: 80 },
+    { date: "Day 6", value: 79 },
+    { date: "Day 7", value: 81 },
+  ]);
+  
+  // State for the selected metric to display in chart
+  const [selectedMetric, setSelectedMetric] = useState<'weight' | 'calories' | 'protein' | 'carbs' | 'fat'>('weight');
 
   // Fetch data on component mount
   useEffect(() => {
@@ -103,6 +152,56 @@ export function Dashboard() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Update progress data based on selected timeframe
+  useEffect(() => {
+    fetchProgressData(timeframe, selectedMetric);
+  }, [timeframe, selectedMetric]);
+  
+  const fetchProgressData = (timeframe: string, metric: string) => {
+    // In a real app, this would be an API call to fetch data based on timeframe and metric
+    // For this implementation, we'll use the mock data already defined
+    
+    // Different date formats based on timeframe
+    let dates: string[] = [];
+    
+    switch(timeframe) {
+      case 'week':
+        dates = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        break;
+      case 'month':
+        dates = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+        break;
+      case '3months':
+        dates = ['Jan', 'Feb', 'Mar'];
+        break;
+      case '6months':
+        dates = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        break;
+      case 'year':
+        dates = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        break;
+    }
+    
+    // Get the appropriate data based on metric
+    switch(metric) {
+      case 'weight':
+        // Current weight data is already in the right format
+        break;
+      case 'calories':
+        setProgressData(caloriesData);
+        break;
+      case 'protein':
+        setProgressData(proteinData);
+        break;
+      case 'carbs':
+        setProgressData(carbsData);
+        break;
+      case 'fat':
+        setProgressData(fatData);
+        break;
     }
   };
   
@@ -190,6 +289,38 @@ export function Dashboard() {
       toast({
         title: "Error",
         description: "Failed to remove exercise",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Handler for adding a full workout
+  const handleAddWorkout = async (workout: any) => {
+    try {
+      // In a real implementation, you would add this workout to the database
+      // For now, just update the UI state
+      setWeeklyWorkouts(prevWorkouts => {
+        const updatedWorkouts = { ...prevWorkouts };
+        
+        // Add the workout to the selected day
+        updatedWorkouts[selectedDay] = {
+          id: `workout-${Date.now()}`,
+          title: workout.title,
+          category: workout.category,
+          exercises: workout.exercises.map((ex: any, index: number) => ({
+            ...ex,
+            id: `ex-${Date.now()}-${index}`,
+            completed: false
+          }))
+        };
+        
+        return updatedWorkouts;
+      });
+    } catch (error) {
+      console.error("Error adding workout:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add workout",
         variant: "destructive"
       });
     }
@@ -283,9 +414,7 @@ export function Dashboard() {
               <Button 
                 variant="outline" 
                 className="flex items-center mx-auto"
-                onClick={() => {
-                  // Navigate to workouts page or open add workout modal
-                }}
+                onClick={() => setShowAddWorkoutModal(true)}
               >
                 <Plus size={16} className="mr-1" />
                 Add a workout
@@ -303,7 +432,7 @@ export function Dashboard() {
         <div className="flex justify-between items-center">
           <SectionTitle
             title="Progress"
-            subtitle="Last 4 weeks"
+            subtitle="Track your fitness journey"
           />
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="flex items-center">
@@ -318,7 +447,85 @@ export function Dashboard() {
         
         <CollapsibleContent>
           <AnimatedCard className="overflow-hidden">
-            <ProgressChart data={progressData} />
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Button 
+                size="sm" 
+                variant={selectedMetric === "weight" ? "default" : "outline"}
+                onClick={() => setSelectedMetric("weight")}
+                className="flex items-center"
+              >
+                <Weight className="mr-2" size={16} />
+                Weight
+              </Button>
+              <Button 
+                size="sm" 
+                variant={selectedMetric === "calories" ? "default" : "outline"}
+                onClick={() => setSelectedMetric("calories")}
+              >
+                Calories
+              </Button>
+              <Button 
+                size="sm" 
+                variant={selectedMetric === "protein" ? "default" : "outline"}
+                onClick={() => setSelectedMetric("protein")}
+              >
+                Protein
+              </Button>
+              <Button 
+                size="sm" 
+                variant={selectedMetric === "carbs" ? "default" : "outline"}
+                onClick={() => setSelectedMetric("carbs")}
+              >
+                Carbs
+              </Button>
+              <Button 
+                size="sm" 
+                variant={selectedMetric === "fat" ? "default" : "outline"}
+                onClick={() => setSelectedMetric("fat")}
+              >
+                Fat
+              </Button>
+            </div>
+            
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Button 
+                size="sm" 
+                variant={timeframe === "week" ? "default" : "outline"}
+                onClick={() => setTimeframe("week")}
+              >
+                1 Week
+              </Button>
+              <Button 
+                size="sm" 
+                variant={timeframe === "month" ? "default" : "outline"}
+                onClick={() => setTimeframe("month")}
+              >
+                1 Month
+              </Button>
+              <Button 
+                size="sm" 
+                variant={timeframe === "3months" ? "default" : "outline"}
+                onClick={() => setTimeframe("3months")}
+              >
+                3 Months
+              </Button>
+              <Button 
+                size="sm" 
+                variant={timeframe === "6months" ? "default" : "outline"}
+                onClick={() => setTimeframe("6months")}
+              >
+                6 Months
+              </Button>
+              <Button 
+                size="sm" 
+                variant={timeframe === "year" ? "default" : "outline"}
+                onClick={() => setTimeframe("year")}
+              >
+                1 Year
+              </Button>
+            </div>
+            
+            <ProgressChart data={progressData} metric={selectedMetric} />
           </AnimatedCard>
         </CollapsibleContent>
       </Collapsible>
@@ -397,6 +604,13 @@ export function Dashboard() {
       <UserStatsModal 
         isOpen={showStatsModal} 
         onClose={() => setShowStatsModal(false)} 
+      />
+      
+      <AddWorkoutModal
+        isOpen={showAddWorkoutModal}
+        onClose={() => setShowAddWorkoutModal(false)}
+        onAddWorkout={handleAddWorkout}
+        selectedDay={selectedDay}
       />
     </div>
   );
