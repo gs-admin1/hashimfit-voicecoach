@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { 
@@ -17,11 +18,13 @@ import { useNavigate } from "react-router-dom";
 export const AnimatedCard = ({ 
   children, 
   className, 
-  delay = 0 
+  delay = 0,
+  onClick
 }: { 
   children: React.ReactNode, 
   className?: string,
-  delay?: number 
+  delay?: number,
+  onClick?: () => void
 }) => {
   return (
     <div 
@@ -33,6 +36,7 @@ export const AnimatedCard = ({
         animationDelay: `${delay}ms`,
         animation: `scale-in 0.5s ease-out ${delay}ms backwards` 
       }}
+      onClick={onClick}
     >
       {children}
     </div>

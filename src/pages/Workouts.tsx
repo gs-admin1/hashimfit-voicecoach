@@ -17,6 +17,7 @@ export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { isAuthenticated, userId } = useAuth();
+  const [selectedDay, setSelectedDay] = useState('Today');
   
   useEffect(() => {
     if (isAuthenticated && userId) {
@@ -203,7 +204,8 @@ export default function WorkoutsPage() {
       <AddWorkoutModal 
         isOpen={showAddWorkout} 
         onClose={() => setShowAddWorkout(false)}
-        onAdd={addWorkout}
+        onAddWorkout={addWorkout}
+        selectedDay={selectedDay}
       />
       
       <NavigationBar />
