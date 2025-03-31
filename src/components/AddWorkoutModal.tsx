@@ -8,7 +8,7 @@ import { Search, Dumbbell, X, Plus, Save } from "lucide-react";
 import { AnimatedCard } from "./ui-components";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
+import { WorkoutService, WorkoutPlan } from "@/lib/supabase/services/WorkoutService";
 
 interface Exercise {
   name: string;
@@ -40,7 +40,7 @@ export function AddWorkoutModal({ isOpen, onClose, onAddWorkout, selectedDay }: 
 
   // State for custom workout creation
   const [newWorkoutTitle, setNewWorkoutTitle] = useState("");
-  const [newWorkoutCategory, setNewWorkoutCategory] = useState("strength");
+  const [newWorkoutCategory, setNewWorkoutCategory] = useState<WorkoutPlan["category"]>("strength");
   const [newWorkoutExercises, setNewWorkoutExercises] = useState<Exercise[]>([]);
   const [newExerciseName, setNewExerciseName] = useState("");
   const [newExerciseSets, setNewExerciseSets] = useState("3");
@@ -215,10 +215,10 @@ export function AddWorkoutModal({ isOpen, onClose, onAddWorkout, selectedDay }: 
       // If creating a custom workout to save in database
       else {
         // Create workout plan in the database
-        const workoutPlan = {
+        const workoutPlan: WorkoutPlan = {
           user_id: userId!,
           title: newWorkout.title,
-          category: newWorkout.category,
+          category: newWorkoutCategory,
           difficulty: 3
         };
         
@@ -357,7 +357,7 @@ export function AddWorkoutModal({ isOpen, onClose, onAddWorkout, selectedDay }: 
                 <select
                   className="w-full px-3 py-2 border rounded-md"
                   value={newWorkoutCategory}
-                  onChange={(e) => setNewWorkoutCategory(e.target.value)}
+                  onChange={(e) => setNewWorkoutCategory(e.target.value as WorkoutPlan["category"])}
                 >
                   <option value="strength">Strength</option>
                   <option value="cardio">Cardio</option>
