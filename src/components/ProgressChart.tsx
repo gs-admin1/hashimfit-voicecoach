@@ -92,11 +92,16 @@ const getMetricName = (metric?: string) => {
 export function ProgressChart({ data, metrics, singleMetric = 'weight' }: ProgressChartProps) {
   // For backward compatibility - if we're using the old single metric mode
   if (singleMetric && !metrics) {
+    const formattedData = data.map(item => ({
+      date: item.date,
+      value: item[singleMetric] || item.value
+    }));
+
     return (
       <div className="h-60 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={data}
+            data={formattedData}
             margin={{
               top: 5,
               right: 10,

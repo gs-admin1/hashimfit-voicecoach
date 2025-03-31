@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -43,73 +44,10 @@ export default function ProgressPage() {
     { date: "Sun", weight: 79.3, calories: 2350, protein: 183, carbs: 222, fat: 81 },
   ]);
   
-  // Keep separate datasets for backward compatibility
-  const [weightData, setWeightData] = useState([
-    { date: "Week 1", value: 82 },
-    { date: "Week 2", value: 81.2 },
-    { date: "Week 3", value: 80.5 },
-    { date: "Week 4", value: 79.8 },
-  ]);
+  // State for single metric view
+  const [selectedMetric, setSelectedMetric] = useState<'weight' | 'calories' | 'protein' | 'carbs' | 'fat'>('weight');
+  const [showMultiMetric, setShowMultiMetric] = useState(true);
   
-  const [caloriesData, setCaloriesData] = useState([
-    { date: "Day 1", value: 2400 },
-    { date: "Day 2", value: 2350 },
-    { date: "Day 3", value: 2450 },
-    { date: "Day 4", value: 2300 },
-    { date: "Day 5", value: 2380 },
-    { date: "Day 6", value: 2420 },
-    { date: "Day 7", value: 2350 },
-  ]);
-  
-  const [macrosData, setMacrosData] = useState({
-    protein: [
-      { date: "Day 1", value: 180 },
-      { date: "Day 2", value: 175 },
-      { date: "Day 3", value: 185 },
-      { date: "Day 4", value: 178 },
-      { date: "Day 5", value: 182 },
-      { date: "Day 6", value: 180 },
-      { date: "Day 7", value: 183 },
-    ],
-    carbs: [
-      { date: "Day 1", value: 215 },
-      { date: "Day 2", value: 215 },
-      { date: "Day 3", value: 230 },
-      { date: "Day 4", value: 210 },
-      { date: "Day 5", value: 225 },
-      { date: "Day 6", value: 218 },
-      { date: "Day 7", value: 222 },
-    ],
-    fat: [
-      { date: "Day 1", value: 80 },
-      { date: "Day 2", value: 78 },
-      { date: "Day 3", value: 82 },
-      { date: "Day 4", value: 76 },
-      { date: "Day 5", value: 80 },
-      { date: "Day 6", value: 79 },
-      { date: "Day 7", value: 81 },
-    ]
-  });
-  
-  const [strengthData, setStrengthData] = useState([
-    { exercise: "Bench Press", previous: "65kg", current: "70kg", change: "up" },
-    { exercise: "Squat", previous: "90kg", current: "100kg", change: "up" },
-    { exercise: "Deadlift", previous: "120kg", current: "125kg", change: "up" },
-    { exercise: "Overhead Press", previous: "40kg", current: "40kg", change: "neutral" },
-    { exercise: "Pull-ups", previous: "8 reps", current: "10 reps", change: "up" },
-    { exercise: "Mile Run", previous: "8:45", current: "8:20", change: "up" },
-    { exercise: "Dips", previous: "12 reps", current: "15 reps", change: "up" },
-  ]);
-  
-  const [measurementsData, setMeasurementsData] = useState([
-    { part: "Chest", previous: "95cm", current: "97cm", change: "up" },
-    { part: "Waist", previous: "86cm", current: "84cm", change: "down" },
-    { part: "Arms", previous: "36cm", current: "37cm", change: "up" },
-    { part: "Thighs", previous: "58cm", current: "59cm", change: "up" },
-    { part: "Calves", previous: "38cm", current: "39cm", change: "up" },
-    { part: "Shoulders", previous: "120cm", current: "122cm", change: "up" },
-  ]);
-
   // Function to fetch progress data based on the selected timeframe
   const fetchProgressData = async (range: string) => {
     setIsLoading(true);
@@ -199,6 +137,14 @@ export default function ProgressPage() {
     }));
   };
 
+  // Get single metric data from multiMetricData
+  const getSingleMetricData = () => {
+    return multiMetricData.map(item => ({
+      date: item.date,
+      value: item[selectedMetric]
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
@@ -243,67 +189,133 @@ export default function ProgressPage() {
           </div>
           
           <AnimatedCard className="mb-6">
-            <div className="flex flex-wrap gap-3 mb-4">
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="weight-toggle" 
-                  checked={metrics.weight}
-                  onCheckedChange={() => toggleMetric('weight')}
-                />
-                <Label htmlFor="weight-toggle" className="flex items-center">
-                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#be123c' }}></span>
-                  Weight
-                </Label>
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex space-x-1">
+                <Button 
+                  size="sm"
+                  variant={showMultiMetric ? "default" : "outline"}
+                  onClick={() => setShowMultiMetric(true)}
+                >
+                  Multi
+                </Button>
+                <Button 
+                  size="sm"
+                  variant={!showMultiMetric ? "default" : "outline"}
+                  onClick={() => setShowMultiMetric(false)}
+                >
+                  Single
+                </Button>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="calories-toggle" 
-                  checked={metrics.calories}
-                  onCheckedChange={() => toggleMetric('calories')}
-                />
-                <Label htmlFor="calories-toggle" className="flex items-center">
-                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#0891b2' }}></span>
-                  Calories
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="protein-toggle" 
-                  checked={metrics.protein}
-                  onCheckedChange={() => toggleMetric('protein')}
-                />
-                <Label htmlFor="protein-toggle" className="flex items-center">
-                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#4d7c0f' }}></span>
-                  Protein
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="carbs-toggle" 
-                  checked={metrics.carbs}
-                  onCheckedChange={() => toggleMetric('carbs')}
-                />
-                <Label htmlFor="carbs-toggle" className="flex items-center">
-                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#b45309' }}></span>
-                  Carbs
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="fat-toggle" 
-                  checked={metrics.fat}
-                  onCheckedChange={() => toggleMetric('fat')}
-                />
-                <Label htmlFor="fat-toggle" className="flex items-center">
-                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#7c3aed' }}></span>
-                  Fat
-                </Label>
-              </div>
+              {!showMultiMetric && (
+                <div className="flex flex-wrap gap-1">
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "weight" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("weight")}
+                    className="text-xs py-1 h-7"
+                  >
+                    Weight
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "calories" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("calories")}
+                    className="text-xs py-1 h-7"
+                  >
+                    Cal
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "protein" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("protein")}
+                    className="text-xs py-1 h-7"
+                  >
+                    Prot
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "carbs" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("carbs")}
+                    className="text-xs py-1 h-7"
+                  >
+                    Carbs
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "fat" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("fat")}
+                    className="text-xs py-1 h-7"
+                  >
+                    Fat
+                  </Button>
+                </div>
+              )}
             </div>
+            
+            {showMultiMetric && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="weight-toggle" 
+                    checked={metrics.weight}
+                    onCheckedChange={() => toggleMetric('weight')}
+                  />
+                  <Label htmlFor="weight-toggle" className="flex items-center">
+                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#be123c' }}></span>
+                    Weight
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="calories-toggle" 
+                    checked={metrics.calories}
+                    onCheckedChange={() => toggleMetric('calories')}
+                  />
+                  <Label htmlFor="calories-toggle" className="flex items-center">
+                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#0891b2' }}></span>
+                    Calories
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="protein-toggle" 
+                    checked={metrics.protein}
+                    onCheckedChange={() => toggleMetric('protein')}
+                  />
+                  <Label htmlFor="protein-toggle" className="flex items-center">
+                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#4d7c0f' }}></span>
+                    Protein
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="carbs-toggle" 
+                    checked={metrics.carbs}
+                    onCheckedChange={() => toggleMetric('carbs')}
+                  />
+                  <Label htmlFor="carbs-toggle" className="flex items-center">
+                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#b45309' }}></span>
+                    Carbs
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="fat-toggle" 
+                    checked={metrics.fat}
+                    onCheckedChange={() => toggleMetric('fat')}
+                  />
+                  <Label htmlFor="fat-toggle" className="flex items-center">
+                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#7c3aed' }}></span>
+                    Fat
+                  </Label>
+                </div>
+              </div>
+            )}
             
             <div className="h-48 overflow-hidden">
               {isLoading ? (
@@ -311,10 +323,17 @@ export default function ProgressPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hashim-600"></div>
                 </div>
               ) : (
-                <ProgressChart 
-                  data={multiMetricData} 
-                  metrics={metrics} 
-                />
+                showMultiMetric ? (
+                  <ProgressChart 
+                    data={multiMetricData} 
+                    metrics={metrics} 
+                  />
+                ) : (
+                  <ProgressChart 
+                    data={getSingleMetricData()} 
+                    singleMetric={selectedMetric} 
+                  />
+                )
               )}
             </div>
           </AnimatedCard>

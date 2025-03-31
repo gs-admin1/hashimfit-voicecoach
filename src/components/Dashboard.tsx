@@ -45,6 +45,7 @@ export function Dashboard() {
   const [weeklyWorkouts, setWeeklyWorkouts] = useState<Record<string, any>>({});
   const [nutritionPlan, setNutritionPlan] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [customWorkouts, setCustomWorkouts] = useState<any[]>([]);
   
   // Get today's day and create a 7-day array starting from today
   const today = new Date();
@@ -125,6 +126,7 @@ export function Dashboard() {
   useEffect(() => {
     if (isAuthenticated && userId) {
       fetchWorkoutsAndNutrition();
+      fetchCustomWorkouts();
     } else {
       setIsLoading(false);
     }
@@ -162,6 +164,17 @@ export function Dashboard() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCustomWorkouts = async () => {
+    if (!userId) return;
+    
+    try {
+      const workouts = await WorkoutService.getWorkoutPlans(userId);
+      setCustomWorkouts(workouts || []);
+    } catch (error) {
+      console.error("Error fetching custom workouts:", error);
     }
   };
   
@@ -307,24 +320,34 @@ export function Dashboard() {
   // Handler for adding a full workout
   const handleAddWorkout = async (workout: any) => {
     try {
-      // In a real implementation, you would add this workout to the database
-      // For now, just update the UI state
-      setWeeklyWorkouts(prevWorkouts => {
-        const updatedWorkouts = { ...prevWorkouts };
-        
-        // Add the workout to the selected day
-        updatedWorkouts[selectedDay] = {
-          id: `workout-${Date.now()}`,
-          title: workout.title,
-          category: workout.category,
-          exercises: workout.exercises.map((ex: any, index: number) => ({
-            ...ex,
-            id: `ex-${Date.now()}-${index}`,
-            completed: false
-          }))
-        };
-        
-        return updatedWorkouts;
+      // Save the workout to local storage to persist it across page refreshes
+      const workoutsFromStorage = localStorage.getItem('weeklyWorkouts');
+      let storedWorkouts = workoutsFromStorage ? JSON.parse(workoutsFromStorage) : {};
+      
+      // Add the workout to the selected day
+      const newWorkout = {
+        id: `workout-${Date.now()}`,
+        title: workout.title,
+        category: workout.category,
+        exercises: workout.exercises.map((ex: any, index: number) => ({
+          ...ex,
+          id: `ex-${Date.now()}-${index}`,
+          completed: false
+        }))
+      };
+      
+      storedWorkouts[selectedDay] = newWorkout;
+      localStorage.setItem('weeklyWorkouts', JSON.stringify(storedWorkouts));
+      
+      // Update state
+      setWeeklyWorkouts(prevWorkouts => ({
+        ...prevWorkouts,
+        [selectedDay]: newWorkout
+      }));
+      
+      toast({
+        title: "Workout added",
+        description: `${workout.title} added to ${selectedDay}`
       });
     } catch (error) {
       console.error("Error adding workout:", error);
@@ -335,6 +358,18 @@ export function Dashboard() {
       });
     }
   };
+
+  // Load workouts from localStorage on mount
+  useEffect(() => {
+    const storedWorkouts = localStorage.getItem('weeklyWorkouts');
+    if (storedWorkouts) {
+      const parsedWorkouts = JSON.parse(storedWorkouts);
+      setWeeklyWorkouts(prevWorkouts => ({
+        ...prevWorkouts,
+        ...parsedWorkouts
+      }));
+    }
+  }, []);
 
   const formatMultiMetricData = () => {
     switch(timeframe) {
@@ -406,20 +441,36 @@ export function Dashboard() {
   };
 
   const getChartData = () => {
-    switch (selectedMetric) {
-      case "weight":
-        return progressData;
-      case "calories":
-        return caloriesData;
-      case "protein":
-        return proteinData;
-      case "carbs":
-        return carbsData;
-      case "fat":
-        return fatData;
-      default:
-        return progressData;
+    const multiMetricData = formatMultiMetricData();
+    
+    if (selectedMetric === "weight") {
+      return multiMetricData.map(item => ({
+        date: item.date,
+        value: item.weight
+      }));
+    } else if (selectedMetric === "calories") {
+      return multiMetricData.map(item => ({
+        date: item.date,
+        value: item.calories
+      }));
+    } else if (selectedMetric === "protein") {
+      return multiMetricData.map(item => ({
+        date: item.date,
+        value: item.protein
+      }));
+    } else if (selectedMetric === "carbs") {
+      return multiMetricData.map(item => ({
+        date: item.date,
+        value: item.carbs
+      }));
+    } else if (selectedMetric === "fat") {
+      return multiMetricData.map(item => ({
+        date: item.date,
+        value: item.fat
+      }));
     }
+    
+    return progressData;
   };
 
   return (
@@ -562,11 +613,12 @@ export function Dashboard() {
               </div>
               
               {!showMultiMetric && (
-                <div className="flex space-x-1">
+                <div className="flex flex-wrap gap-1">
                   <Button 
                     size="sm" 
                     variant={selectedMetric === "weight" ? "default" : "outline"}
                     onClick={() => setSelectedMetric("weight")}
+                    className="text-xs py-1 h-7"
                   >
                     Weight
                   </Button>
@@ -574,6 +626,7 @@ export function Dashboard() {
                     size="sm" 
                     variant={selectedMetric === "calories" ? "default" : "outline"}
                     onClick={() => setSelectedMetric("calories")}
+                    className="text-xs py-1 h-7"
                   >
                     Cal
                   </Button>
@@ -581,8 +634,25 @@ export function Dashboard() {
                     size="sm" 
                     variant={selectedMetric === "protein" ? "default" : "outline"}
                     onClick={() => setSelectedMetric("protein")}
+                    className="text-xs py-1 h-7"
                   >
                     Prot
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "carbs" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("carbs")}
+                    className="text-xs py-1 h-7"
+                  >
+                    Carbs
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "fat" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("fat")}
+                    className="text-xs py-1 h-7"
+                  >
+                    Fat
                   </Button>
                 </div>
               )}
