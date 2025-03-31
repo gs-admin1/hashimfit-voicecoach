@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { useUser } from "@/context/UserContext";
+import { useUser, WorkoutFrequency } from "@/context/UserContext";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -92,7 +93,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
       setIsSubmitting(true);
       
       // First complete the assessment in the user profile
-      const assessmentComplete = await completeAssessment(formData);
+      // Convert workoutFrequency to the correct type (WorkoutFrequency)
+      const assessmentComplete = await completeAssessment({
+        ...formData,
+        workoutFrequency: formData.workoutFrequency as WorkoutFrequency
+      });
       
       if (!assessmentComplete || !userId) {
         throw new Error("Failed to complete assessment");
@@ -105,7 +110,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
         height: formData.height,
         weight: formData.weight,
         fitnessGoal: formData.fitnessGoal,
-        workoutFrequency: formData.workoutFrequency,
+        workoutFrequency: formData.workoutFrequency as WorkoutFrequency,
         diet: formData.diet,
         equipment: formData.equipment,
         sportsPlayed: formData.sportsPlayed,

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -52,7 +51,7 @@ export default function ProgressPage() {
       { date: "Day 7", value: 183 },
     ],
     carbs: [
-      { date: "Day 1", value: 220 },
+      { date: "Day 1", value: 215 },
       { date: "Day 2", value: 215 },
       { date: "Day 3", value: 230 },
       { date: "Day 4", value: 210 },
