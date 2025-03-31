@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -16,14 +15,35 @@ import {
   Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function ProgressPage() {
   const { isAuthenticated, userId } = useAuth();
   const [timeRange, setTimeRange] = useState("week");
   const [isLoading, setIsLoading] = useState(false);
-  const [chartType, setChartType] = useState("weight");
+
+  // Toggle state for each metric
+  const [metrics, setMetrics] = useState({
+    weight: true,
+    calories: true,
+    protein: true,
+    carbs: true,
+    fat: true
+  });
+
+  // Combined data for multi-metric chart
+  const [multiMetricData, setMultiMetricData] = useState([
+    { date: "Mon", weight: 80.8, calories: 2400, protein: 180, carbs: 215, fat: 80 },
+    { date: "Tue", weight: 80.5, calories: 2350, protein: 175, carbs: 215, fat: 78 },
+    { date: "Wed", weight: 80.3, calories: 2450, protein: 185, carbs: 230, fat: 82 },
+    { date: "Thu", weight: 80.0, calories: 2300, protein: 178, carbs: 210, fat: 76 },
+    { date: "Fri", weight: 79.8, calories: 2380, protein: 182, carbs: 225, fat: 80 },
+    { date: "Sat", weight: 79.5, calories: 2420, protein: 180, carbs: 218, fat: 79 },
+    { date: "Sun", weight: 79.3, calories: 2350, protein: 183, carbs: 222, fat: 81 },
+  ]);
   
-  // Mock progress data (would be fetched from the database in a real implementation)
+  // Keep separate datasets for backward compatibility
   const [weightData, setWeightData] = useState([
     { date: "Week 1", value: 82 },
     { date: "Week 2", value: 81.2 },
@@ -104,52 +124,52 @@ export default function ProgressPage() {
       // Update data based on the selected range
       // In a real app, this would be API data
       if (range === "month") {
-        setWeightData([
-          { date: "Week 1", value: 82 },
-          { date: "Week 2", value: 81.2 },
-          { date: "Week 3", value: 80.5 },
-          { date: "Week 4", value: 79.8 },
+        setMultiMetricData([
+          { date: "Week 1", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 78 },
+          { date: "Week 2", weight: 81.5, calories: 2380, protein: 178, carbs: 215, fat: 79 },
+          { date: "Week 3", weight: 80.8, calories: 2420, protein: 182, carbs: 225, fat: 77 },
+          { date: "Week 4", weight: 79.8, calories: 2350, protein: 185, carbs: 210, fat: 75 },
         ]);
       } else if (range === "quarter") {
-        setWeightData([
-          { date: "Jan", value: 83 },
-          { date: "Feb", value: 82 },
-          { date: "Mar", value: 80.5 },
+        setMultiMetricData([
+          { date: "Jan", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
+          { date: "Feb", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
+          { date: "Mar", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
         ]);
       } else if (range === "half-year") {
-        setWeightData([
-          { date: "Jan", value: 85 },
-          { date: "Feb", value: 84 },
-          { date: "Mar", value: 83 },
-          { date: "Apr", value: 82 },
-          { date: "May", value: 81 },
-          { date: "Jun", value: 80.5 },
+        setMultiMetricData([
+          { date: "Jan", weight: 85, calories: 2500, protein: 170, carbs: 235, fat: 85 },
+          { date: "Feb", weight: 84, calories: 2480, protein: 175, carbs: 230, fat: 83 },
+          { date: "Mar", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
+          { date: "Apr", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
+          { date: "May", weight: 81, calories: 2380, protein: 182, carbs: 218, fat: 79 },
+          { date: "Jun", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
         ]);
       } else if (range === "year") {
-        setWeightData([
-          { date: "Jan", value: 85 },
-          { date: "Feb", value: 84 },
-          { date: "Mar", value: 83 },
-          { date: "Apr", value: 82 },
-          { date: "May", value: 81 },
-          { date: "Jun", value: 80.5 },
-          { date: "Jul", value: 80 },
-          { date: "Aug", value: 79.5 },
-          { date: "Sep", value: 79 },
-          { date: "Oct", value: 78.5 },
-          { date: "Nov", value: 78 },
-          { date: "Dec", value: 77.5 },
+        setMultiMetricData([
+          { date: "Jan", weight: 85, calories: 2500, protein: 170, carbs: 235, fat: 85 },
+          { date: "Feb", weight: 84, calories: 2480, protein: 175, carbs: 230, fat: 83 },
+          { date: "Mar", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
+          { date: "Apr", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
+          { date: "May", weight: 81, calories: 2380, protein: 182, carbs: 218, fat: 79 },
+          { date: "Jun", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
+          { date: "Jul", weight: 80, calories: 2330, protein: 187, carbs: 212, fat: 77 },
+          { date: "Aug", weight: 79.5, calories: 2320, protein: 190, carbs: 210, fat: 76 },
+          { date: "Sep", weight: 79, calories: 2300, protein: 192, carbs: 208, fat: 75 },
+          { date: "Oct", weight: 78.5, calories: 2290, protein: 195, carbs: 205, fat: 74 },
+          { date: "Nov", weight: 78, calories: 2280, protein: 197, carbs: 200, fat: 73 },
+          { date: "Dec", weight: 77.5, calories: 2270, protein: 200, carbs: 195, fat: 72 },
         ]);
       } else {
         // week is default
-        setWeightData([
-          { date: "Mon", value: 80.8 },
-          { date: "Tue", value: 80.5 },
-          { date: "Wed", value: 80.3 },
-          { date: "Thu", value: 80.0 },
-          { date: "Fri", value: 79.8 },
-          { date: "Sat", value: 79.5 },
-          { date: "Sun", value: 79.3 },
+        setMultiMetricData([
+          { date: "Mon", weight: 80.8, calories: 2400, protein: 180, carbs: 215, fat: 80 },
+          { date: "Tue", weight: 80.5, calories: 2350, protein: 175, carbs: 215, fat: 78 },
+          { date: "Wed", weight: 80.3, calories: 2450, protein: 185, carbs: 230, fat: 82 },
+          { date: "Thu", weight: 80.0, calories: 2300, protein: 178, carbs: 210, fat: 76 },
+          { date: "Fri", weight: 79.8, calories: 2380, protein: 182, carbs: 225, fat: 80 },
+          { date: "Sat", weight: 79.5, calories: 2420, protein: 180, carbs: 218, fat: 79 },
+          { date: "Sun", weight: 79.3, calories: 2350, protein: 183, carbs: 222, fat: 81 },
         ]);
       }
       
@@ -172,22 +192,11 @@ export default function ProgressPage() {
     }
   }, [isAuthenticated, userId]);
 
-  // Get relevant data for currently selected chart type
-  const getChartData = () => {
-    switch (chartType) {
-      case "weight":
-        return weightData;
-      case "calories":
-        return caloriesData;
-      case "protein":
-        return macrosData.protein;
-      case "carbs":
-        return macrosData.carbs;
-      case "fat":
-        return macrosData.fat;
-      default:
-        return weightData;
-    }
+  const toggleMetric = (metric: keyof typeof metrics) => {
+    setMetrics(prev => ({
+      ...prev,
+      [metric]: !prev[metric]
+    }));
   };
 
   return (
@@ -234,44 +243,66 @@ export default function ProgressPage() {
           </div>
           
           <AnimatedCard className="mb-6">
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Button 
-                size="sm" 
-                variant={chartType === "weight" ? "default" : "outline"}
-                onClick={() => setChartType("weight")}
-                className="flex items-center"
-              >
-                <Weight className="mr-2" size={16} />
-                Weight
-              </Button>
-              <Button 
-                size="sm" 
-                variant={chartType === "calories" ? "default" : "outline"}
-                onClick={() => setChartType("calories")}
-              >
-                Calories
-              </Button>
-              <Button 
-                size="sm" 
-                variant={chartType === "protein" ? "default" : "outline"}
-                onClick={() => setChartType("protein")}
-              >
-                Protein
-              </Button>
-              <Button 
-                size="sm" 
-                variant={chartType === "carbs" ? "default" : "outline"}
-                onClick={() => setChartType("carbs")}
-              >
-                Carbs
-              </Button>
-              <Button 
-                size="sm" 
-                variant={chartType === "fat" ? "default" : "outline"}
-                onClick={() => setChartType("fat")}
-              >
-                Fat
-              </Button>
+            <div className="flex flex-wrap gap-3 mb-4">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="weight-toggle" 
+                  checked={metrics.weight}
+                  onCheckedChange={() => toggleMetric('weight')}
+                />
+                <Label htmlFor="weight-toggle" className="flex items-center">
+                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#be123c' }}></span>
+                  Weight
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="calories-toggle" 
+                  checked={metrics.calories}
+                  onCheckedChange={() => toggleMetric('calories')}
+                />
+                <Label htmlFor="calories-toggle" className="flex items-center">
+                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#0891b2' }}></span>
+                  Calories
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="protein-toggle" 
+                  checked={metrics.protein}
+                  onCheckedChange={() => toggleMetric('protein')}
+                />
+                <Label htmlFor="protein-toggle" className="flex items-center">
+                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#4d7c0f' }}></span>
+                  Protein
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="carbs-toggle" 
+                  checked={metrics.carbs}
+                  onCheckedChange={() => toggleMetric('carbs')}
+                />
+                <Label htmlFor="carbs-toggle" className="flex items-center">
+                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#b45309' }}></span>
+                  Carbs
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="fat-toggle" 
+                  checked={metrics.fat}
+                  onCheckedChange={() => toggleMetric('fat')}
+                />
+                <Label htmlFor="fat-toggle" className="flex items-center">
+                  <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#7c3aed' }}></span>
+                  Fat
+                </Label>
+              </div>
             </div>
             
             <div className="h-48 overflow-hidden">
@@ -281,8 +312,8 @@ export default function ProgressPage() {
                 </div>
               ) : (
                 <ProgressChart 
-                  data={getChartData()} 
-                  metric={chartType as 'weight' | 'calories' | 'protein' | 'carbs' | 'fat'} 
+                  data={multiMetricData} 
+                  metrics={metrics} 
                 />
               )}
             </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -110,6 +109,16 @@ export function Dashboard() {
   
   // State for the selected metric to display in chart
   const [selectedMetric, setSelectedMetric] = useState<'weight' | 'calories' | 'protein' | 'carbs' | 'fat'>('weight');
+
+  // Add multi-metric display state
+  const [showMultiMetric, setShowMultiMetric] = useState(true);
+  const [activeMetrics, setActiveMetrics] = useState({
+    weight: true,
+    calories: true,
+    protein: true,
+    carbs: true,
+    fat: true
+  });
 
   // Fetch data on component mount
   useEffect(() => {
@@ -326,6 +335,92 @@ export function Dashboard() {
     }
   };
 
+  const formatMultiMetricData = () => {
+    switch(timeframe) {
+      case 'week':
+        return [
+          { date: "Mon", weight: 80.8, calories: 2400, protein: 180, carbs: 215, fat: 80 },
+          { date: "Tue", weight: 80.5, calories: 2350, protein: 175, carbs: 215, fat: 78 },
+          { date: "Wed", weight: 80.3, calories: 2450, protein: 185, carbs: 230, fat: 82 },
+          { date: "Thu", weight: 80.0, calories: 2300, protein: 178, carbs: 210, fat: 76 },
+          { date: "Fri", weight: 79.8, calories: 2380, protein: 182, carbs: 225, fat: 80 },
+          { date: "Sat", weight: 79.5, calories: 2420, protein: 180, carbs: 218, fat: 79 },
+          { date: "Sun", weight: 79.3, calories: 2350, protein: 183, carbs: 222, fat: 81 },
+        ];
+      case 'month':
+        return [
+          { date: "Week 1", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 78 },
+          { date: "Week 2", weight: 81.5, calories: 2380, protein: 178, carbs: 215, fat: 79 },
+          { date: "Week 3", weight: 80.8, calories: 2420, protein: 182, carbs: 225, fat: 77 },
+          { date: "Week 4", weight: 79.8, calories: 2350, protein: 185, carbs: 210, fat: 75 },
+        ];
+      case '3months':
+        return [
+          { date: "Jan", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
+          { date: "Feb", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
+          { date: "Mar", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
+        ];
+      case '6months':
+        return [
+          { date: "Jan", weight: 85, calories: 2500, protein: 170, carbs: 235, fat: 85 },
+          { date: "Feb", weight: 84, calories: 2480, protein: 175, carbs: 230, fat: 83 },
+          { date: "Mar", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
+          { date: "Apr", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
+          { date: "May", weight: 81, calories: 2380, protein: 182, carbs: 218, fat: 79 },
+          { date: "Jun", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
+        ];
+      case 'year':
+        return [
+          { date: "Jan", weight: 85, calories: 2500, protein: 170, carbs: 235, fat: 85 },
+          { date: "Feb", weight: 84, calories: 2480, protein: 175, carbs: 230, fat: 83 },
+          { date: "Mar", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
+          { date: "Apr", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
+          { date: "May", weight: 81, calories: 2380, protein: 182, carbs: 218, fat: 79 },
+          { date: "Jun", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
+          { date: "Jul", weight: 80, calories: 2330, protein: 187, carbs: 212, fat: 77 },
+          { date: "Aug", weight: 79.5, calories: 2320, protein: 190, carbs: 210, fat: 76 },
+          { date: "Sep", weight: 79, calories: 2300, protein: 192, carbs: 208, fat: 75 },
+          { date: "Oct", weight: 78.5, calories: 2290, protein: 195, carbs: 205, fat: 74 },
+          { date: "Nov", weight: 78, calories: 2280, protein: 197, carbs: 200, fat: 73 },
+          { date: "Dec", weight: 77.5, calories: 2270, protein: 200, carbs: 195, fat: 72 },
+        ];
+      default:
+        return [
+          { date: "Mon", weight: 80.8, calories: 2400, protein: 180, carbs: 215, fat: 80 },
+          { date: "Tue", weight: 80.5, calories: 2350, protein: 175, carbs: 215, fat: 78 },
+          { date: "Wed", weight: 80.3, calories: 2450, protein: 185, carbs: 230, fat: 82 },
+          { date: "Thu", weight: 80.0, calories: 2300, protein: 178, carbs: 210, fat: 76 },
+          { date: "Fri", weight: 79.8, calories: 2380, protein: 182, carbs: 225, fat: 80 },
+          { date: "Sat", weight: 79.5, calories: 2420, protein: 180, carbs: 218, fat: 79 },
+          { date: "Sun", weight: 79.3, calories: 2350, protein: 183, carbs: 222, fat: 81 },
+        ];
+    }
+  };
+
+  const toggleMetric = (metric: keyof typeof activeMetrics) => {
+    setActiveMetrics(prev => ({
+      ...prev,
+      [metric]: !prev[metric]
+    }));
+  };
+
+  const getChartData = () => {
+    switch (selectedMetric) {
+      case "weight":
+        return progressData;
+      case "calories":
+        return caloriesData;
+      case "protein":
+        return proteinData;
+      case "carbs":
+        return carbsData;
+      case "fat":
+        return fatData;
+      default:
+        return progressData;
+    }
+  };
+
   return (
     <div className="max-w-lg mx-auto pb-20">
       <div className="mb-8">
@@ -447,85 +542,179 @@ export function Dashboard() {
         
         <CollapsibleContent>
           <AnimatedCard className="overflow-hidden">
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Button 
-                size="sm" 
-                variant={selectedMetric === "weight" ? "default" : "outline"}
-                onClick={() => setSelectedMetric("weight")}
-                className="flex items-center"
-              >
-                <Weight className="mr-2" size={16} />
-                Weight
-              </Button>
-              <Button 
-                size="sm" 
-                variant={selectedMetric === "calories" ? "default" : "outline"}
-                onClick={() => setSelectedMetric("calories")}
-              >
-                Calories
-              </Button>
-              <Button 
-                size="sm" 
-                variant={selectedMetric === "protein" ? "default" : "outline"}
-                onClick={() => setSelectedMetric("protein")}
-              >
-                Protein
-              </Button>
-              <Button 
-                size="sm" 
-                variant={selectedMetric === "carbs" ? "default" : "outline"}
-                onClick={() => setSelectedMetric("carbs")}
-              >
-                Carbs
-              </Button>
-              <Button 
-                size="sm" 
-                variant={selectedMetric === "fat" ? "default" : "outline"}
-                onClick={() => setSelectedMetric("fat")}
-              >
-                Fat
-              </Button>
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex space-x-1">
+                <Button 
+                  size="sm"
+                  variant={showMultiMetric ? "default" : "outline"}
+                  onClick={() => setShowMultiMetric(true)}
+                >
+                  Multi
+                </Button>
+                <Button 
+                  size="sm"
+                  variant={!showMultiMetric ? "default" : "outline"}
+                  onClick={() => setShowMultiMetric(false)}
+                >
+                  Single
+                </Button>
+              </div>
+              
+              {!showMultiMetric && (
+                <div className="flex space-x-1">
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "weight" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("weight")}
+                  >
+                    Weight
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "calories" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("calories")}
+                  >
+                    Cal
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant={selectedMetric === "protein" ? "default" : "outline"}
+                    onClick={() => setSelectedMetric("protein")}
+                  >
+                    Prot
+                  </Button>
+                </div>
+              )}
             </div>
             
-            <div className="flex flex-wrap gap-2 mb-4">
+            {showMultiMetric && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <div className="flex items-center space-x-1 mr-2">
+                  <input 
+                    type="checkbox" 
+                    id="weight-toggle-dash" 
+                    checked={activeMetrics.weight}
+                    onChange={() => toggleMetric('weight')}
+                    className="rounded text-hashim-600"
+                  />
+                  <label htmlFor="weight-toggle-dash" className="text-sm flex items-center">
+                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#be123c' }}></span>
+                    Wt
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-1 mr-2">
+                  <input 
+                    type="checkbox" 
+                    id="calories-toggle-dash" 
+                    checked={activeMetrics.calories}
+                    onChange={() => toggleMetric('calories')}
+                    className="rounded text-hashim-600"
+                  />
+                  <label htmlFor="calories-toggle-dash" className="text-sm flex items-center">
+                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#0891b2' }}></span>
+                    Cal
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-1 mr-2">
+                  <input 
+                    type="checkbox" 
+                    id="protein-toggle-dash" 
+                    checked={activeMetrics.protein}
+                    onChange={() => toggleMetric('protein')}
+                    className="rounded text-hashim-600"
+                  />
+                  <label htmlFor="protein-toggle-dash" className="text-sm flex items-center">
+                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#4d7c0f' }}></span>
+                    Pro
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-1 mr-2">
+                  <input 
+                    type="checkbox" 
+                    id="carbs-toggle-dash" 
+                    checked={activeMetrics.carbs}
+                    onChange={() => toggleMetric('carbs')}
+                    className="rounded text-hashim-600"
+                  />
+                  <label htmlFor="carbs-toggle-dash" className="text-sm flex items-center">
+                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#b45309' }}></span>
+                    Carb
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-1">
+                  <input 
+                    type="checkbox" 
+                    id="fat-toggle-dash" 
+                    checked={activeMetrics.fat}
+                    onChange={() => toggleMetric('fat')}
+                    className="rounded text-hashim-600"
+                  />
+                  <label htmlFor="fat-toggle-dash" className="text-sm flex items-center">
+                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#7c3aed' }}></span>
+                    Fat
+                  </label>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex flex-wrap gap-1 mb-4">
               <Button 
                 size="sm" 
                 variant={timeframe === "week" ? "default" : "outline"}
                 onClick={() => setTimeframe("week")}
+                className="text-xs py-1 h-7"
               >
-                1 Week
+                Week
               </Button>
               <Button 
                 size="sm" 
                 variant={timeframe === "month" ? "default" : "outline"}
                 onClick={() => setTimeframe("month")}
+                className="text-xs py-1 h-7"
               >
-                1 Month
+                Month
               </Button>
               <Button 
                 size="sm" 
                 variant={timeframe === "3months" ? "default" : "outline"}
                 onClick={() => setTimeframe("3months")}
+                className="text-xs py-1 h-7"
               >
-                3 Months
+                3 Mo
               </Button>
               <Button 
                 size="sm" 
                 variant={timeframe === "6months" ? "default" : "outline"}
                 onClick={() => setTimeframe("6months")}
+                className="text-xs py-1 h-7"
               >
-                6 Months
+                6 Mo
               </Button>
               <Button 
                 size="sm" 
                 variant={timeframe === "year" ? "default" : "outline"}
                 onClick={() => setTimeframe("year")}
+                className="text-xs py-1 h-7"
               >
-                1 Year
+                Year
               </Button>
             </div>
             
-            <ProgressChart data={progressData} metric={selectedMetric} />
+            {showMultiMetric ? (
+              <ProgressChart 
+                data={formatMultiMetricData()} 
+                metrics={activeMetrics} 
+              />
+            ) : (
+              <ProgressChart 
+                data={getChartData()} 
+                singleMetric={selectedMetric} 
+              />
+            )}
           </AnimatedCard>
         </CollapsibleContent>
       </Collapsible>
@@ -577,41 +766,3 @@ export function Dashboard() {
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Carbs</p>
                     <p className="font-bold">{nutritionPlan?.carbs || 0}g</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Fat</p>
-                    <p className="font-bold">{nutritionPlan?.fat || 0}g</p>
-                  </div>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <h4 className="font-medium mb-2">Today's Meal Plan</h4>
-                  <ul className="space-y-2">
-                    {(nutritionPlan?.meals || []).map((meal: any, index: number) => (
-                      <li key={meal.id || index} className="text-sm flex">
-                        <span className="text-hashim-600 mr-2">•</span>
-                        {meal.title || `${meal.type}: ${meal.title}`}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </>
-            )}
-          </AnimatedCard>
-        </CollapsibleContent>
-      </Collapsible>
-      
-      <UserStatsModal 
-        isOpen={showStatsModal} 
-        onClose={() => setShowStatsModal(false)} 
-      />
-      
-      <AddWorkoutModal
-        isOpen={showAddWorkoutModal}
-        onClose={() => setShowAddWorkoutModal(false)}
-        onAddWorkout={handleAddWorkout}
-        selectedDay={selectedDay}
-      />
-    </div>
-  );
-}

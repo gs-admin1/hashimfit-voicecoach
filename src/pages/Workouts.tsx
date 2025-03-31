@@ -38,8 +38,10 @@ export default function WorkoutsPage() {
         workoutPlans.map(async (plan) => {
           const exercises = await WorkoutService.getWorkoutExercises(plan.id!);
           return {
+            id: plan.id,
             title: plan.title,
             exercises: exercises.map(ex => ({
+              id: ex.id,
               name: ex.name,
               sets: ex.sets,
               reps: ex.reps,
@@ -100,8 +102,21 @@ export default function WorkoutsPage() {
       
       await WorkoutService.createWorkoutExercises(exercises);
       
-      // Add to local state
-      setWorkouts([...workouts, workout]);
+      // Add created workout with ID to local state
+      const newWorkout = {
+        id: createdPlan.id,
+        title: workout.title,
+        category: workout.category || 'strength',
+        exercises: workout.exercises.map((ex: any, index: number) => ({
+          id: `temp-${Date.now()}-${index}`,
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps,
+          weight: ex.weight
+        }))
+      };
+      
+      setWorkouts([...workouts, newWorkout]);
       
       toast({
         title: "Workout Added",
@@ -181,7 +196,7 @@ export default function WorkoutsPage() {
             <div className="space-y-4">
               {filteredWorkouts.length > 0 ? (
                 filteredWorkouts.map((workout, index) => (
-                  <WorkoutCard key={index} workout={workout} />
+                  <WorkoutCard key={workout.id || index} workout={workout} />
                 ))
               ) : (
                 <AnimatedCard className="text-center py-8">
@@ -205,7 +220,7 @@ export default function WorkoutsPage() {
         isOpen={showAddWorkout} 
         onClose={() => setShowAddWorkout(false)}
         onAddWorkout={addWorkout}
-        selectedDay={selectedDay}
+        selectedDay=""
       />
       
       <NavigationBar />

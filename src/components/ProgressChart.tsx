@@ -10,21 +10,46 @@ import {
   Legend 
 } from "recharts";
 
-interface ProgressChartProps {
-  data: { date: string; value: number }[];
-  metric?: 'weight' | 'calories' | 'protein' | 'carbs' | 'fat';
+interface DataPoint {
+  date: string;
+  [key: string]: any;
 }
 
-const CustomTooltip = ({ active, payload, label, metric }: any) => {
+interface ProgressChartProps {
+  data: DataPoint[];
+  metrics?: {
+    weight?: boolean;
+    calories?: boolean;
+    protein?: boolean;
+    carbs?: boolean;
+    fat?: boolean;
+  };
+  singleMetric?: 'weight' | 'calories' | 'protein' | 'carbs' | 'fat';
+}
+
+const CustomTooltip = ({ active, payload, label, metrics, singleMetric }: any) => {
   if (active && payload && payload.length) {
-    const unit = getMetricUnit(metric);
-    
     return (
       <div className="glassmorphism-card p-3 shadow-md">
         <p className="font-medium">{label}</p>
-        <p className="text-sm text-hashim-800">
-          {payload[0].name}: <span className="font-medium">{payload[0].value}{unit}</span>
-        </p>
+        {payload.map((entry: any, index: number) => {
+          if (entry.dataKey === "value" && singleMetric) {
+            const unit = getMetricUnit(singleMetric);
+            return (
+              <p key={index} className="text-sm text-hashim-800">
+                {getMetricName(singleMetric)}: <span className="font-medium">{entry.value}{unit}</span>
+              </p>
+            );
+          } else if (entry.dataKey !== "date") {
+            const unit = getMetricUnit(entry.dataKey);
+            return (
+              <p key={index} className="text-sm text-hashim-800" style={{ color: entry.color }}>
+                {getMetricName(entry.dataKey)}: <span className="font-medium">{entry.value}{unit}</span>
+              </p>
+            );
+          }
+          return null;
+        })}
       </div>
     );
   }
@@ -64,10 +89,58 @@ const getMetricName = (metric?: string) => {
   }
 };
 
-export function ProgressChart({ data, metric = 'weight' }: ProgressChartProps) {
-  const metricName = getMetricName(metric);
-  const metricColor = getMetricColor(metric);
+export function ProgressChart({ data, metrics, singleMetric = 'weight' }: ProgressChartProps) {
+  // For backward compatibility - if we're using the old single metric mode
+  if (singleMetric && !metrics) {
+    return (
+      <div className="h-60 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={data}
+            margin={{
+              top: 5,
+              right: 10,
+              left: -20,
+              bottom: 5,
+            }}
+          >
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+            <XAxis 
+              dataKey="date" 
+              tick={{ fontSize: 12 }}
+              tickLine={false}
+              axisLine={{ strokeOpacity: 0.3 }}
+            />
+            <YAxis 
+              tick={{ fontSize: 12 }}
+              tickLine={false}
+              axisLine={{ strokeOpacity: 0.3 }}
+              domain={['dataMin - 1', 'dataMax + 1']}
+            />
+            <Tooltip content={<CustomTooltip singleMetric={singleMetric} />} />
+            <Legend 
+              verticalAlign="top" 
+              height={36} 
+              iconType="circle" 
+              iconSize={8}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="value" 
+              name={getMetricName(singleMetric)} 
+              stroke={getMetricColor(singleMetric)} 
+              strokeWidth={2}
+              dot={{ r: 4, strokeWidth: 2 }}
+              activeDot={{ r: 6, strokeWidth: 2 }}
+              animationDuration={1500}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
   
+  // New multi-metric chart display
   return (
     <div className="h-60 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -91,25 +164,79 @@ export function ProgressChart({ data, metric = 'weight' }: ProgressChartProps) {
             tick={{ fontSize: 12 }}
             tickLine={false}
             axisLine={{ strokeOpacity: 0.3 }}
-            domain={['dataMin - 1', 'dataMax + 1']}
           />
-          <Tooltip content={<CustomTooltip metric={metric} />} />
+          <Tooltip content={<CustomTooltip metrics={metrics} />} />
           <Legend 
             verticalAlign="top" 
             height={36} 
             iconType="circle" 
             iconSize={8}
           />
-          <Line 
-            type="monotone" 
-            dataKey="value" 
-            name={metricName} 
-            stroke={metricColor} 
-            strokeWidth={2}
-            dot={{ r: 4, strokeWidth: 2 }}
-            activeDot={{ r: 6, strokeWidth: 2 }}
-            animationDuration={1500}
-          />
+          
+          {metrics?.weight && (
+            <Line 
+              type="monotone" 
+              dataKey="weight" 
+              name="Weight" 
+              stroke={getMetricColor('weight')} 
+              strokeWidth={2}
+              dot={{ r: 3, strokeWidth: 2 }}
+              activeDot={{ r: 5, strokeWidth: 2 }}
+              animationDuration={1500}
+            />
+          )}
+          
+          {metrics?.calories && (
+            <Line 
+              type="monotone" 
+              dataKey="calories" 
+              name="Calories" 
+              stroke={getMetricColor('calories')} 
+              strokeWidth={2}
+              dot={{ r: 3, strokeWidth: 2 }}
+              activeDot={{ r: 5, strokeWidth: 2 }}
+              animationDuration={1500}
+            />
+          )}
+          
+          {metrics?.protein && (
+            <Line 
+              type="monotone" 
+              dataKey="protein" 
+              name="Protein" 
+              stroke={getMetricColor('protein')} 
+              strokeWidth={2}
+              dot={{ r: 3, strokeWidth: 2 }}
+              activeDot={{ r: 5, strokeWidth: 2 }}
+              animationDuration={1500}
+            />
+          )}
+          
+          {metrics?.carbs && (
+            <Line 
+              type="monotone" 
+              dataKey="carbs" 
+              name="Carbs" 
+              stroke={getMetricColor('carbs')} 
+              strokeWidth={2}
+              dot={{ r: 3, strokeWidth: 2 }}
+              activeDot={{ r: 5, strokeWidth: 2 }}
+              animationDuration={1500}
+            />
+          )}
+          
+          {metrics?.fat && (
+            <Line 
+              type="monotone" 
+              dataKey="fat" 
+              name="Fat" 
+              stroke={getMetricColor('fat')} 
+              strokeWidth={2}
+              dot={{ r: 3, strokeWidth: 2 }}
+              activeDot={{ r: 5, strokeWidth: 2 }}
+              animationDuration={1500}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>
