@@ -1,0 +1,159 @@
+
+// Supabase Edge Function to analyze fitness assessment and generate personalized plans
+// Deploy this code to a Supabase Edge Function named 'analyze-fitness-assessment'
+
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { Configuration, OpenAIApi } from 'https://esm.sh/openai@3.2.1'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    // Get the request body
+    const { user_id, assessment } = await req.json()
+    
+    if (!user_id || !assessment) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
+    }
+    
+    // Create a Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    
+    // Initialize OpenAI
+    const configuration = new Configuration({
+      apiKey: Deno.env.get('OPENAI_API_KEY'),
+    })
+    const openai = new OpenAIApi(configuration)
+    
+    // Construct a prompt for OpenAI
+    const prompt = `
+    Analyze the following fitness assessment data and create a personalized weekly workout plan and nutrition plan for this user.
+
+    User Information:
+    - Age: ${assessment.age}
+    - Gender: ${assessment.gender}
+    - Height: ${assessment.height} cm
+    - Weight: ${assessment.weight} kg
+    - Fitness Goal: ${assessment.fitnessGoal}
+    - Workout Frequency: ${assessment.workoutFrequency} days per week
+    - Diet Type: ${assessment.diet}
+    - Available Equipment: ${assessment.equipment}
+    - Sports Played: ${assessment.sportsPlayed ? assessment.sportsPlayed.join(', ') : 'None'}
+    - Allergies: ${assessment.allergies ? assessment.allergies.join(', ') : 'None'}
+    
+    Please provide:
+    1. A weekly workout plan with specific exercises for each day of the week (${assessment.workoutFrequency} workout days, the rest should be rest/recovery days)
+    2. A daily nutrition plan that complements the workout routine
+    3. Recommendations for achieving the fitness goals
+    
+    Format your response as a JSON object with the following structure:
+    {
+      "workout_plans": [
+        {
+          "day": "Monday",
+          "title": "Upper Body Strength",
+          "description": "Focus on chest, shoulders, and triceps",
+          "category": "strength",
+          "exercises": [
+            {
+              "name": "Bench Press",
+              "sets": 4,
+              "reps": "8-10",
+              "weight": "70kg",
+              "rest_time": 90,
+              "notes": "Focus on form"
+            },
+            // More exercises...
+          ]
+        },
+        // More days...
+      ],
+      "nutrition_plan": {
+        "daily_calories": 2400,
+        "protein_g": 180,
+        "carbs_g": 220,
+        "fat_g": 80,
+        "diet_type": "standard",
+        "meals": [
+          {
+            "meal_type": "breakfast",
+            "meal_title": "Protein Oatmeal",
+            "description": "Oats cooked with milk, topped with whey protein and berries",
+            "calories": 450,
+            "protein_g": 35,
+            "carbs_g": 50,
+            "fat_g": 10
+          },
+          // More meals...
+        ]
+      },
+      "recommendations": [
+        "Stay hydrated throughout the day",
+        "Get 7-9 hours of sleep for optimal recovery",
+        // More recommendations...
+      ]
+    }
+    
+    Ensure the exercises are appropriate for the user's fitness level and available equipment.
+    For nutrition, adjust calorie and macronutrient recommendations based on the user's goals.
+    `
+    
+    // Call OpenAI API
+    const chatCompletion = await openai.createChatCompletion({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: "You are a certified fitness trainer and nutritionist. Provide personalized workout and nutrition plans based on fitness assessment data." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 3000
+    })
+    
+    // Parse the OpenAI response
+    const responseText = chatCompletion.data.choices[0].message.content
+    let jsonResponse
+    
+    try {
+      // Extract JSON from the response
+      jsonResponse = JSON.parse(responseText)
+    } catch (error) {
+      console.error('Error parsing OpenAI response as JSON:', error)
+      // Try to extract JSON using regex if direct parsing fails
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        try {
+          jsonResponse = JSON.parse(jsonMatch[0])
+        } catch (jsonError) {
+          throw new Error('Could not parse response as JSON')
+        }
+      } else {
+        throw new Error('No JSON found in response')
+      }
+    }
+    
+    return new Response(
+      JSON.stringify(jsonResponse),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    )
+  } catch (error) {
+    console.error('Error:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    )
+  }
+})

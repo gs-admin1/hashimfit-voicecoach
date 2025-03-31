@@ -1,5 +1,9 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
+import { useAuth } from "@/hooks/useAuth";
+import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
+import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { 
   AnimatedCard, 
   StatsCard, 
@@ -12,6 +16,7 @@ import { ProgressChart } from "./ProgressChart";
 import { VoiceInput } from "./VoiceInput";
 import { MealCaptureCard } from "./MealCaptureCard";
 import { UserStatsModal } from "./UserStatsModal";
+import { toast } from "@/hooks/use-toast";
 import { 
   Activity, 
   Weight, 
@@ -29,97 +34,158 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 
 export function Dashboard() {
   const { user } = useUser();
-  const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const today = new Date();
-  const currentDay = weekDays[today.getDay() === 0 ? 6 : today.getDay() - 1];
-  const [selectedDay, setSelectedDay] = useState(currentDay);
+  const { isAuthenticated, userId } = useAuth();
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [isProgressOpen, setIsProgressOpen] = useState(true);
   const [isNutritionOpen, setIsNutritionOpen] = useState(true);
+  
+  // State for workouts and nutrition
+  const [weeklyWorkouts, setWeeklyWorkouts] = useState<Record<string, any>>({});
+  const [nutritionPlan, setNutritionPlan] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Get today's day and create a 7-day array starting from today
+  const today = new Date();
+  const dayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const weekDaysDefault = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  
+  // Reorder the days to start from today
+  const weekDays = [...weekDaysDefault.slice(dayIndex), ...weekDaysDefault.slice(0, dayIndex)];
+  
+  // Selected day state (default to today)
+  const [selectedDay, setSelectedDay] = useState(weekDaysDefault[dayIndex]);
 
-  // Mock workouts for different days
-  const workoutsByDay = {
-    Mon: {
-      title: "Upper Body Strength",
-      exercises: [
-        { name: "Bench Press", sets: 4, reps: "8-10", weight: "70kg" },
-        { name: "Incline Dumbbell Press", sets: 4, reps: "10-12", weight: "25kg" },
-        { name: "Lat Pulldown", sets: 4, reps: "12-15", weight: "60kg" },
-        { name: "Cable Row", sets: 3, reps: "10-12", weight: "55kg" },
-        { name: "Shoulder Press", sets: 3, reps: "10-12", weight: "20kg" },
-      ],
-    },
-    Tue: {
-      title: "Lower Body Focus",
-      exercises: [
-        { name: "Squats", sets: 5, reps: "6-8", weight: "100kg" },
-        { name: "Romanian Deadlift", sets: 4, reps: "8-10", weight: "80kg" },
-        { name: "Leg Press", sets: 3, reps: "10-12", weight: "150kg" },
-        { name: "Leg Extensions", sets: 3, reps: "12-15", weight: "40kg" },
-        { name: "Calf Raises", sets: 4, reps: "15-20", weight: "60kg" },
-      ],
-    },
-    Wed: {
-      title: "Rest & Recovery",
-      exercises: [
-        { name: "Stretching", sets: 1, reps: "10-15 mins", weight: "bodyweight" },
-        { name: "Foam Rolling", sets: 1, reps: "10 mins", weight: "bodyweight" },
-        { name: "Light Walking", sets: 1, reps: "20-30 mins", weight: "bodyweight" },
-      ],
-    },
-    Thu: {
-      title: "Push Workout",
-      exercises: [
-        { name: "Overhead Press", sets: 4, reps: "8-10", weight: "45kg" },
-        { name: "Dips", sets: 4, reps: "10-12", weight: "bodyweight" },
-        { name: "Incline Bench Press", sets: 3, reps: "8-10", weight: "60kg" },
-        { name: "Lateral Raises", sets: 3, reps: "12-15", weight: "12kg" },
-        { name: "Tricep Pushdowns", sets: 3, reps: "12-15", weight: "25kg" },
-      ],
-    },
-    Fri: {
-      title: "Pull Workout",
-      exercises: [
-        { name: "Pull-Ups", sets: 4, reps: "8-10", weight: "bodyweight" },
-        { name: "Barbell Rows", sets: 4, reps: "10-12", weight: "70kg" },
-        { name: "Face Pulls", sets: 3, reps: "15-20", weight: "25kg" },
-        { name: "Hammer Curls", sets: 3, reps: "10-12", weight: "15kg" },
-        { name: "Barbell Curls", sets: 3, reps: "10-12", weight: "30kg" },
-      ],
-    },
-    Sat: {
-      title: "Legs & Core",
-      exercises: [
-        { name: "Front Squats", sets: 4, reps: "8-10", weight: "80kg" },
-        { name: "Lunges", sets: 3, reps: "10 each leg", weight: "20kg" },
-        { name: "Leg Curls", sets: 3, reps: "12-15", weight: "35kg" },
-        { name: "Plank", sets: 3, reps: "60 seconds", weight: "bodyweight" },
-        { name: "Russian Twists", sets: 3, reps: "20 each side", weight: "10kg" },
-      ],
-    },
-    Sun: {
-      title: "Active Recovery",
-      exercises: [
-        { name: "Swimming", sets: 1, reps: "30 mins", weight: "bodyweight" },
-        { name: "Yoga", sets: 1, reps: "30 mins", weight: "bodyweight" },
-        { name: "Mobility Work", sets: 1, reps: "15 mins", weight: "bodyweight" },
-      ],
-    },
+  // Fetch data on component mount
+  useEffect(() => {
+    if (isAuthenticated && userId) {
+      fetchWorkoutsAndNutrition();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, userId]);
+  
+  const fetchWorkoutsAndNutrition = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch weekly workouts
+      const workouts = await AssessmentService.getWeeklyWorkouts(userId!);
+      setWeeklyWorkouts(workouts || {});
+      
+      // Fetch nutrition plan
+      const nutrition = await AssessmentService.getCurrentNutritionPlan(userId!);
+      setNutritionPlan(nutrition || {
+        calories: 2400,
+        protein: 180,
+        carbs: 220,
+        fat: 80,
+        meals: [
+          { title: "Breakfast: Protein oats with berries" },
+          { title: "Snack: Greek yogurt with nuts" },
+          { title: "Lunch: Chicken breast with quinoa and vegetables" },
+          { title: "Snack: Protein shake with banana" },
+          { title: "Dinner: Salmon with sweet potatoes and broccoli" }
+        ]
+      });
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load your fitness data. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-  // Mock nutrition data
-  const nutritionPlan = {
-    calories: 2400,
-    protein: 180,
-    carbs: 220,
-    fat: 80,
-    meals: [
-      "Breakfast: Protein oats with berries",
-      "Snack: Greek yogurt with nuts",
-      "Lunch: Chicken breast with quinoa and vegetables",
-      "Snack: Protein shake with banana",
-      "Dinner: Salmon with sweet potatoes and broccoli"
-    ]
+  
+  // Handler for exercise completion
+  const handleExerciseCompletion = async (workoutId: string, scheduleId: string, exerciseId: string, isCompleted: boolean) => {
+    // Update the UI state first for immediate feedback
+    setWeeklyWorkouts(prevWorkouts => {
+      const updatedWorkouts = { ...prevWorkouts };
+      
+      Object.keys(updatedWorkouts).forEach(day => {
+        if (updatedWorkouts[day]?.id === workoutId) {
+          updatedWorkouts[day].exercises = updatedWorkouts[day].exercises.map((ex: any) => 
+            ex.id === exerciseId ? { ...ex, completed: isCompleted } : ex
+          );
+        }
+      });
+      
+      return updatedWorkouts;
+    });
+    
+    // In a real implementation, you would update this in the database
+    // This would be implemented in WorkoutService
+  };
+  
+  // Handler for adding a new exercise
+  const handleAddExercise = async (workoutId: string, newExercise: any) => {
+    try {
+      // In a real implementation, you would add this exercise to the database
+      // For now, just update the UI state
+      setWeeklyWorkouts(prevWorkouts => {
+        const updatedWorkouts = { ...prevWorkouts };
+        
+        Object.keys(updatedWorkouts).forEach(day => {
+          if (updatedWorkouts[day]?.id === workoutId) {
+            updatedWorkouts[day].exercises = [...updatedWorkouts[day].exercises, {
+              ...newExercise,
+              id: `temp-${Date.now()}`, // Temporary ID
+              completed: false
+            }];
+          }
+        });
+        
+        return updatedWorkouts;
+      });
+      
+      toast({
+        title: "Exercise added",
+        description: `${newExercise.name} added to workout plan`
+      });
+    } catch (error) {
+      console.error("Error adding exercise:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add exercise",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Handler for removing an exercise
+  const handleRemoveExercise = async (workoutId: string, exerciseId: string) => {
+    try {
+      // In a real implementation, you would remove this exercise from the database
+      // For now, just update the UI state
+      setWeeklyWorkouts(prevWorkouts => {
+        const updatedWorkouts = { ...prevWorkouts };
+        
+        Object.keys(updatedWorkouts).forEach(day => {
+          if (updatedWorkouts[day]?.id === workoutId) {
+            updatedWorkouts[day].exercises = updatedWorkouts[day].exercises.filter(
+              (ex: any) => ex.id !== exerciseId
+            );
+          }
+        });
+        
+        return updatedWorkouts;
+      });
+      
+      toast({
+        title: "Exercise removed",
+        description: "Exercise removed from workout plan"
+      });
+    } catch (error) {
+      console.error("Error removing exercise:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove exercise",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -176,7 +242,7 @@ export function Dashboard() {
         <div className="flex justify-between items-center">
           <SectionTitle
             title={`${selectedDay}'s Workout`}
-            subtitle={workoutsByDay[selectedDay as keyof typeof workoutsByDay]?.title || "Rest Day"}
+            subtitle={weeklyWorkouts[selectedDay]?.title || "Rest Day"}
           />
           <Button variant="ghost" size="sm" className="flex items-center">
             <span className="mr-1">View all</span>
@@ -184,7 +250,42 @@ export function Dashboard() {
           </Button>
         </div>
         
-        <WorkoutCard workout={workoutsByDay[selectedDay as keyof typeof workoutsByDay]} />
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
+          </div>
+        ) : (
+          weeklyWorkouts[selectedDay] ? (
+            <WorkoutCard 
+              workout={weeklyWorkouts[selectedDay]} 
+              onExerciseComplete={(exerciseId, isCompleted) => 
+                handleExerciseCompletion(
+                  weeklyWorkouts[selectedDay].id, 
+                  weeklyWorkouts[selectedDay].schedule_id,
+                  exerciseId, 
+                  isCompleted
+                )
+              }
+              onAddExercise={(exercise) => handleAddExercise(weeklyWorkouts[selectedDay].id, exercise)}
+              onRemoveExercise={(exerciseId) => handleRemoveExercise(weeklyWorkouts[selectedDay].id, exerciseId)}
+              editable={true}
+            />
+          ) : (
+            <AnimatedCard className="text-center py-8">
+              <p className="text-muted-foreground mb-4">No workout scheduled for {selectedDay}</p>
+              <Button 
+                variant="outline" 
+                className="flex items-center mx-auto"
+                onClick={() => {
+                  // Navigate to workouts page or open add workout modal
+                }}
+              >
+                <Plus size={16} className="mr-1" />
+                Add a workout
+              </Button>
+            </AnimatedCard>
+          )
+        )}
       </div>
 
       <Collapsible
@@ -244,36 +345,44 @@ export function Dashboard() {
         
         <CollapsibleContent>
           <AnimatedCard>
-            <div className="flex justify-between mb-4">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Calories</p>
-                <p className="font-bold">{nutritionPlan.calories}</p>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
               </div>
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Protein</p>
-                <p className="font-bold">{nutritionPlan.protein}g</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Carbs</p>
-                <p className="font-bold">{nutritionPlan.carbs}g</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Fat</p>
-                <p className="font-bold">{nutritionPlan.fat}g</p>
-              </div>
-            </div>
-            
-            <div className="border-t pt-4">
-              <h4 className="font-medium mb-2">Today's Meal Plan</h4>
-              <ul className="space-y-2">
-                {nutritionPlan.meals.map((meal, index) => (
-                  <li key={index} className="text-sm flex">
-                    <span className="text-hashim-600 mr-2">•</span>
-                    {meal}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            ) : (
+              <>
+                <div className="flex justify-between mb-4">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Calories</p>
+                    <p className="font-bold">{nutritionPlan?.calories || 0}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Protein</p>
+                    <p className="font-bold">{nutritionPlan?.protein || 0}g</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Carbs</p>
+                    <p className="font-bold">{nutritionPlan?.carbs || 0}g</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Fat</p>
+                    <p className="font-bold">{nutritionPlan?.fat || 0}g</p>
+                  </div>
+                </div>
+                
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-2">Today's Meal Plan</h4>
+                  <ul className="space-y-2">
+                    {(nutritionPlan?.meals || []).map((meal: any, index: number) => (
+                      <li key={meal.id || index} className="text-sm flex">
+                        <span className="text-hashim-600 mr-2">•</span>
+                        {meal.title || `${meal.type}: ${meal.title}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
+            )}
           </AnimatedCard>
         </CollapsibleContent>
       </Collapsible>
