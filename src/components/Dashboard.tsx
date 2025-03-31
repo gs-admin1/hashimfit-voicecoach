@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +53,14 @@ export function Dashboard() {
   
   // Selected day state (default to today)
   const [selectedDay, setSelectedDay] = useState(weekDaysDefault[dayIndex]);
+
+  // Add a new state for progress chart data
+  const [progressData, setProgressData] = useState([
+    { date: "Week 1", value: 82 },
+    { date: "Week 2", value: 81.2 },
+    { date: "Week 3", value: 80.5 },
+    { date: "Week 4", value: 79.8 },
+  ]);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -311,7 +318,7 @@ export function Dashboard() {
         
         <CollapsibleContent>
           <AnimatedCard className="overflow-hidden">
-            <ProgressChart />
+            <ProgressChart data={progressData} />
           </AnimatedCard>
         </CollapsibleContent>
       </Collapsible>
