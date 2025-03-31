@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -766,3 +767,42 @@ export function Dashboard() {
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Carbs</p>
                     <p className="font-bold">{nutritionPlan?.carbs || 0}g</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Fat</p>
+                    <p className="font-bold">{nutritionPlan?.fat || 0}g</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-3 mt-6">
+                  {nutritionPlan?.meals?.map((meal: any, index: number) => (
+                    <div key={`meal-${index}`} className="bg-muted p-3 rounded-lg">
+                      <p className="font-medium">{meal.title}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </AnimatedCard>
+        </CollapsibleContent>
+      </Collapsible>
+      
+      {/* Modals */}
+      {showStatsModal && (
+        <UserStatsModal 
+          isOpen={showStatsModal} 
+          onClose={() => setShowStatsModal(false)} 
+        />
+      )}
+      
+      {showAddWorkoutModal && (
+        <AddWorkoutModal 
+          isOpen={showAddWorkoutModal} 
+          onClose={() => setShowAddWorkoutModal(false)}
+          onAddWorkout={handleAddWorkout}
+          selectedDay={selectedDay}
+        />
+      )}
+    </div>
+  );
+}
