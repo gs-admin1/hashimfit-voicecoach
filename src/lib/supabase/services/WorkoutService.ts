@@ -62,12 +62,12 @@ export interface WorkoutSchedule {
   user_id: string;
   workout_plan_id: string;
   scheduled_date: string;
-  scheduled_time?: string;
-  duration?: number;
+  scheduled_time?: string | null;
+  duration?: number | null;
   is_completed?: boolean;
-  completion_date?: string;
-  workout_log_id?: string;
-  notes?: string;
+  completion_date?: string | null;
+  workout_log_id?: string | null;
+  notes?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -183,6 +183,21 @@ export class WorkoutService {
       return null;
     }
   }
+  
+  static async deleteWorkoutExercise(exerciseId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('workout_exercises')
+        .delete()
+        .eq('id', exerciseId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting workout exercise:', error);
+      return false;
+    }
+  }
 
   // Workout Logs
   static async logWorkout(log: WorkoutLog, exercises: Omit<ExerciseLog, 'workout_log_id'>[]): Promise<string | null> {
@@ -249,7 +264,7 @@ export class WorkoutService {
   }
 
   // Workout Schedule
-  static async scheduleWorkout(schedule: WorkoutSchedule): Promise<string | null> {
+  static async scheduleWorkout(schedule: Omit<WorkoutSchedule, 'id' | 'created_at' | 'updated_at'>): Promise<string | null> {
     try {
       const { data, error } = await supabase
         .from('workout_schedule')

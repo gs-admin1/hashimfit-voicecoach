@@ -1,179 +1,150 @@
 
 import { useState, useEffect } from "react";
-import { useUser } from "@/context/UserContext";
-import { useAuth } from "@/hooks/useAuth";
-import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
-import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
-import { 
-  AnimatedCard, 
-  StatsCard, 
-  VoiceWidget, 
-  SectionTitle,
-  Chip
-} from "./ui-components";
-import { WorkoutCard } from "./WorkoutCard";
+import { AnimatedCard, SectionTitle, DayTab } from "./ui-components";
 import { ProgressChart } from "./ProgressChart";
-import { VoiceInput } from "./VoiceInput";
-import { MealCaptureCard } from "./MealCaptureCard";
+import { Plus, Dumbbell, Apple } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format, startOfWeek, addDays } from "date-fns";
+import { WorkoutCard } from "./WorkoutCard";
 import { UserStatsModal } from "./UserStatsModal";
 import { AddWorkoutModal } from "./AddWorkoutModal";
+import { WorkoutService, WorkoutSchedule } from "@/lib/supabase/services/WorkoutService";
+import { NutritionService } from "@/lib/supabase/services/NutritionService";
 import { toast } from "@/hooks/use-toast";
-import { 
-  Activity, 
-  Weight, 
-  Calendar, 
-  ChevronRight, 
-  Plus, 
-  Dumbbell,
-  ChartBar,
-  ChevronDown,
-  ChevronUp,
-  BarChart2
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+
+interface DailyWorkout {
+  id: string;
+  title: string;
+  schedule_id?: string;
+  exercises: {
+    id: string;
+    name: string;
+    sets: number;
+    reps: string;
+    weight: string;
+    completed?: boolean;
+  }[];
+}
+
+interface WeeklyWorkouts {
+  [key: string]: DailyWorkout | null;
+}
+
+// Mock progress data - this will be replaced with real data
+const progressData = [
+  { date: "Mon", weight: 80.5, calories: 2100, protein: 150, carbs: 200, fat: 70 },
+  { date: "Tue", weight: 80.3, calories: 2200, protein: 160, carbs: 210, fat: 65 },
+  { date: "Wed", weight: 80.1, calories: 2050, protein: 155, carbs: 190, fat: 75 },
+  { date: "Thu", weight: 79.8, calories: 2150, protein: 165, carbs: 200, fat: 70 },
+  { date: "Fri", weight: 79.5, calories: 2300, protein: 170, carbs: 220, fat: 80 },
+  { date: "Sat", weight: 79.2, calories: 2250, protein: 160, carbs: 210, fat: 75 },
+  { date: "Sun", weight: 79.0, calories: 2100, protein: 155, carbs: 195, fat: 70 },
+];
 
 export function Dashboard() {
-  const { user } = useUser();
   const { isAuthenticated, userId } = useAuth();
-  const [showStatsModal, setShowStatsModal] = useState(false);
-  const [showAddWorkoutModal, setShowAddWorkoutModal] = useState(false);
-  const [isProgressOpen, setIsProgressOpen] = useState(true);
-  const [isNutritionOpen, setIsNutritionOpen] = useState(true);
-  
-  // State for workouts and nutrition
-  const [weeklyWorkouts, setWeeklyWorkouts] = useState<Record<string, any>>({});
-  const [nutritionPlan, setNutritionPlan] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("workouts");
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [weeklyWorkouts, setWeeklyWorkouts] = useState<WeeklyWorkouts>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [customWorkouts, setCustomWorkouts] = useState<any[]>([]);
+  const [selectedDay, setSelectedDay] = useState('Today');
+  const [showAddWorkout, setShowAddWorkout] = useState(false);
+  const [scheduleCache, setScheduleCache] = useState<WorkoutSchedule[]>([]);
   
-  // Get today's day and create a 7-day array starting from today
+  // Generate days of the week
   const today = new Date();
-  const dayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  const weekDaysDefault = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   
-  // Reorder the days to start from today
-  const weekDays = [...weekDaysDefault.slice(dayIndex), ...weekDaysDefault.slice(0, dayIndex)];
-  
-  // Selected day state (default to today)
-  const [selectedDay, setSelectedDay] = useState(weekDaysDefault[dayIndex]);
-  
-  // Progress chart data with timeframe selection
-  const [timeframe, setTimeframe] = useState<'week' | 'month' | '3months' | '6months' | 'year'>('week');
-  
-  // State for different progress data types
-  const [progressData, setProgressData] = useState([
-    { date: "Week 1", value: 82 },
-    { date: "Week 2", value: 81.2 },
-    { date: "Week 3", value: 80.5 },
-    { date: "Week 4", value: 79.8 },
-  ]);
-  
-  const [caloriesData, setCaloriesData] = useState([
-    { date: "Day 1", value: 2400 },
-    { date: "Day 2", value: 2350 },
-    { date: "Day 3", value: 2450 },
-    { date: "Day 4", value: 2300 },
-    { date: "Day 5", value: 2380 },
-    { date: "Day 6", value: 2420 },
-    { date: "Day 7", value: 2350 },
-  ]);
-  
-  const [proteinData, setProteinData] = useState([
-    { date: "Day 1", value: 180 },
-    { date: "Day 2", value: 175 },
-    { date: "Day 3", value: 185 },
-    { date: "Day 4", value: 178 },
-    { date: "Day 5", value: 182 },
-    { date: "Day 6", value: 180 },
-    { date: "Day 7", value: 183 },
-  ]);
-  
-  const [carbsData, setCarbsData] = useState([
-    { date: "Day 1", value: 215 },
-    { date: "Day 2", value: 215 },
-    { date: "Day 3", value: 230 },
-    { date: "Day 4", value: 210 },
-    { date: "Day 5", value: 225 },
-    { date: "Day 6", value: 218 },
-    { date: "Day 7", value: 222 },
-  ]);
-  
-  const [fatData, setFatData] = useState([
-    { date: "Day 1", value: 80 },
-    { date: "Day 2", value: 78 },
-    { date: "Day 3", value: 82 },
-    { date: "Day 4", value: 76 },
-    { date: "Day 5", value: 80 },
-    { date: "Day 6", value: 79 },
-    { date: "Day 7", value: 81 },
-  ]);
-  
-  // State for the selected metric to display in chart
-  const [selectedMetric, setSelectedMetric] = useState<'weight' | 'calories' | 'protein' | 'carbs' | 'fat'>('weight');
-
-  // Add multi-metric display state
-  const [showMultiMetric, setShowMultiMetric] = useState(true);
-  const [activeMetrics, setActiveMetrics] = useState({
-    weight: true,
-    calories: true,
-    protein: true,
-    carbs: true,
-    fat: true
+  const days = Array.from({ length: 7 }).map((_, i) => {
+    const date = addDays(weekStart, i);
+    const dayName = format(date, 'EEEE');
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    const isToday = format(today, 'yyyy-MM-dd') === formattedDate;
+    return {
+      name: isToday ? "Today" : dayName,
+      value: dayName,
+      date: formattedDate,
+    };
   });
-
-  // Fetch data on component mount
+  
   useEffect(() => {
     if (isAuthenticated && userId) {
       fetchWorkoutsAndNutrition();
-      fetchCustomWorkouts();
-      
-      // Load workouts from localStorage on mount
-      const storedWorkouts = localStorage.getItem('weeklyWorkouts');
-      if (storedWorkouts) {
-        try {
-          const parsedWorkouts = JSON.parse(storedWorkouts);
-          setWeeklyWorkouts(prevWorkouts => ({
-            ...prevWorkouts,
-            ...parsedWorkouts
-          }));
-        } catch (error) {
-          console.error("Error parsing stored workouts:", error);
-        }
-      }
     } else {
       setIsLoading(false);
     }
   }, [isAuthenticated, userId]);
   
+  // Function to fetch workouts and nutrition data
   const fetchWorkoutsAndNutrition = async () => {
+    if (!userId) return;
+    
     try {
       setIsLoading(true);
       
-      // Fetch weekly workouts
-      const workouts = await AssessmentService.getWeeklyWorkouts(userId!);
-      setWeeklyWorkouts(workouts || {});
+      // Get the start and end dates for the current week
+      const startDate = format(weekStart, 'yyyy-MM-dd');
+      const endDate = format(addDays(weekStart, 6), 'yyyy-MM-dd');
       
-      // Fetch nutrition plan
-      const nutrition = await AssessmentService.getCurrentNutritionPlan(userId!);
-      setNutritionPlan(nutrition || {
-        calories: 2400,
-        protein: 180,
-        carbs: 220,
-        fat: 80,
-        meals: [
-          { title: "Breakfast: Protein oats with berries" },
-          { title: "Snack: Greek yogurt with nuts" },
-          { title: "Lunch: Chicken breast with quinoa and vegetables" },
-          { title: "Snack: Protein shake with banana" },
-          { title: "Dinner: Salmon with sweet potatoes and broccoli" }
-        ]
+      // Fetch scheduled workouts for the week
+      const scheduledWorkouts = await WorkoutService.getWorkoutSchedule(
+        userId, 
+        startDate, 
+        endDate
+      );
+      
+      // Cache the schedule data for later use
+      setScheduleCache(scheduledWorkouts);
+      
+      // Process and organize workouts by day
+      const workoutsByDay: WeeklyWorkouts = {};
+      
+      // Initialize each day with null (no workout)
+      days.forEach(day => {
+        workoutsByDay[day.name] = null;
       });
+      
+      // Map scheduled workouts to their respective days
+      await Promise.all(scheduledWorkouts.map(async (schedule) => {
+        const day = days.find(d => d.date === schedule.scheduled_date);
+        if (day) {
+          try {
+            // Get workout plan details
+            const workoutPlan = await WorkoutService.getWorkoutPlanById(schedule.workout_plan_id);
+            
+            if (workoutPlan) {
+              // Get exercises for this workout
+              const exercises = await WorkoutService.getWorkoutExercises(workoutPlan.id!);
+              
+              // Create the workout object with all needed data
+              workoutsByDay[day.name] = {
+                id: workoutPlan.id!,
+                schedule_id: schedule.id,
+                title: workoutPlan.title,
+                exercises: exercises.map(ex => ({
+                  id: ex.id!,
+                  name: ex.name,
+                  sets: ex.sets,
+                  reps: ex.reps,
+                  weight: ex.weight || 'bodyweight',
+                  completed: schedule.is_completed || false
+                }))
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching workout details for ${schedule.workout_plan_id}:`, error);
+          }
+        }
+      }));
+      
+      setWeeklyWorkouts(workoutsByDay);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error('Error fetching data:', error);
       toast({
         title: "Error",
-        description: "Failed to load your fitness data. Please try again later.",
+        description: "Failed to load your workout data.",
         variant: "destructive"
       });
     } finally {
@@ -185,717 +156,406 @@ export function Dashboard() {
     if (!userId) return;
     
     try {
-      const workouts = await WorkoutService.getWorkoutPlans(userId);
-      setCustomWorkouts(workouts || []);
+      // Get custom workouts already fetched from scheduled workouts
+      // This would usually be a separate API call if needed
     } catch (error) {
-      console.error("Error fetching custom workouts:", error);
+      console.error('Error fetching custom workouts:', error);
     }
   };
   
-  // Update progress data based on selected timeframe
-  useEffect(() => {
-    fetchProgressData(timeframe, selectedMetric);
-  }, [timeframe, selectedMetric]);
-  
-  const fetchProgressData = (timeframe: string, metric: string) => {
-    // In a real app, this would be an API call to fetch data based on timeframe and metric
-    // For this implementation, we'll use the mock data already defined
+  const handleExerciseComplete = async (day: string, exerciseId: string, completed: boolean) => {
+    if (!userId || !weeklyWorkouts[day]?.schedule_id) return;
     
-    // Different date formats based on timeframe
-    let dates: string[] = [];
-    
-    switch(timeframe) {
-      case 'week':
-        dates = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        break;
-      case 'month':
-        dates = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-        break;
-      case '3months':
-        dates = ['Jan', 'Feb', 'Mar'];
-        break;
-      case '6months':
-        dates = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        break;
-      case 'year':
-        dates = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        break;
-    }
-    
-    // Get the appropriate data based on metric
-    switch(metric) {
-      case 'weight':
-        // Current weight data is already in the right format
-        break;
-      case 'calories':
-        setProgressData(caloriesData);
-        break;
-      case 'protein':
-        setProgressData(proteinData);
-        break;
-      case 'carbs':
-        setProgressData(carbsData);
-        break;
-      case 'fat':
-        setProgressData(fatData);
-        break;
-    }
-  };
-  
-  // Handler for exercise completion
-  const handleExerciseCompletion = async (workoutId: string, scheduleId: string, exerciseId: string, isCompleted: boolean) => {
-    // Update the UI state first for immediate feedback
-    setWeeklyWorkouts(prevWorkouts => {
-      const updatedWorkouts = { ...prevWorkouts };
-      
-      Object.keys(updatedWorkouts).forEach(day => {
-        if (updatedWorkouts[day]?.id === workoutId) {
-          updatedWorkouts[day].exercises = updatedWorkouts[day].exercises.map((ex: any) => 
-            ex.id === exerciseId ? { ...ex, completed: isCompleted } : ex
-          );
+    try {
+      // Update state optimistically
+      setWeeklyWorkouts(prevWorkouts => {
+        const updatedWorkouts = { ...prevWorkouts };
+        
+        if (updatedWorkouts[day]) {
+          updatedWorkouts[day] = {
+            ...updatedWorkouts[day]!,
+            exercises: updatedWorkouts[day]!.exercises.map(ex => {
+              if (ex.id === exerciseId) {
+                return { ...ex, completed };
+              }
+              return ex;
+            })
+          };
         }
+        
+        return updatedWorkouts;
       });
       
-      // Save updated workouts to localStorage
-      localStorage.setItem('weeklyWorkouts', JSON.stringify(updatedWorkouts));
+      // Check if all exercises are completed
+      const allCompleted = weeklyWorkouts[day]?.exercises.every(ex => 
+        ex.id === exerciseId ? completed : ex.completed
+      );
       
-      return updatedWorkouts;
-    });
+      if (allCompleted) {
+        // If all exercises are completed, mark the scheduled workout as completed
+        const scheduleId = weeklyWorkouts[day]?.schedule_id!;
+        
+        // Create workout log entry
+        const workoutLog = {
+          user_id: userId,
+          workout_plan_id: weeklyWorkouts[day]?.id,
+          start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(),
+          duration: 60 * 60, // 1 hour in seconds (placeholder)
+          rating: 4 // Placeholder rating
+        };
+        
+        // Create exercise logs
+        const exerciseLogs = weeklyWorkouts[day]?.exercises.map((ex, index) => ({
+          exercise_name: ex.name,
+          sets_completed: ex.sets,
+          reps_completed: ex.reps,
+          weight_used: ex.weight,
+          order_index: index
+        })) || [];
+        
+        // Log the completed workout
+        const workoutLogId = await WorkoutService.logWorkout(workoutLog, exerciseLogs);
+        
+        if (workoutLogId) {
+          // Mark the scheduled workout as completed
+          await WorkoutService.completeScheduledWorkout(scheduleId, workoutLogId);
+          
+          toast({
+            title: "Workout completed",
+            description: "Great job! Your workout has been marked as completed."
+          });
+        }
+      } else {
+        // For individual exercise tracking, we could add a separate table in the future
+        // For now, we're just updating the UI state
+      }
+    } catch (error) {
+      console.error('Error updating exercise completion:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update exercise completion status.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddExercise = async (day: string, exercise: { name: string; sets: number; reps: string; weight: string }) => {
+    if (!userId || !weeklyWorkouts[day]) return;
     
-    // In a real implementation, you would update this in the database
-    // This would be implemented in WorkoutService
-  };
-  
-  // Handler for adding a new exercise
-  const handleAddExercise = async (workoutId: string, newExercise: any) => {
     try {
-      // In a real implementation, you would add this exercise to the database
-      // For now, just update the UI state
-      setWeeklyWorkouts(prevWorkouts => {
-        const updatedWorkouts = { ...prevWorkouts };
-        
-        Object.keys(updatedWorkouts).forEach(day => {
-          if (updatedWorkouts[day]?.id === workoutId) {
-            updatedWorkouts[day].exercises = [...updatedWorkouts[day].exercises, {
-              ...newExercise,
-              id: `temp-${Date.now()}`, // Temporary ID
-              completed: false
-            }];
+      // Add exercise to the workout in Supabase
+      const workoutPlanId = weeklyWorkouts[day]?.id;
+      if (!workoutPlanId) return;
+      
+      // Create new exercise in the database
+      const newExercise = {
+        workout_plan_id: workoutPlanId,
+        name: exercise.name,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        weight: exercise.weight,
+        order_index: weeklyWorkouts[day]?.exercises.length || 0
+      };
+      
+      const createdExercises = await WorkoutService.createWorkoutExercises([newExercise]);
+      
+      if (createdExercises && createdExercises.length > 0) {
+        // Update state with the new exercise
+        setWeeklyWorkouts(prevWorkouts => {
+          const updatedWorkouts = { ...prevWorkouts };
+          
+          if (updatedWorkouts[day]) {
+            updatedWorkouts[day] = {
+              ...updatedWorkouts[day]!,
+              exercises: [
+                ...updatedWorkouts[day]!.exercises,
+                {
+                  id: createdExercises[0].id!,
+                  name: exercise.name,
+                  sets: exercise.sets,
+                  reps: exercise.reps,
+                  weight: exercise.weight,
+                  completed: false
+                }
+              ]
+            };
           }
+          
+          return updatedWorkouts;
         });
         
-        // Save updated workouts to localStorage
-        localStorage.setItem('weeklyWorkouts', JSON.stringify(updatedWorkouts));
-        
-        return updatedWorkouts;
-      });
-      
-      toast({
-        title: "Exercise added",
-        description: `${newExercise.name} added to workout plan`
-      });
+        toast({
+          title: "Exercise added",
+          description: "New exercise has been added to your workout."
+        });
+      }
     } catch (error) {
-      console.error("Error adding exercise:", error);
+      console.error('Error adding exercise:', error);
       toast({
         title: "Error",
-        description: "Failed to add exercise",
+        description: "Failed to add exercise to workout.",
         variant: "destructive"
       });
     }
   };
-  
-  // Handler for removing an exercise
-  const handleRemoveExercise = async (workoutId: string, exerciseId: string) => {
+
+  const handleRemoveExercise = async (day: string, exerciseId: string) => {
+    if (!userId || !weeklyWorkouts[day]) return;
+    
     try {
-      // In a real implementation, you would remove this exercise from the database
-      // For now, just update the UI state
-      setWeeklyWorkouts(prevWorkouts => {
-        const updatedWorkouts = { ...prevWorkouts };
-        
-        Object.keys(updatedWorkouts).forEach(day => {
-          if (updatedWorkouts[day]?.id === workoutId) {
-            updatedWorkouts[day].exercises = updatedWorkouts[day].exercises.filter(
-              (ex: any) => ex.id !== exerciseId
-            );
+      // Delete exercise from the database
+      const success = await WorkoutService.deleteWorkoutExercise(exerciseId);
+      
+      if (success) {
+        // Update state to remove the exercise
+        setWeeklyWorkouts(prevWorkouts => {
+          const updatedWorkouts = { ...prevWorkouts };
+          
+          if (updatedWorkouts[day]) {
+            updatedWorkouts[day] = {
+              ...updatedWorkouts[day]!,
+              exercises: updatedWorkouts[day]!.exercises.filter(ex => ex.id !== exerciseId)
+            };
           }
+          
+          return updatedWorkouts;
         });
         
-        // Save updated workouts to localStorage
-        localStorage.setItem('weeklyWorkouts', JSON.stringify(updatedWorkouts));
-        
-        return updatedWorkouts;
-      });
-      
-      toast({
-        title: "Exercise removed",
-        description: "Exercise removed from workout plan"
-      });
+        toast({
+          title: "Exercise removed",
+          description: "Exercise has been removed from your workout."
+        });
+      }
     } catch (error) {
-      console.error("Error removing exercise:", error);
+      console.error('Error removing exercise:', error);
       toast({
         title: "Error",
-        description: "Failed to remove exercise",
+        description: "Failed to remove exercise from workout.",
         variant: "destructive"
       });
     }
   };
-  
+
   // Handler for adding a full workout
   const handleAddWorkout = async (workout: any) => {
     try {
-      // Create a new workout object with a unique ID
-      const newWorkout = {
-        id: `workout-${Date.now()}`,
-        title: workout.title,
-        category: workout.category,
-        exercises: workout.exercises.map((ex: any, index: number) => ({
-          ...ex,
-          id: `ex-${Date.now()}-${index}`,
-          completed: false
-        }))
+      if (!userId) return;
+      
+      // First, check if the selected day corresponds to a date
+      const selectedDayObj = days.find(day => day.name === selectedDay);
+      if (!selectedDayObj) {
+        toast({
+          title: "Error",
+          description: "Could not determine the date for the selected day.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Schedule the workout in Supabase
+      const scheduleData: Omit<WorkoutSchedule, 'id' | 'created_at' | 'updated_at'> = {
+        user_id: userId,
+        workout_plan_id: workout.id,
+        scheduled_date: selectedDayObj.date,
+        scheduled_time: null,
+        duration: null,
+        is_completed: false,
+        completion_date: null,
+        workout_log_id: null,
+        notes: null
       };
       
-      // Update state
-      setWeeklyWorkouts(prevWorkouts => {
-        const updatedWorkouts = {
-          ...prevWorkouts,
-          [selectedDay]: newWorkout
+      // Add the workout to the schedule
+      const scheduleId = await WorkoutService.scheduleWorkout(scheduleData);
+      
+      if (scheduleId) {
+        // Get exercises for this workout
+        const exercises = await WorkoutService.getWorkoutExercises(workout.id);
+        
+        // Update state with the new workout
+        const newWorkout = {
+          id: workout.id,
+          schedule_id: scheduleId,
+          title: workout.title,
+          exercises: exercises.map(ex => ({
+            id: ex.id!,
+            name: ex.name,
+            sets: ex.sets,
+            reps: ex.reps,
+            weight: ex.weight || 'bodyweight',
+            completed: false
+          }))
         };
         
-        // Save to localStorage for persistence
-        localStorage.setItem('weeklyWorkouts', JSON.stringify(updatedWorkouts));
+        setWeeklyWorkouts(prevWorkouts => ({
+          ...prevWorkouts,
+          [selectedDay]: newWorkout
+        }));
         
-        return updatedWorkouts;
-      });
-      
-      toast({
-        title: "Workout added",
-        description: `${workout.title} added to ${selectedDay}`
-      });
+        toast({
+          title: "Workout added",
+          description: `${workout.title} has been added to ${selectedDay}.`
+        });
+      } else {
+        throw new Error("Failed to schedule workout");
+      }
     } catch (error) {
-      console.error("Error adding workout:", error);
+      console.error('Error adding workout:', error);
       toast({
         title: "Error",
-        description: "Failed to add workout",
+        description: "Failed to add workout. Please try again.",
         variant: "destructive"
       });
     }
   };
-
-  // Load workouts from localStorage on mount
-  useEffect(() => {
-    const storedWorkouts = localStorage.getItem('weeklyWorkouts');
-    if (storedWorkouts) {
-      const parsedWorkouts = JSON.parse(storedWorkouts);
-      setWeeklyWorkouts(prevWorkouts => ({
-        ...prevWorkouts,
-        ...parsedWorkouts
-      }));
-    }
-  }, []);
-
-  const formatMultiMetricData = () => {
-    switch(timeframe) {
-      case 'week':
-        return [
-          { date: "Mon", weight: 80.8, calories: 2400, protein: 180, carbs: 215, fat: 80 },
-          { date: "Tue", weight: 80.5, calories: 2350, protein: 175, carbs: 215, fat: 78 },
-          { date: "Wed", weight: 80.3, calories: 2450, protein: 185, carbs: 230, fat: 82 },
-          { date: "Thu", weight: 80.0, calories: 2300, protein: 178, carbs: 210, fat: 76 },
-          { date: "Fri", weight: 79.8, calories: 2380, protein: 182, carbs: 225, fat: 80 },
-          { date: "Sat", weight: 79.5, calories: 2420, protein: 180, carbs: 218, fat: 79 },
-          { date: "Sun", weight: 79.3, calories: 2350, protein: 183, carbs: 222, fat: 81 },
-        ];
-      case 'month':
-        return [
-          { date: "Week 1", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 78 },
-          { date: "Week 2", weight: 81.5, calories: 2380, protein: 178, carbs: 215, fat: 79 },
-          { date: "Week 3", weight: 80.8, calories: 2420, protein: 182, carbs: 225, fat: 77 },
-          { date: "Week 4", weight: 79.8, calories: 2350, protein: 185, carbs: 210, fat: 75 },
-        ];
-      case '3months':
-        return [
-          { date: "Jan", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
-          { date: "Feb", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
-          { date: "Mar", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
-        ];
-      case '6months':
-        return [
-          { date: "Jan", weight: 85, calories: 2500, protein: 170, carbs: 235, fat: 85 },
-          { date: "Feb", weight: 84, calories: 2480, protein: 175, carbs: 230, fat: 83 },
-          { date: "Mar", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
-          { date: "Apr", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
-          { date: "May", weight: 81, calories: 2380, protein: 182, carbs: 218, fat: 79 },
-          { date: "Jun", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
-        ];
-      case 'year':
-        return [
-          { date: "Jan", weight: 85, calories: 2500, protein: 170, carbs: 235, fat: 85 },
-          { date: "Feb", weight: 84, calories: 2480, protein: 175, carbs: 230, fat: 83 },
-          { date: "Mar", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
-          { date: "Apr", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
-          { date: "May", weight: 81, calories: 2380, protein: 182, carbs: 218, fat: 79 },
-          { date: "Jun", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
-          { date: "Jul", weight: 80, calories: 2330, protein: 187, carbs: 212, fat: 77 },
-          { date: "Aug", weight: 79.5, calories: 2320, protein: 190, carbs: 210, fat: 76 },
-          { date: "Sep", weight: 79, calories: 2300, protein: 192, carbs: 208, fat: 75 },
-          { date: "Oct", weight: 78.5, calories: 2290, protein: 195, carbs: 205, fat: 74 },
-          { date: "Nov", weight: 78, calories: 2280, protein: 197, carbs: 200, fat: 73 },
-          { date: "Dec", weight: 77.5, calories: 2270, protein: 200, carbs: 195, fat: 72 },
-        ];
-      default:
-        return [
-          { date: "Mon", weight: 80.8, calories: 2400, protein: 180, carbs: 215, fat: 80 },
-          { date: "Tue", weight: 80.5, calories: 2350, protein: 175, carbs: 215, fat: 78 },
-          { date: "Wed", weight: 80.3, calories: 2450, protein: 185, carbs: 230, fat: 82 },
-          { date: "Thu", weight: 80.0, calories: 2300, protein: 178, carbs: 210, fat: 76 },
-          { date: "Fri", weight: 79.8, calories: 2380, protein: 182, carbs: 225, fat: 80 },
-          { date: "Sat", weight: 79.5, calories: 2420, protein: 180, carbs: 218, fat: 79 },
-          { date: "Sun", weight: 79.3, calories: 2350, protein: 183, carbs: 222, fat: 81 },
-        ];
-    }
-  };
-
-  const toggleMetric = (metric: keyof typeof activeMetrics) => {
-    setActiveMetrics(prev => ({
-      ...prev,
-      [metric]: !prev[metric]
-    }));
-  };
-
-  const getChartData = () => {
-    const multiMetricData = formatMultiMetricData();
-    
-    if (selectedMetric === "weight") {
-      return multiMetricData.map(item => ({
-        date: item.date,
-        value: item.weight
-      }));
-    } else if (selectedMetric === "calories") {
-      return multiMetricData.map(item => ({
-        date: item.date,
-        value: item.calories
-      }));
-    } else if (selectedMetric === "protein") {
-      return multiMetricData.map(item => ({
-        date: item.date,
-        value: item.protein
-      }));
-    } else if (selectedMetric === "carbs") {
-      return multiMetricData.map(item => ({
-        date: item.date,
-        value: item.carbs
-      }));
-    } else if (selectedMetric === "fat") {
-      return multiMetricData.map(item => ({
-        date: item.date,
-        value: item.fat
-      }));
-    }
-    
-    return progressData;
-  };
-
+  
   return (
-    <div className="max-w-lg mx-auto pb-20">
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold">Welcome, {user?.name || "Athlete"}</h1>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setShowStatsModal(true)}
-            className="flex items-center border-hashim-300 text-hashim-700 hover:bg-hashim-50"
-          >
-            <BarChart2 size={16} className="mr-1" />
-            Stats
-          </Button>
-        </div>
-        
-        <div className="flex space-x-3 mb-6 overflow-x-auto pb-2 scrollbar-none">
-          {weekDays.map((day) => (
-            <Chip 
-              key={day} 
-              label={day} 
-              active={day === selectedDay}
-              onClick={() => setSelectedDay(day)}
-            />
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <StatsCard
-            title="Weight"
-            value={`${user?.weight || 75}kg`}
-            icon={Weight}
-            trend="down"
-            trendValue="-2.1kg"
-          />
-          <StatsCard
-            title="Workouts"
-            value="16"
-            icon={Activity}
-            trend="up"
-            trendValue="+3"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <VoiceInput />
-          <MealCaptureCard />
-        </div>
+    <div className="max-w-lg mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Welcome Back!</h1>
+        <Button 
+          variant="ghost" 
+          onClick={() => setIsStatsModalOpen(true)}
+          className="text-hashim-600"
+        >
+          View Stats
+        </Button>
       </div>
-
-      <div className="mb-8">
-        <div className="flex justify-between items-center">
-          <SectionTitle
-            title={`${selectedDay}'s Workout`}
-            subtitle={weeklyWorkouts[selectedDay]?.title || "Rest Day"}
-          />
-          <Button variant="ghost" size="sm" className="flex items-center">
-            <span className="mr-1">View all</span>
-            <ChevronRight size={16} />
-          </Button>
-        </div>
-        
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
-          </div>
-        ) : (
-          weeklyWorkouts[selectedDay] ? (
-            <WorkoutCard 
-              workout={weeklyWorkouts[selectedDay]} 
-              onExerciseComplete={(exerciseId, isCompleted) => 
-                handleExerciseCompletion(
-                  weeklyWorkouts[selectedDay].id, 
-                  weeklyWorkouts[selectedDay].schedule_id,
-                  exerciseId, 
-                  isCompleted
-                )
-              }
-              onAddExercise={(exercise) => handleAddExercise(weeklyWorkouts[selectedDay].id, exercise)}
-              onRemoveExercise={(exerciseId) => handleRemoveExercise(weeklyWorkouts[selectedDay].id, exerciseId)}
-              editable={true}
-            />
-          ) : (
-            <AnimatedCard className="text-center py-8">
-              <p className="text-muted-foreground mb-4">No workout scheduled for {selectedDay}</p>
-              <Button 
-                variant="outline" 
-                className="flex items-center mx-auto"
-                onClick={() => setShowAddWorkoutModal(true)}
-              >
-                <Plus size={16} className="mr-1" />
-                Add a workout
-              </Button>
-            </AnimatedCard>
-          )
-        )}
-      </div>
-
-      <Collapsible
-        open={isProgressOpen}
-        onOpenChange={setIsProgressOpen}
-        className="mb-8"
-      >
-        <div className="flex justify-between items-center">
-          <SectionTitle
-            title="Progress"
-            subtitle="Track your fitness journey"
-          />
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="flex items-center">
-              {isProgressOpen ? (
-                <ChevronUp size={16} />
-              ) : (
-                <ChevronDown size={16} />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-        </div>
-        
-        <CollapsibleContent>
-          <AnimatedCard className="overflow-hidden">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex space-x-1">
+      
+      <AnimatedCard className="overflow-hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="workouts" className="flex items-center">
+              <Dumbbell className="w-4 h-4 mr-2" />
+              Workouts
+            </TabsTrigger>
+            <TabsTrigger value="nutrition" className="flex items-center">
+              <Apple className="w-4 h-4 mr-2" />
+              Nutrition
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="workouts" className="px-1 py-2">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Weekly Progress</h3>
                 <Button 
-                  size="sm"
-                  variant={showMultiMetric ? "default" : "outline"}
-                  onClick={() => setShowMultiMetric(true)}
+                  variant="ghost" 
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => {/* View detailed progress */}}
                 >
-                  Multi
-                </Button>
-                <Button 
-                  size="sm"
-                  variant={!showMultiMetric ? "default" : "outline"}
-                  onClick={() => setShowMultiMetric(false)}
-                >
-                  Single
+                  View All
                 </Button>
               </div>
               
-              {!showMultiMetric && (
-                <div className="flex flex-wrap gap-1">
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "weight" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("weight")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Weight
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "calories" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("calories")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Cal
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "protein" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("protein")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Prot
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "carbs" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("carbs")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Carbs
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "fat" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("fat")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Fat
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            {showMultiMetric && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                <div className="flex items-center space-x-1 mr-2">
-                  <input 
-                    type="checkbox" 
-                    id="weight-toggle-dash" 
-                    checked={activeMetrics.weight}
-                    onChange={() => toggleMetric('weight')}
-                    className="rounded text-hashim-600"
-                  />
-                  <label htmlFor="weight-toggle-dash" className="text-sm flex items-center">
-                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#be123c' }}></span>
-                    Wt
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-1 mr-2">
-                  <input 
-                    type="checkbox" 
-                    id="calories-toggle-dash" 
-                    checked={activeMetrics.calories}
-                    onChange={() => toggleMetric('calories')}
-                    className="rounded text-hashim-600"
-                  />
-                  <label htmlFor="calories-toggle-dash" className="text-sm flex items-center">
-                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#0891b2' }}></span>
-                    Cal
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-1 mr-2">
-                  <input 
-                    type="checkbox" 
-                    id="protein-toggle-dash" 
-                    checked={activeMetrics.protein}
-                    onChange={() => toggleMetric('protein')}
-                    className="rounded text-hashim-600"
-                  />
-                  <label htmlFor="protein-toggle-dash" className="text-sm flex items-center">
-                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#4d7c0f' }}></span>
-                    Pro
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-1 mr-2">
-                  <input 
-                    type="checkbox" 
-                    id="carbs-toggle-dash" 
-                    checked={activeMetrics.carbs}
-                    onChange={() => toggleMetric('carbs')}
-                    className="rounded text-hashim-600"
-                  />
-                  <label htmlFor="carbs-toggle-dash" className="text-sm flex items-center">
-                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#b45309' }}></span>
-                    Carb
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-1">
-                  <input 
-                    type="checkbox" 
-                    id="fat-toggle-dash" 
-                    checked={activeMetrics.fat}
-                    onChange={() => toggleMetric('fat')}
-                    className="rounded text-hashim-600"
-                  />
-                  <label htmlFor="fat-toggle-dash" className="text-sm flex items-center">
-                    <span className="inline-block w-2 h-2 mr-1 rounded-full" style={{ backgroundColor: '#7c3aed' }}></span>
-                    Fat
-                  </label>
-                </div>
+              <div className="h-52">
+                <ProgressChart 
+                  data={progressData} 
+                  metrics={{
+                    weight: true,
+                    calories: true,
+                    protein: true
+                  }}
+                />
               </div>
-            )}
-            
-            <div className="flex flex-wrap gap-1 mb-4">
-              <Button 
-                size="sm" 
-                variant={timeframe === "week" ? "default" : "outline"}
-                onClick={() => setTimeframe("week")}
-                className="text-xs py-1 h-7"
-              >
-                Week
-              </Button>
-              <Button 
-                size="sm" 
-                variant={timeframe === "month" ? "default" : "outline"}
-                onClick={() => setTimeframe("month")}
-                className="text-xs py-1 h-7"
-              >
-                Month
-              </Button>
-              <Button 
-                size="sm" 
-                variant={timeframe === "3months" ? "default" : "outline"}
-                onClick={() => setTimeframe("3months")}
-                className="text-xs py-1 h-7"
-              >
-                3 Mo
-              </Button>
-              <Button 
-                size="sm" 
-                variant={timeframe === "6months" ? "default" : "outline"}
-                onClick={() => setTimeframe("6months")}
-                className="text-xs py-1 h-7"
-              >
-                6 Mo
-              </Button>
-              <Button 
-                size="sm" 
-                variant={timeframe === "year" ? "default" : "outline"}
-                onClick={() => setTimeframe("year")}
-                className="text-xs py-1 h-7"
-              >
-                Year
-              </Button>
-            </div>
-            
-            {showMultiMetric ? (
-              <ProgressChart 
-                data={formatMultiMetricData()} 
-                metrics={activeMetrics} 
-              />
-            ) : (
-              <ProgressChart 
-                data={getChartData()} 
-                singleMetric={selectedMetric} 
-              />
-            )}
-          </AnimatedCard>
-        </CollapsibleContent>
-      </Collapsible>
-
-      <Collapsible
-        open={isNutritionOpen}
-        onOpenChange={setIsNutritionOpen}
-        className="mb-8"
-      >
-        <div className="flex justify-between items-center">
-          <SectionTitle
-            title="Nutrition Plan"
-            subtitle="Based on your goals"
-          />
-          <div className="flex items-center">
-            <Button variant="ghost" size="sm" className="flex items-center mr-2">
-              <span className="mr-1">Adjust</span>
-              <ChevronRight size={16} />
-            </Button>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="flex items-center">
-                {isNutritionOpen ? (
-                  <ChevronUp size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-        </div>
-        
-        <CollapsibleContent>
-          <AnimatedCard>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between mb-4">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Calories</p>
-                    <p className="font-bold">{nutritionPlan?.calories || 0}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Protein</p>
-                    <p className="font-bold">{nutritionPlan?.protein || 0}g</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Carbs</p>
-                    <p className="font-bold">{nutritionPlan?.carbs || 0}g</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Fat</p>
-                    <p className="font-bold">{nutritionPlan?.fat || 0}g</p>
-                  </div>
-                </div>
+              
+              <div className="pt-2">
+                <SectionTitle title="This Week's Workouts" subtitle="Plan your fitness week ahead" />
                 
-                <div className="space-y-3 mt-6">
-                  {nutritionPlan?.meals?.map((meal: any, index: number) => (
-                    <div key={`meal-${index}`} className="bg-muted p-3 rounded-lg">
-                      <p className="font-medium">{meal.title}</p>
-                    </div>
+                <div className="flex overflow-x-auto pb-2 space-x-2 scrollbar-none">
+                  {days.map((day) => (
+                    <DayTab
+                      key={day.name}
+                      day={day.name}
+                      active={selectedDay === day.name}
+                      onClick={() => setSelectedDay(day.name)}
+                      hasWorkout={!!weeklyWorkouts[day.name]}
+                    />
                   ))}
                 </div>
-              </>
-            )}
-          </AnimatedCard>
-        </CollapsibleContent>
-      </Collapsible>
+                
+                <div className="mt-4">
+                  {isLoading ? (
+                    <div className="flex justify-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
+                    </div>
+                  ) : weeklyWorkouts[selectedDay] ? (
+                    <WorkoutCard 
+                      workout={weeklyWorkouts[selectedDay]!} 
+                      editable={true}
+                      onExerciseComplete={(exerciseId, completed) => 
+                        handleExerciseComplete(selectedDay, exerciseId, completed)
+                      }
+                      onAddExercise={(exercise) => 
+                        handleAddExercise(selectedDay, exercise)
+                      }
+                      onRemoveExercise={(exerciseId) => 
+                        handleRemoveExercise(selectedDay, exerciseId)
+                      }
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center border rounded-xl border-dashed border-border bg-muted/30">
+                      <p className="text-muted-foreground mb-3">No workout planned for {selectedDay}</p>
+                      <Button 
+                        onClick={() => setShowAddWorkout(true)}
+                        className="flex items-center bg-hashim-600 hover:bg-hashim-700 text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add a workout
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="nutrition" className="px-1 py-2">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Weekly Nutrition</h3>
+                <Button 
+                  variant="ghost" 
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => {/* View detailed nutrition */}}
+                >
+                  View All
+                </Button>
+              </div>
+              
+              <div className="h-52">
+                <ProgressChart 
+                  data={progressData}
+                  metrics={{
+                    calories: true,
+                    protein: true,
+                    carbs: true,
+                    fat: true
+                  }}
+                />
+              </div>
+              
+              {/* Nutrition content would go here */}
+              <div className="flex justify-center py-8">
+                <p className="text-muted-foreground">Nutrition tracking coming soon</p>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </AnimatedCard>
       
-      {/* Modals */}
-      {showStatsModal && (
-        <UserStatsModal 
-          isOpen={showStatsModal} 
-          onClose={() => setShowStatsModal(false)} 
-        />
-      )}
+      <UserStatsModal 
+        isOpen={isStatsModalOpen}
+        onClose={() => setIsStatsModalOpen(false)}
+      />
       
-      {showAddWorkoutModal && (
-        <AddWorkoutModal 
-          isOpen={showAddWorkoutModal} 
-          onClose={() => setShowAddWorkoutModal(false)}
-          onAddWorkout={handleAddWorkout}
-          selectedDay={selectedDay}
-        />
-      )}
+      <AddWorkoutModal
+        isOpen={showAddWorkout}
+        onClose={() => setShowAddWorkout(false)}
+        onAddWorkout={handleAddWorkout}
+        selectedDay={selectedDay}
+      />
     </div>
   );
 }
