@@ -127,6 +127,20 @@ export function Dashboard() {
     if (isAuthenticated && userId) {
       fetchWorkoutsAndNutrition();
       fetchCustomWorkouts();
+      
+      // Load workouts from localStorage on mount
+      const storedWorkouts = localStorage.getItem('weeklyWorkouts');
+      if (storedWorkouts) {
+        try {
+          const parsedWorkouts = JSON.parse(storedWorkouts);
+          setWeeklyWorkouts(prevWorkouts => ({
+            ...prevWorkouts,
+            ...parsedWorkouts
+          }));
+        } catch (error) {
+          console.error("Error parsing stored workouts:", error);
+        }
+      }
     } else {
       setIsLoading(false);
     }
@@ -242,6 +256,9 @@ export function Dashboard() {
         }
       });
       
+      // Save updated workouts to localStorage
+      localStorage.setItem('weeklyWorkouts', JSON.stringify(updatedWorkouts));
+      
       return updatedWorkouts;
     });
     
@@ -266,6 +283,9 @@ export function Dashboard() {
             }];
           }
         });
+        
+        // Save updated workouts to localStorage
+        localStorage.setItem('weeklyWorkouts', JSON.stringify(updatedWorkouts));
         
         return updatedWorkouts;
       });
@@ -300,6 +320,9 @@ export function Dashboard() {
           }
         });
         
+        // Save updated workouts to localStorage
+        localStorage.setItem('weeklyWorkouts', JSON.stringify(updatedWorkouts));
+        
         return updatedWorkouts;
       });
       
@@ -320,11 +343,7 @@ export function Dashboard() {
   // Handler for adding a full workout
   const handleAddWorkout = async (workout: any) => {
     try {
-      // Save the workout to local storage to persist it across page refreshes
-      const workoutsFromStorage = localStorage.getItem('weeklyWorkouts');
-      let storedWorkouts = workoutsFromStorage ? JSON.parse(workoutsFromStorage) : {};
-      
-      // Add the workout to the selected day
+      // Create a new workout object with a unique ID
       const newWorkout = {
         id: `workout-${Date.now()}`,
         title: workout.title,
@@ -336,14 +355,18 @@ export function Dashboard() {
         }))
       };
       
-      storedWorkouts[selectedDay] = newWorkout;
-      localStorage.setItem('weeklyWorkouts', JSON.stringify(storedWorkouts));
-      
       // Update state
-      setWeeklyWorkouts(prevWorkouts => ({
-        ...prevWorkouts,
-        [selectedDay]: newWorkout
-      }));
+      setWeeklyWorkouts(prevWorkouts => {
+        const updatedWorkouts = {
+          ...prevWorkouts,
+          [selectedDay]: newWorkout
+        };
+        
+        // Save to localStorage for persistence
+        localStorage.setItem('weeklyWorkouts', JSON.stringify(updatedWorkouts));
+        
+        return updatedWorkouts;
+      });
       
       toast({
         title: "Workout added",
