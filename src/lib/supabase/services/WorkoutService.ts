@@ -183,6 +183,36 @@ export class WorkoutService {
       return null;
     }
   }
+  
+  static async updateWorkoutExercise(exerciseId: string, exercise: Partial<WorkoutExercise>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('workout_exercises')
+        .update(exercise)
+        .eq('id', exerciseId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error updating workout exercise:', error);
+      return false;
+    }
+  }
+  
+  static async deleteWorkoutExercise(exerciseId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('workout_exercises')
+        .delete()
+        .eq('id', exerciseId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting workout exercise:', error);
+      return false;
+    }
+  }
 
   // Workout Logs
   static async logWorkout(log: WorkoutLog, exercises: Omit<ExerciseLog, 'workout_log_id'>[]): Promise<string | null> {
@@ -251,14 +281,41 @@ export class WorkoutService {
   // Workout Schedule
   static async scheduleWorkout(schedule: WorkoutSchedule): Promise<string | null> {
     try {
-      const { data, error } = await supabase
+      // Check if a workout is already scheduled for this date and user
+      const { data: existingSchedules, error: checkError } = await supabase
         .from('workout_schedule')
-        .insert([schedule])
-        .select()
-        .single();
+        .select('id')
+        .eq('user_id', schedule.user_id)
+        .eq('scheduled_date', schedule.scheduled_date);
         
-      if (error) throw error;
-      return data.id;
+      if (checkError) throw checkError;
+      
+      if (existingSchedules && existingSchedules.length > 0) {
+        // Update existing schedule
+        const { data, error } = await supabase
+          .from('workout_schedule')
+          .update({
+            workout_plan_id: schedule.workout_plan_id,
+            is_completed: false,
+            workout_log_id: null,
+            completion_date: null
+          })
+          .eq('id', existingSchedules[0].id)
+          .select();
+          
+        if (error) throw error;
+        return data[0].id;
+      } else {
+        // Create new schedule
+        const { data, error } = await supabase
+          .from('workout_schedule')
+          .insert([schedule])
+          .select()
+          .single();
+          
+        if (error) throw error;
+        return data.id;
+      }
     } catch (error) {
       console.error('Error scheduling workout:', error);
       return null;
@@ -299,6 +356,87 @@ export class WorkoutService {
     } catch (error) {
       console.error('Error completing scheduled workout:', error);
       return false;
+    }
+  }
+  
+  static async getRecentWorkoutStats(userId: string, days: number = 30): Promise<any> {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      
+      const formattedStartDate = startDate.toISOString().split('T')[0];
+      const formattedEndDate = endDate.toISOString().split('T')[0];
+      
+      // Get workout logs in the date range
+      const { data: workoutLogs, error: logsError } = await supabase
+        .from('workout_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('start_time', formattedStartDate)
+        .lte('start_time', formattedEndDate)
+        .order('start_time', { ascending: true });
+        
+      if (logsError) throw logsError;
+      
+      // Get scheduled workouts in the date range
+      const { data: scheduledWorkouts, error: scheduleError } = await supabase
+        .from('workout_schedule')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('scheduled_date', formattedStartDate)
+        .lte('scheduled_date', formattedEndDate);
+        
+      if (scheduleError) throw scheduleError;
+      
+      // Calculate statistics
+      const totalWorkouts = workoutLogs?.length || 0;
+      const completedWorkouts = scheduledWorkouts?.filter(w => w.is_completed)?.length || 0;
+      const scheduledCount = scheduledWorkouts?.length || 0;
+      const completionRate = scheduledCount > 0 ? (completedWorkouts / scheduledCount) * 100 : 0;
+      
+      // Group workouts by category
+      const workoutPlanIds = workoutLogs?.map(log => log.workout_plan_id).filter(id => id) as string[];
+      
+      let categoryBreakdown: Record<string, number> = {};
+      
+      if (workoutPlanIds.length > 0) {
+        const { data: workoutPlans, error: plansError } = await supabase
+          .from('workout_plans')
+          .select('id, category')
+          .in('id', workoutPlanIds);
+          
+        if (plansError) throw plansError;
+        
+        if (workoutPlans) {
+          categoryBreakdown = workoutPlans.reduce((acc, plan) => {
+            const category = plan.category || 'other';
+            acc[category] = (acc[category] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+        }
+      }
+      
+      return {
+        totalWorkouts,
+        completedWorkouts,
+        scheduledCount,
+        completionRate,
+        categoryBreakdown,
+        logs: workoutLogs,
+        scheduledWorkouts
+      };
+    } catch (error) {
+      console.error('Error getting workout stats:', error);
+      return {
+        totalWorkouts: 0,
+        completedWorkouts: 0,
+        scheduledCount: 0,
+        completionRate: 0,
+        categoryBreakdown: {},
+        logs: [],
+        scheduledWorkouts: []
+      };
     }
   }
 }

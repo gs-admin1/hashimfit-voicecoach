@@ -237,6 +237,23 @@ export class NutritionService {
     }
   }
 
+  static async getMealLogsForDate(userId: string, date: string): Promise<MealLog[]> {
+    try {
+      // First get the nutrition log for the date
+      const nutritionLog = await this.getNutritionLog(userId, date);
+      
+      if (!nutritionLog) {
+        return [];
+      }
+      
+      // Then get all meal logs for that nutrition log
+      return await this.getMealLogs(nutritionLog.id!);
+    } catch (error) {
+      console.error('Error fetching meal logs for date:', error);
+      return [];
+    }
+  }
+
   static async uploadMealImage(userId: string, file: File): Promise<string | null> {
     try {
       const fileExt = file.name.split('.').pop();
@@ -259,6 +276,25 @@ export class NutritionService {
     } catch (error) {
       console.error('Error uploading meal image:', error);
       return null;
+    }
+  }
+  
+  // Get daily nutritional summary for a specific period
+  static async getNutritionalSummary(userId: string, startDate: string, endDate: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('nutrition_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('log_date', startDate)
+        .lte('log_date', endDate)
+        .order('log_date', { ascending: true });
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching nutritional summary:', error);
+      return [];
     }
   }
 }

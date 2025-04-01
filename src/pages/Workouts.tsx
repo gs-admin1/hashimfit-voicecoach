@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle, Chip } from "@/components/ui-components";
 import { WorkoutCard } from "@/components/WorkoutCard";
@@ -10,30 +10,24 @@ import { Plus, Filter, ArrowUpDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService, WorkoutPlan } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function WorkoutsPage() {
   const [filter, setFilter] = useState("all");
   const [showAddWorkout, setShowAddWorkout] = useState(false);
-  const [workouts, setWorkouts] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { isAuthenticated, userId } = useAuth();
   const [selectedDay, setSelectedDay] = useState('Today');
+  const queryClient = useQueryClient();
   
-  useEffect(() => {
-    if (isAuthenticated && userId) {
-      fetchWorkouts();
-    } else {
-      setWorkouts([]);
-      setIsLoading(false);
-    }
-  }, [isAuthenticated, userId]);
-  
-  const fetchWorkouts = async () => {
-    try {
-      setIsLoading(true);
-      const workoutPlans = await WorkoutService.getWorkoutPlans(userId!);
+  // Query for workouts
+  const { data: workouts = [], isLoading } = useQuery({
+    queryKey: ['workoutPlans', userId],
+    queryFn: async () => {
+      if (!userId) return [];
       
-      // Fetch exercises for each workout plan
+      const workoutPlans = await WorkoutService.getWorkoutPlans(userId);
+      
+      // Get exercises for each workout plan
       const workoutsWithExercises = await Promise.all(
         workoutPlans.map(async (plan) => {
           const exercises = await WorkoutService.getWorkoutExercises(plan.id!);
@@ -52,30 +46,16 @@ export default function WorkoutsPage() {
         })
       );
       
-      setWorkouts(workoutsWithExercises);
-    } catch (error) {
-      console.error('Error fetching workouts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load workouts. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return workoutsWithExercises;
+    },
+    enabled: !!userId,
+  });
   
-  const addWorkout = async (workout: any) => {
-    if (!userId) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to add workouts.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    try {
+  // Mutation for adding a workout
+  const addWorkoutMutation = useMutation({
+    mutationFn: async (workout: any) => {
+      if (!userId) throw new Error("User not authenticated");
+      
       // Create workout plan in Supabase
       const workoutPlan: WorkoutPlan = {
         user_id: userId,
@@ -102,27 +82,16 @@ export default function WorkoutsPage() {
       
       await WorkoutService.createWorkoutExercises(exercises);
       
-      // Add created workout with ID to local state
-      const newWorkout = {
-        id: createdPlan.id,
-        title: workout.title,
-        category: workout.category || 'strength',
-        exercises: workout.exercises.map((ex: any, index: number) => ({
-          id: `temp-${Date.now()}-${index}`,
-          name: ex.name,
-          sets: ex.sets,
-          reps: ex.reps,
-          weight: ex.weight
-        }))
-      };
-      
-      setWorkouts([...workouts, newWorkout]);
-      
+      return createdPlan.id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workoutPlans'] });
       toast({
         title: "Workout Added",
         description: "Your workout has been added successfully."
       });
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Error adding workout:', error);
       toast({
         title: "Error",
@@ -130,6 +99,20 @@ export default function WorkoutsPage() {
         variant: "destructive"
       });
     }
+  });
+
+  const addWorkout = (workout: any) => {
+    if (!userId) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to add workouts.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    addWorkoutMutation.mutate(workout);
+    setShowAddWorkout(false);
   };
 
   const filteredWorkouts = filter === "all" 
@@ -188,7 +171,7 @@ export default function WorkoutsPage() {
             />
           </div>
           
-          {isLoading ? (
+          {isLoading || addWorkoutMutation.isPending ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
             </div>
@@ -196,7 +179,7 @@ export default function WorkoutsPage() {
             <div className="space-y-4">
               {filteredWorkouts.length > 0 ? (
                 filteredWorkouts.map((workout, index) => (
-                  <WorkoutCard key={workout.id || index} workout={workout} />
+                  <WorkoutCard key={workout.id || index} workout={workout} editable={true} />
                 ))
               ) : (
                 <AnimatedCard className="text-center py-8">

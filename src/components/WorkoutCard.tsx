@@ -23,6 +23,7 @@ interface WorkoutCardProps {
     schedule_id?: string;
     title: string;
     exercises: Exercise[];
+    is_completed?: boolean;
   };
   editable?: boolean;
   onExerciseComplete?: (exerciseId: string, completed: boolean) => void;
@@ -123,6 +124,7 @@ export function WorkoutCard({
                 checked={exercise.completed}
                 onCheckedChange={() => toggleExerciseCompletion(index)}
                 className="mr-3"
+                disabled={workout.is_completed}
               />
               <div className="flex-1">
                 <p className="font-medium">{exercise.name}</p>
@@ -176,33 +178,36 @@ export function WorkoutCard({
                   <Input 
                     value={newExercise.weight}
                     onChange={(e) => setNewExercise({...newExercise, weight: e.target.value})}
-                    placeholder="e.g. 50kg or bodyweight"
+                    placeholder="e.g. 50kg"
                   />
                 </div>
               </div>
-              <div className="flex space-x-2 pt-2">
-                <Button onClick={handleAddExercise} className="flex-1">
-                  Add
-                </Button>
+              <div className="flex justify-end space-x-2 mt-2">
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
+                  size="sm"
                   onClick={() => setShowAddExercise(false)}
-                  className="flex-1"
                 >
                   Cancel
                 </Button>
+                <Button 
+                  size="sm"
+                  onClick={handleAddExercise}
+                >
+                  Add
+                </Button>
               </div>
             </div>
-          ) : editable ? (
-            <Button
-              variant="outline"
-              className="w-full mt-4 flex items-center justify-center"
+          ) : editable && (
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-center"
               onClick={() => setShowAddExercise(true)}
             >
-              <Plus size={16} className="mr-2" />
+              <Plus size={16} className="mr-1" />
               Add Exercise
             </Button>
-          ) : null}
+          )}
         </div>
       )}
     </AnimatedCard>
