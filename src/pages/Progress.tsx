@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -18,6 +17,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+
+// Define the strength data that was missing
+const strengthData = [
+  { exercise: "Bench Press", previous: "80kg x 8", current: "85kg x 8", change: "up" },
+  { exercise: "Squat", previous: "120kg x 5", current: "125kg x 5", change: "up" },
+  { exercise: "Deadlift", previous: "140kg x 3", current: "140kg x 4", change: "up" },
+  { exercise: "Shoulder Press", previous: "50kg x 8", current: "50kg x 8", change: "neutral" },
+  { exercise: "Pull-ups", previous: "BW x 10", current: "BW x 12", change: "up" }
+];
+
+// Define the measurements data that was missing
+const measurementsData = [
+  { part: "Chest", previous: "98cm", current: "100cm", change: "up" },
+  { part: "Waist", previous: "84cm", current: "82cm", change: "down" },
+  { part: "Arms", previous: "36cm", current: "37cm", change: "up" },
+  { part: "Thighs", previous: "60cm", current: "62cm", change: "up" },
+  { part: "Weight", previous: "82kg", current: "80kg", change: "down" }
+];
 
 export default function ProgressPage() {
   const { isAuthenticated, userId } = useAuth();
