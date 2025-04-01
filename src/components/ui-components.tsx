@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { 
@@ -11,7 +10,9 @@ import {
   Zap,
   Weight,
   ChartBar,
-  LucideProps
+  LucideProps,
+  Check,
+  X as XIcon
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -188,6 +189,36 @@ export const Chip = ({
       )}
     >
       {label}
+    </button>
+  );
+};
+
+export const DayTab = ({
+  day,
+  active = false,
+  hasWorkout = false,
+  onClick,
+}: {
+  day: string;
+  active?: boolean;
+  hasWorkout?: boolean;
+  onClick?: () => void;
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "shrink-0 flex flex-col items-center justify-center py-2 px-4 rounded-lg transition-all duration-300",
+        active
+          ? "bg-hashim-600 text-white"
+          : "bg-muted hover:bg-muted/80 text-foreground",
+        hasWorkout && !active && "border-2 border-hashim-400"
+      )}
+    >
+      <div className="font-medium">{day}</div>
+      {hasWorkout && !active && (
+        <div className="mt-1 w-2 h-2 rounded-full bg-hashim-500"></div>
+      )}
     </button>
   );
 };
