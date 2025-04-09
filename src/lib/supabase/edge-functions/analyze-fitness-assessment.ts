@@ -1,7 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { WorkoutPlan, WorkoutExercise, WorkoutService } from './WorkoutService';
-import { NutritionPlan, MealPlan, NutritionService } from './NutritionService';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 
 // Define interfaces for API request and response
