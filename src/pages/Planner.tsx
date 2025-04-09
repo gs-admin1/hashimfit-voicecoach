@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar } from "@/components/ui-components";
@@ -93,7 +92,7 @@ export default function PlannerPage() {
                     workoutType = "cardio";
                   } else if (workoutPlan.category === "recovery") {
                     workoutType = "recovery";
-                  } else if (workoutPlan.category === "hiit" || workoutPlan.category === "flexibility") {
+                  } else if (workoutPlan.category === "hiit") {
                     workoutType = "flexibility";
                   }
                   
@@ -204,7 +203,7 @@ export default function PlannerPage() {
                   workoutType = "cardio";
                 } else if (workoutPlan.category === "recovery") {
                   workoutType = "recovery";
-                } else if (workoutPlan.category === "hiit" || workoutPlan.category === "flexibility") {
+                } else if (workoutPlan.category === "hiit") {
                   workoutType = "flexibility";
                 }
                 
@@ -234,7 +233,7 @@ export default function PlannerPage() {
       });
     }
   };
-
+  
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newWeekStart = direction === 'prev'
       ? addDays(currentWeekStart, -7)
