@@ -1,4 +1,3 @@
-
 -- FITNESS APP DATABASE SCHEMA
 
 -- Enable the pgcrypto extension for UUID generation
@@ -57,6 +56,33 @@ CREATE TABLE IF NOT EXISTS fitness_assessments (
 -- Create indexes on fitness_assessments
 CREATE INDEX idx_fitness_assessments_user_id ON fitness_assessments(user_id);
 CREATE INDEX idx_fitness_assessments_assessment_date ON fitness_assessments(assessment_date);
+
+-- ASSESSMENT DATA TABLE
+-- Stores the detailed assessment data collected from users
+CREATE TABLE IF NOT EXISTS assessment_data (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  age INTEGER NOT NULL CHECK (age > 0 AND age < 120),
+  gender TEXT NOT NULL CHECK (gender IN ('male', 'female', 'other')),
+  height NUMERIC NOT NULL CHECK (height > 0),
+  weight NUMERIC NOT NULL CHECK (weight > 0),
+  fitness_goal TEXT NOT NULL CHECK (fitness_goal IN ('weight_loss', 'muscle_gain', 'endurance', 'general_fitness')),
+  workout_frequency INTEGER NOT NULL CHECK (workout_frequency BETWEEN 1 AND 7),
+  diet TEXT NOT NULL CHECK (diet IN ('standard', 'vegetarian', 'vegan', 'keto', 'paleo', 'gluten_free')),
+  equipment TEXT NOT NULL CHECK (equipment IN ('none', 'minimal', 'full_gym')),
+  sports_played TEXT[] DEFAULT '{}',
+  allergies TEXT[] DEFAULT '{}',
+  existing_conditions TEXT[] DEFAULT '{}',
+  fitness_level TEXT,
+  previous_experience TEXT,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+);
+
+-- Create indexes on assessment_data
+CREATE INDEX idx_assessment_data_user_id ON assessment_data(user_id);
+CREATE INDEX idx_assessment_data_created_at ON assessment_data(created_at);
 
 -- PROGRESS METRICS TABLE
 -- Tracks body measurements and other progress metrics
@@ -333,6 +359,7 @@ ALTER TABLE nutrition_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meal_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assessment_data ENABLE ROW LEVEL SECURITY;
 
 -- Create Row Level Security Policies
 -- Users can only view and modify their own data
@@ -361,6 +388,23 @@ CREATE POLICY "Users can update own fitness assessments"
 
 CREATE POLICY "Users can delete own fitness assessments" 
   ON fitness_assessments FOR DELETE 
+  USING (auth.uid() = user_id);
+
+-- Assessment Data RLS
+CREATE POLICY "Users can view own assessment data" 
+  ON assessment_data FOR SELECT 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own assessment data" 
+  ON assessment_data FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own assessment data" 
+  ON assessment_data FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own assessment data" 
+  ON assessment_data FOR DELETE 
   USING (auth.uid() = user_id);
 
 -- Progress Metrics RLS
@@ -647,6 +691,10 @@ CREATE TRIGGER update_app_configurations_modtime
 
 CREATE TRIGGER update_user_settings_modtime
   BEFORE UPDATE ON user_settings
+  FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
+
+CREATE TRIGGER update_assessment_data_modtime
+  BEFORE UPDATE ON assessment_data
   FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
 
 -- Create function to create user profile on signup

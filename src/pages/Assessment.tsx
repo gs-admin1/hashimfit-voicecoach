@@ -6,15 +6,26 @@ import { Logo } from "@/components/Logo";
 import { AnimatedCard } from "@/components/ui-components";
 import { Dumbbell, MessageSquare, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Assessment() {
   const navigate = useNavigate();
+  const { userId } = useAuth();
   const [showSuccess, setShowSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     try {
+      if (!userId) {
+        toast({
+          title: "Not logged in",
+          description: "You must be logged in to complete the assessment",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       setIsProcessing(true);
       setError(null);
       console.log("Assessment completed, showing success message");

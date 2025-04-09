@@ -84,6 +84,44 @@ export class AssessmentService {
       
       console.log("Formatted assessment data:", assessmentData);
       
+      // Save the assessment data to the assessment_data table
+      try {
+        const { error: saveError } = await supabase
+          .from('assessment_data')
+          .insert({
+            user_id: userId,
+            age: assessmentData.age,
+            gender: assessmentData.gender,
+            height: assessmentData.height,
+            weight: assessmentData.weight,
+            fitness_goal: assessmentData.fitnessGoal,
+            workout_frequency: assessmentData.workoutFrequency,
+            diet: assessmentData.diet,
+            equipment: assessmentData.equipment,
+            sports_played: assessmentData.sportsPlayed,
+            allergies: assessmentData.allergies,
+            existing_conditions: assessmentData.existingConditions || [],
+            fitness_level: assessmentData.fitnessLevel || null,
+            previous_experience: assessmentData.previousExperience || null
+          });
+          
+        if (saveError) {
+          console.error("Error saving assessment data:", saveError);
+          // Continue with analysis even if saving fails
+        } else {
+          console.log("Assessment data saved successfully");
+          
+          // Update the profile to mark assessment as completed
+          await supabase
+            .from('profiles')
+            .update({ has_completed_assessment: true })
+            .eq('id', userId);
+        }
+      } catch (saveError) {
+        console.error("Exception saving assessment data:", saveError);
+        // Continue with analysis even if saving fails
+      }
+      
       // Call the edge function to analyze the assessment data
       const analysisResponse = await analyzeFitnessAssessment({
         user_id: userId,
@@ -428,6 +466,27 @@ export class AssessmentService {
       };
     } catch (error) {
       console.error('Error fetching current nutrition plan:', error);
+      return null;
+    }
+  }
+
+  static async getLatestAssessmentData(userId: string): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('assessment_data')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (error) {
+        console.error('Error fetching assessment data:', error);
+        return null;
+      }
+      
+      return data && data.length > 0 ? data[0] : null;
+    } catch (error) {
+      console.error('Error in getLatestAssessmentData:', error);
       return null;
     }
   }
