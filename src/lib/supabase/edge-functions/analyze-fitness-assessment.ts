@@ -19,13 +19,29 @@ interface FitnessAssessmentRequest {
 
 export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
   try {
+    console.log("Calling fitness assessment function with data:", {
+      userId: req.user_id,
+      assessmentData: {
+        ...req.assessment,
+        sportsPlayed: req.assessment.sportsPlayed?.join(', '),
+        allergies: req.assessment.allergies?.join(', ')
+      }
+    });
+    
     const { data, error } = await supabase.functions.invoke<any>('analyze-fitness-assessment', {
       body: req,
     });
 
-    if (error) throw new Error(error.message);
-    if (!data) throw new Error('No response from fitness assessment function');
+    if (error) {
+      console.error("Supabase function error:", error);
+      throw new Error(error.message);
+    }
+    if (!data) {
+      console.error("No response data from fitness assessment function");
+      throw new Error('No response from fitness assessment function');
+    }
     
+    console.log("Received fitness assessment analysis:", data);
     return data;
   } catch (error) {
     console.error('Error calling fitness assessment function:', error);

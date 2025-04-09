@@ -1,12 +1,11 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
-import { X, Search, Plus } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { X, Plus } from "lucide-react";
+import { useForm } from "react-hook-form";
 
 interface AddWorkoutModalProps {
   isOpen: boolean;
@@ -15,123 +14,209 @@ interface AddWorkoutModalProps {
   selectedDay: string;
 }
 
+interface ExerciseInput {
+  name: string;
+  sets: number;
+  reps: string;
+  weight: string;
+}
+
+interface WorkoutFormData {
+  title: string;
+  category: string;
+  exercises: ExerciseInput[];
+}
+
 export function AddWorkoutModal({ isOpen, onClose, onAddWorkout, selectedDay }: AddWorkoutModalProps) {
-  const [searchQuery, setSearchQuery] = useState("");
   const { userId } = useAuth();
+  const [exercises, setExercises] = useState<ExerciseInput[]>([
+    { name: "", sets: 3, reps: "10", weight: "bodyweight" }
+  ]);
   
-  // Query for available workouts
-  const { data: workouts = [], isLoading } = useQuery({
-    queryKey: ['workoutPlans', userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      
-      const workoutPlans = await WorkoutService.getWorkoutPlans(userId);
-      
-      // Get exercises for each workout plan
-      const workoutsWithExercises = await Promise.all(
-        workoutPlans.map(async (plan) => {
-          const exercises = await WorkoutService.getWorkoutExercises(plan.id!);
-          return {
-            id: plan.id,
-            title: plan.title,
-            category: plan.category,
-            exercises: exercises.map(ex => ({
-              id: ex.id,
-              name: ex.name,
-              sets: ex.sets,
-              reps: ex.reps,
-              weight: ex.weight || 'bodyweight'
-            }))
-          };
-        })
-      );
-      
-      return workoutsWithExercises;
-    },
-    enabled: !!userId && isOpen,
-  });
-
-  const filteredWorkouts = searchQuery
-    ? workouts.filter(w => 
-        w.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        w.category?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : workouts;
-
-  const handleSelect = (workout: any) => {
-    onAddWorkout(workout);
+  const handleAddExercise = () => {
+    setExercises([...exercises, { name: "", sets: 3, reps: "10", weight: "bodyweight" }]);
   };
-
+  
+  const handleRemoveExercise = (index: number) => {
+    if (exercises.length > 1) {
+      const updatedExercises = [...exercises];
+      updatedExercises.splice(index, 1);
+      setExercises(updatedExercises);
+    }
+  };
+  
+  const handleExerciseChange = (index: number, field: keyof ExerciseInput, value: any) => {
+    const updatedExercises = [...exercises];
+    updatedExercises[index] = { 
+      ...updatedExercises[index], 
+      [field]: field === 'sets' ? parseInt(value) || 1 : value 
+    };
+    setExercises(updatedExercises);
+  };
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    const title = (e.target as HTMLFormElement).workoutTitle.value;
+    const category = (e.target as HTMLFormElement).category.value;
+    
+    if (!title || exercises.some(ex => !ex.name.trim())) {
+      return; // Don't submit if title or any exercise name is empty
+    }
+    
+    const workout = {
+      title,
+      category,
+      exercises: exercises.map(ex => ({
+        ...ex,
+        sets: parseInt(ex.sets.toString()) 
+      }))
+    };
+    
+    onAddWorkout(workout);
+    
+    // Reset form
+    setExercises([{ name: "", sets: 3, reps: "10", weight: "bodyweight" }]);
+    (e.target as HTMLFormElement).reset();
+  };
+  
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="mb-4">
-          <DialogTitle>Add Workout for {selectedDay}</DialogTitle>
+          <DialogTitle>Create Workout for {selectedDay}</DialogTitle>
           <DialogClose className="absolute right-4 top-4">
             <X size={18} />
             <span className="sr-only">Close</span>
           </DialogClose>
         </DialogHeader>
         
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search your workouts..."
-            className="pl-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hashim-600"></div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="workoutTitle" className="block text-sm font-medium mb-1">
+              Workout Title
+            </label>
+            <Input
+              id="workoutTitle"
+              name="workoutTitle"
+              placeholder="e.g. Upper Body Strength"
+              required
+            />
           </div>
-        ) : (
-          <div className="space-y-3 max-h-[50vh] overflow-y-auto">
-            {filteredWorkouts.length > 0 ? (
-              filteredWorkouts.map((workout) => (
-                <div
-                  key={workout.id}
-                  className="border rounded-lg p-4 cursor-pointer hover:border-hashim-300 transition-colors"
-                  onClick={() => handleSelect(workout)}
-                >
-                  <div className="flex justify-between items-center mb-1">
-                    <h3 className="font-medium">{workout.title}</h3>
-                    <span className="text-xs py-0.5 px-2 bg-hashim-100 text-hashim-800 rounded-full">
-                      {workout.category}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {workout.exercises?.length || 0} exercises
-                  </p>
+          
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium mb-1">
+              Category
+            </label>
+            <select
+              id="category"
+              name="category"
+              className="w-full rounded-md border border-input bg-background px-3 py-2"
+              defaultValue="strength"
+            >
+              <option value="strength">Strength</option>
+              <option value="cardio">Cardio</option>
+              <option value="hiit">HIIT</option>
+              <option value="recovery">Recovery</option>
+              <option value="sport_specific">Sport Specific</option>
+            </select>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium">Exercises</label>
+            </div>
+            
+            {exercises.map((exercise, index) => (
+              <div key={index} className="border rounded-md p-3 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm font-medium">Exercise {index + 1}</h4>
+                  {exercises.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExercise(index)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">No workouts found</p>
-                <Button
-                  variant="outline"
-                  className="flex items-center mx-auto"
-                >
-                  <Plus size={16} className="mr-1" />
-                  Create new workout
-                </Button>
+                
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">
+                    Exercise Name
+                  </label>
+                  <Input
+                    value={exercise.name}
+                    onChange={(e) => handleExerciseChange(index, 'name', e.target.value)}
+                    placeholder="e.g. Bench Press"
+                    required
+                  />
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">
+                      Sets
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={exercise.sets}
+                      onChange={(e) => handleExerciseChange(index, 'sets', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">
+                      Reps
+                    </label>
+                    <Input
+                      value={exercise.reps}
+                      onChange={(e) => handleExerciseChange(index, 'reps', e.target.value)}
+                      placeholder="e.g. 10 or 8-12"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">
+                      Weight
+                    </label>
+                    <Input
+                      value={exercise.weight}
+                      onChange={(e) => handleExerciseChange(index, 'weight', e.target.value)}
+                      placeholder="e.g. 50kg"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
-            )}
+            ))}
+            
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleAddExercise}
+            >
+              <Plus size={16} className="mr-1" />
+              Add Exercise
+            </Button>
           </div>
-        )}
-        
-        <div className="flex justify-end mt-4 space-x-2">
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button 
-            variant="default"
-            className="bg-hashim-600 hover:bg-hashim-700 text-white"
-            onClick={() => onClose()}
-          >
-            Done
-          </Button>
-        </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button variant="ghost" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              className="bg-hashim-600 hover:bg-hashim-700 text-white"
+            >
+              Create Workout
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

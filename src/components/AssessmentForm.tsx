@@ -91,9 +91,12 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
 
     try {
       setIsSubmitting(true);
+      toast({
+        title: "Processing",
+        description: "Analyzing your assessment data and creating personalized plans...",
+      });
       
       // First complete the assessment in the user profile
-      // Convert workoutFrequency to the correct type (WorkoutFrequency)
       const assessmentComplete = await completeAssessment({
         ...formData,
         workoutFrequency: formData.workoutFrequency as WorkoutFrequency
@@ -102,6 +105,31 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
       if (!assessmentComplete || !userId) {
         throw new Error("Failed to complete assessment");
       }
+      
+      // Parse string arrays if needed
+      let sportsPlayed = formData.sportsPlayed;
+      let allergies = formData.allergies;
+      
+      if (typeof sportsPlayed === 'string') {
+        sportsPlayed = sportsPlayed.split(',').map(s => s.trim());
+      }
+      
+      if (typeof allergies === 'string') {
+        allergies = allergies.split(',').map(a => a.trim());
+      }
+      
+      console.log("Sending assessment data to AI:", {
+        age: formData.age,
+        gender: formData.gender,
+        height: formData.height,
+        weight: formData.weight,
+        fitnessGoal: formData.fitnessGoal,
+        workoutFrequency: formData.workoutFrequency,
+        diet: formData.diet,
+        equipment: formData.equipment,
+        sportsPlayed,
+        allergies
+      });
       
       // Then send the data for AI analysis
       const analysisResult = await AssessmentService.analyzeAssessment(userId, {
@@ -113,8 +141,8 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
         workoutFrequency: formData.workoutFrequency as WorkoutFrequency,
         diet: formData.diet,
         equipment: formData.equipment,
-        sportsPlayed: formData.sportsPlayed,
-        allergies: formData.allergies
+        sportsPlayed,
+        allergies
       });
       
       if (!analysisResult) {
@@ -135,6 +163,11 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
     } catch (error) {
       console.error("Error submitting assessment:", error);
       setError("There was an error submitting your assessment. Please try again.");
+      toast({
+        title: "Error",
+        description: "There was an error submitting your assessment. Please try again.",
+        variant: "destructive"
+      });
       setIsSubmitting(false);
     }
   };

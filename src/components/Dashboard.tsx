@@ -10,17 +10,18 @@ import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { DayTab, AnimatedCard, StatsCard, VoiceWidget, IconButton } from "@/components/ui-components";
+import { DayTab } from "@/components/DayTab";
+import { AnimatedCard, StatsCard, VoiceWidget, IconButton } from "@/components/ui-components";
 import { Plus, Activity, Dumbbell, Weight, Calendar, ChartBar, Utensils, User, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { WorkoutService, WorkoutSchedule, WorkoutLog, ExerciseLog } from "@/lib/supabase/services/WorkoutService";
+import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function Dashboard() {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState(format(new Date(), 'EEEE'));
   const [showAddWorkout, setShowAddWorkout] = useState(false);
-  const [daysWorkout, setDaysWorkout] = useState<any>(null);
   const { isAuthenticated, userId } = useAuth();
   const { user } = useUser();
   const queryClient = useQueryClient();
@@ -39,11 +40,24 @@ export function Dashboard() {
   const selectedDate = selectedDateIndex !== -1 ? weekDates[selectedDateIndex] : today;
   const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
 
+  // Query for weekly workout schedules - this will run when component mounts and when userId changes
+  const { data: weeklyWorkouts, isLoading: isLoadingWeekly } = useQuery({
+    queryKey: ['weeklyWorkouts', userId],
+    queryFn: async () => {
+      if (!userId) return {};
+      console.log("Fetching weekly workouts for user:", userId);
+      return await AssessmentService.getWeeklyWorkouts(userId);
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+  });
+
   // Query for workout schedules
   const { data: workoutSchedules, isLoading: isLoadingSchedules } = useQuery({
     queryKey: ['workoutSchedules', userId, format(startOfCurrentWeek, 'yyyy-MM-dd'), format(addDays(startOfCurrentWeek, 6), 'yyyy-MM-dd')],
     queryFn: async () => {
       if (!userId) return [];
+      console.log("Fetching workout schedules");
       return await WorkoutService.getWorkoutSchedule(
         userId,
         format(startOfCurrentWeek, 'yyyy-MM-dd'),
@@ -51,6 +65,7 @@ export function Dashboard() {
       );
     },
     enabled: !!userId,
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 
   // Query for the selected day workout details
@@ -59,15 +74,24 @@ export function Dashboard() {
     queryFn: async () => {
       if (!userId || !workoutSchedules) return null;
       
+      console.log(`Finding workout for ${selectedDateString}`);
       const scheduledWorkout = workoutSchedules.find(schedule => 
         schedule.scheduled_date === selectedDateString
       );
       
-      if (!scheduledWorkout || !scheduledWorkout.workout_plan_id) return null;
+      if (!scheduledWorkout || !scheduledWorkout.workout_plan_id) {
+        console.log("No scheduled workout found for selected date");
+        return null;
+      }
       
+      console.log(`Found scheduled workout: ${scheduledWorkout.id}`);
       const workoutPlan = await WorkoutService.getWorkoutPlanById(scheduledWorkout.workout_plan_id);
-      if (!workoutPlan) return null;
+      if (!workoutPlan) {
+        console.log("Could not find workout plan");
+        return null;
+      }
       
+      console.log(`Found workout plan: ${workoutPlan.title}`);
       const exercises = await WorkoutService.getWorkoutExercises(workoutPlan.id!);
       
       // Get completion status if the workout is completed
@@ -96,12 +120,15 @@ export function Dashboard() {
       };
     },
     enabled: !!userId && !!workoutSchedules,
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 
   // Mutation to schedule a workout
   const scheduleWorkoutMutation = useMutation({
     mutationFn: async ({ workout_plan_id, scheduled_date }: { workout_plan_id: string, scheduled_date: string }) => {
       if (!userId) throw new Error("User not authenticated");
+      
+      console.log(`Scheduling workout ${workout_plan_id} for ${scheduled_date}`);
       
       const schedule: WorkoutSchedule = {
         user_id: userId,
@@ -113,7 +140,11 @@ export function Dashboard() {
       return await WorkoutService.scheduleWorkout(schedule);
     },
     onSuccess: () => {
+      console.log("Successfully scheduled workout");
       queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
+      queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
+      queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
+      
       toast({
         title: "Workout Scheduled",
         description: `Your workout has been scheduled for ${selectedDay}.`
@@ -150,6 +181,8 @@ export function Dashboard() {
       const schedule = workoutSchedules?.find(s => s.id === scheduleId);
       if (!schedule) throw new Error("Workout schedule not found");
       
+      console.log(`Updating exercise completion for ${exerciseName} to ${completed}`);
+      
       // If we already have a workout log and the exercise is already marked as completed, 
       // we might need to update it instead of creating a new one
       if (schedule.workout_log_id && !completed) {
@@ -185,6 +218,7 @@ export function Dashboard() {
           
           // Update the schedule with the workout log id
           if (logId) {
+            console.log(`Created workout log ${logId} and updating schedule ${scheduleId}`);
             await WorkoutService.completeScheduledWorkout(scheduleId, logId);
             return scheduleId;
           }
@@ -197,8 +231,11 @@ export function Dashboard() {
       }
     },
     onSuccess: () => {
+      console.log("Successfully updated exercise completion");
       queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
       queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
+      queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
+      
       toast({
         title: "Progress Updated",
         description: "Your workout progress has been saved."
@@ -215,6 +252,7 @@ export function Dashboard() {
   });
 
   const handleDaySelect = (day: string) => {
+    console.log(`Selected day: ${day}`);
     setSelectedDay(day);
   };
 
@@ -228,6 +266,7 @@ export function Dashboard() {
       return;
     }
     
+    console.log(`Selected workout: ${workout.id}`);
     scheduleWorkoutMutation.mutate({
       workout_plan_id: workout.id,
       scheduled_date: selectedDateString
@@ -239,6 +278,7 @@ export function Dashboard() {
   const handleExerciseComplete = (exerciseId: string, completed: boolean) => {
     if (!selectedWorkout || !selectedWorkout.schedule_id) return;
     
+    console.log(`Completing exercise ${exerciseId}: ${completed}`);
     completeExerciseMutation.mutate({
       scheduleId: selectedWorkout.schedule_id,
       exerciseId,
@@ -504,4 +544,3 @@ export function Dashboard() {
     </div>
   );
 }
-

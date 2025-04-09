@@ -16,15 +16,15 @@ export default function WorkoutsPage() {
   const [filter, setFilter] = useState("all");
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const { isAuthenticated, userId } = useAuth();
-  const [selectedDay, setSelectedDay] = useState('Today');
   const queryClient = useQueryClient();
   
-  // Query for workouts
+  // Query for workouts with stale time to ensure persistence across navigation
   const { data: workouts = [], isLoading } = useQuery({
     queryKey: ['workoutPlans', userId],
     queryFn: async () => {
       if (!userId) return [];
       
+      console.log("Fetching workout plans for user:", userId);
       const workoutPlans = await WorkoutService.getWorkoutPlans(userId);
       
       // Get exercises for each workout plan
@@ -49,6 +49,7 @@ export default function WorkoutsPage() {
       return workoutsWithExercises;
     },
     enabled: !!userId,
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
   
   // Mutation for adding a workout
@@ -56,6 +57,7 @@ export default function WorkoutsPage() {
     mutationFn: async (workout: any) => {
       if (!userId) throw new Error("User not authenticated");
       
+      console.log("Creating new workout:", workout);
       // Create workout plan in Supabase
       const workoutPlan: WorkoutPlan = {
         user_id: userId,
@@ -85,6 +87,7 @@ export default function WorkoutsPage() {
       return createdPlan.id;
     },
     onSuccess: () => {
+      console.log("Successfully added workout");
       queryClient.invalidateQueries({ queryKey: ['workoutPlans'] });
       toast({
         title: "Workout Added",
