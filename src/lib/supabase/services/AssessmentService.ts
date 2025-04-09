@@ -1,10 +1,9 @@
-
 import supabase from '@/lib/supabase';
 import { WorkoutPlan, WorkoutExercise, WorkoutService } from './WorkoutService';
 import { NutritionPlan, MealPlan, NutritionService } from './NutritionService';
 import { analyzeFitnessAssessment } from '../edge-functions/analyze-fitness-assessment';
 
-// Define interfaces for OpenAI analysis request and response
+// Define interfaces for API request and response
 export interface FitnessAssessmentData {
   age: number;
   gender: string;
@@ -21,6 +20,7 @@ export interface FitnessAssessmentData {
   previousExperience?: string;
 }
 
+// Interfaces for the AI analysis response
 interface WorkoutExerciseAnalysis {
   name: string;
   sets: number;
@@ -84,7 +84,7 @@ export class AssessmentService {
       
       console.log("Formatted assessment data:", assessmentData);
       
-      // Call OpenAI through the analyze-fitness-assessment function
+      // Call the edge function to analyze the assessment data
       const analysisResponse = await analyzeFitnessAssessment({
         user_id: userId,
         assessment: assessmentData
@@ -103,19 +103,24 @@ export class AssessmentService {
       // Process and store the nutrition plan
       await this.processAndStoreNutritionPlan(userId, analysisResponse.nutrition_plan);
       
-      // Store recommendations if needed
+      // Store recommendations if available
       if (analysisResponse.recommendations && analysisResponse.recommendations.length > 0) {
-        const { error } = await supabase
-          .from('user_recommendations')
-          .insert({
-            user_id: userId,
-            recommendations: analysisResponse.recommendations,
-            source: 'ai_assessment',
-            created_at: new Date().toISOString()
-          });
-          
-        if (error) {
-          console.error("Error storing recommendations:", error);
+        try {
+          const { error } = await supabase
+            .from('user_recommendations')
+            .insert({
+              user_id: userId,
+              recommendations: analysisResponse.recommendations,
+              source: 'ai_assessment',
+              created_at: new Date().toISOString()
+            });
+            
+          if (error) {
+            console.error("Error storing recommendations:", error);
+          }
+        } catch (err) {
+          console.error("Error saving recommendations:", err);
+          // Continue even if recommendations fail to save
         }
       }
 
@@ -126,6 +131,7 @@ export class AssessmentService {
     }
   }
 
+  // Helper methods for processing workout plans and exercises
   private static async processAndStoreWorkoutPlans(userId: string, workoutPlans: DailyWorkoutPlan[]): Promise<void> {
     console.log("Processing workout plans:", workoutPlans.length);
     // Map day names to day indices (0 = Sunday, 1 = Monday, etc.)
@@ -176,12 +182,17 @@ export class AssessmentService {
     for (const plan of workoutPlans) {
       try {
         console.log(`Processing workout plan for ${plan.day}: ${plan.title}`);
+        
+        // Make sure the category is one of the allowed values
+        const validCategories = ['strength', 'cardio', 'hiit', 'recovery', 'sport_specific', 'custom'];
+        const category = validCategories.includes(plan.category) ? plan.category : 'custom';
+        
         // Create a workout plan
         const workoutPlan: WorkoutPlan = {
           user_id: userId,
           title: `${plan.day}'s ${plan.title}`,
           description: plan.description,
-          category: plan.category,
+          category: category,
           difficulty: 3,  // Default difficulty
           estimated_duration: 60,  // Default duration in minutes
           target_muscles: plan.exercises.map(ex => ex.name.split(' ')[0]),  // Extract muscle groups
@@ -195,17 +206,20 @@ export class AssessmentService {
           continue;
         }
 
-        // Create exercises for the plan
-        const exercises: WorkoutExercise[] = plan.exercises.map((ex, index) => ({
-          workout_plan_id: createdPlan.id!,
-          name: ex.name,
-          sets: ex.sets,
-          reps: ex.reps,
-          weight: ex.weight,
-          rest_time: ex.rest_time,
-          notes: ex.notes,
-          order_index: index
-        }));
+        // Create exercises for the plan - ensure required fields are present
+        const exercises: WorkoutExercise[] = plan.exercises.map((ex, index) => {
+          // Ensure all required fields have values
+          return {
+            workout_plan_id: createdPlan.id!,
+            name: ex.name,
+            sets: ex.sets ?? 3, // Default to 3 sets if not provided
+            reps: ex.reps ?? '10', // Default to 10 reps if not provided
+            weight: ex.weight ?? 'bodyweight',
+            rest_time: ex.rest_time ?? 60, // Default to 60 seconds rest
+            notes: ex.notes ?? '',
+            order_index: index
+          };
+        });
 
         await WorkoutService.createWorkoutExercises(exercises);
 
@@ -245,40 +259,53 @@ export class AssessmentService {
   }
 
   private static async processAndStoreNutritionPlan(userId: string, nutritionPlan: NutritionPlanAnalysis): Promise<void> {
-    // Create nutrition plan
-    const plan: NutritionPlan = {
-      user_id: userId,
-      title: 'AI Generated Nutrition Plan',
-      description: 'Personalized nutrition plan based on your fitness assessment',
-      daily_calories: nutritionPlan.daily_calories,
-      protein_g: nutritionPlan.protein_g,
-      carbs_g: nutritionPlan.carbs_g,
-      fat_g: nutritionPlan.fat_g,
-      diet_type: nutritionPlan.diet_type,
-      ai_generated: true
-    };
+    try {
+      // Make sure the diet type is valid
+      const validDietTypes = ['standard', 'vegetarian', 'vegan', 'keto', 'paleo', 'gluten_free'];
+      const dietType = validDietTypes.includes(nutritionPlan.diet_type) ? nutritionPlan.diet_type : 'standard';
+      
+      // Create nutrition plan
+      const plan: NutritionPlan = {
+        user_id: userId,
+        title: 'AI Generated Nutrition Plan',
+        description: 'Personalized nutrition plan based on your fitness assessment',
+        daily_calories: nutritionPlan.daily_calories,
+        protein_g: nutritionPlan.protein_g,
+        carbs_g: nutritionPlan.carbs_g,
+        fat_g: nutritionPlan.fat_g,
+        diet_type: dietType,
+        ai_generated: true
+      };
 
-    const createdPlan = await NutritionService.createNutritionPlan(plan);
-    
-    if (!createdPlan || !createdPlan.id) {
-      console.error('Failed to create nutrition plan');
-      return;
+      const createdPlan = await NutritionService.createNutritionPlan(plan);
+      
+      if (!createdPlan || !createdPlan.id) {
+        console.error('Failed to create nutrition plan');
+        return;
+      }
+
+      // Validate and create meal plans
+      const validMealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+      const meals: MealPlan[] = nutritionPlan.meals
+        .filter(meal => validMealTypes.includes(meal.meal_type)) // Only include valid meal types
+        .map((meal, index) => ({
+          nutrition_plan_id: createdPlan.id!,
+          meal_type: meal.meal_type,
+          meal_title: meal.meal_title,
+          description: meal.description,
+          calories: meal.calories,
+          protein_g: meal.protein_g,
+          carbs_g: meal.carbs_g,
+          fat_g: meal.fat_g,
+          order_index: index
+        }));
+
+      if (meals.length > 0) {
+        await NutritionService.createMealPlans(meals);
+      }
+    } catch (error) {
+      console.error("Error creating nutrition plan:", error);
     }
-
-    // Create meal plans
-    const meals: MealPlan[] = nutritionPlan.meals.map((meal, index) => ({
-      nutrition_plan_id: createdPlan.id!,
-      meal_type: meal.meal_type,
-      meal_title: meal.meal_title,
-      description: meal.description,
-      calories: meal.calories,
-      protein_g: meal.protein_g,
-      carbs_g: meal.carbs_g,
-      fat_g: meal.fat_g,
-      order_index: index
-    }));
-
-    await NutritionService.createMealPlans(meals);
   }
 
   static async getWeeklyWorkouts(userId: string): Promise<Record<string, any>> {

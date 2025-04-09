@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
 import { AnimatedCard } from "./ui-components";
@@ -66,11 +66,12 @@ const ALLERGY_OPTIONS = [
 
 interface AssessmentFormProps {
   onComplete: () => void;
+  isProcessing?: boolean;
 }
 
-export function AssessmentForm({ onComplete }: AssessmentFormProps) {
+export function AssessmentForm({ onComplete, isProcessing = false }: AssessmentFormProps) {
   const { userId } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(FormSchema),
@@ -87,7 +88,7 @@ export function AssessmentForm({ onComplete }: AssessmentFormProps) {
       return;
     }
 
-    setIsSubmitting(true);
+    setSubmitting(true);
     console.log("Submitting assessment data:", data);
     
     try {
@@ -120,9 +121,12 @@ export function AssessmentForm({ onComplete }: AssessmentFormProps) {
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   }
+
+  // Determine if form is currently in a loading state
+  const isLoading = submitting || isProcessing;
 
   return (
     <AnimatedCard className="w-full">
@@ -452,9 +456,16 @@ export function AssessmentForm({ onComplete }: AssessmentFormProps) {
             <Button 
               type="submit" 
               className="w-full sm:w-auto"
-              disabled={isSubmitting}
+              disabled={isLoading}
             >
-              {isSubmitting ? "Processing..." : "Complete Assessment"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Complete Assessment"
+              )}
             </Button>
           </div>
         </form>

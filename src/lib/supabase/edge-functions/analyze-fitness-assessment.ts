@@ -1,5 +1,6 @@
-import supabase from '@/lib/supabase';
+
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 interface FitnessAssessmentRequest {
   user_id: string;
@@ -16,6 +17,124 @@ interface FitnessAssessmentRequest {
     allergies?: string[];
   };
 }
+
+// Mock response for when we're developing locally or if the edge function fails
+const generateMockResponse = () => {
+  return {
+    workout_plans: [
+      {
+        day: "Monday",
+        title: "Upper Body Strength",
+        description: "Focus on building upper body strength",
+        category: "strength",
+        exercises: [
+          {
+            name: "Bench Press",
+            sets: 3,
+            reps: "8-10",
+            weight: "60kg",
+            rest_time: 90
+          },
+          {
+            name: "Shoulder Press",
+            sets: 3,
+            reps: "8-10",
+            weight: "40kg",
+            rest_time: 90
+          },
+          {
+            name: "Bicep Curls",
+            sets: 3,
+            reps: "10-12",
+            weight: "15kg",
+            rest_time: 60
+          }
+        ]
+      },
+      {
+        day: "Thursday",
+        title: "Lower Body Power",
+        description: "Focus on building lower body strength and power",
+        category: "strength",
+        exercises: [
+          {
+            name: "Squats",
+            sets: 4,
+            reps: "6-8",
+            weight: "80kg",
+            rest_time: 120
+          },
+          {
+            name: "Leg Press",
+            sets: 3,
+            reps: "8-10",
+            weight: "120kg",
+            rest_time: 90
+          },
+          {
+            name: "Leg Curls",
+            sets: 3,
+            reps: "10-12",
+            weight: "40kg",
+            rest_time: 60
+          }
+        ]
+      }
+    ],
+    nutrition_plan: {
+      daily_calories: 2200,
+      protein_g: 170,
+      carbs_g: 50,
+      fat_g: 160,
+      diet_type: "standard",
+      meals: [
+        {
+          meal_type: "breakfast",
+          meal_title: "High Protein Breakfast",
+          description: "Eggs and whole grain toast",
+          calories: 550,
+          protein_g: 35,
+          carbs_g: 8,
+          fat_g: 45
+        },
+        {
+          meal_type: "lunch",
+          meal_title: "Grilled Chicken Salad",
+          description: "Grilled chicken with mixed greens",
+          calories: 650,
+          protein_g: 45,
+          carbs_g: 12,
+          fat_g: 48
+        },
+        {
+          meal_type: "dinner",
+          meal_title: "Baked Salmon",
+          description: "Baked salmon with vegetables",
+          calories: 750,
+          protein_g: 60,
+          carbs_g: 15,
+          fat_g: 52
+        },
+        {
+          meal_type: "snack",
+          meal_title: "Protein Shake",
+          description: "Protein shake with almond milk",
+          calories: 250,
+          protein_g: 20,
+          carbs_g: 5,
+          fat_g: 15
+        }
+      ]
+    },
+    recommendations: [
+      "Stay hydrated with plenty of water throughout the day",
+      "Ensure you're getting 7-8 hours of quality sleep",
+      "Focus on progressive overload in your strength training",
+      "Include a protein source with every meal",
+      "Track your progress weekly"
+    ]
+  };
+};
 
 export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
   try {
@@ -47,7 +166,7 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
     
     // Test direct fetch call to the edge function endpoint 
     try {
-      console.log("Attempting to call edge function via direct fetch");
+      console.log("Calling edge function via direct fetch");
       const response = await fetch(`${supabaseUrl}/functions/v1/analyze-fitness-assessment`, {
         method: 'POST',
         headers: {
@@ -62,7 +181,7 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Error from edge function:", errorText);
-        throw new Error(`Edge function error: ${response.status} - ${errorText}`);
+        throw new Error(`Edge function error (${response.status}): ${errorText}`);
       }
       
       const data = await response.json();
@@ -79,7 +198,7 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
 
       if (error) {
         console.error("Supabase function error:", error);
-        throw new Error(error.message || 'Error from fitness assessment function');
+        throw error;
       }
       
       if (!data) {
@@ -94,122 +213,8 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
   } catch (error) {
     console.error('Error calling fitness assessment function:', error);
     
-    // Create a default response for testing purposes
-    // This is only used when the edge function fails and is for development only
+    // Generate mock response for testing/development
     console.log("Generating mock response for testing");
-    return {
-      workout_plans: [
-        {
-          day: "Monday",
-          title: "Upper Body Strength",
-          description: "Focus on building upper body strength",
-          category: "strength",
-          exercises: [
-            {
-              name: "Bench Press",
-              sets: 3,
-              reps: "8-10",
-              weight: "60kg",
-              rest_time: 90
-            },
-            {
-              name: "Shoulder Press",
-              sets: 3,
-              reps: "8-10",
-              weight: "40kg",
-              rest_time: 90
-            },
-            {
-              name: "Bicep Curls",
-              sets: 3,
-              reps: "10-12",
-              weight: "15kg",
-              rest_time: 60
-            }
-          ]
-        },
-        {
-          day: "Thursday",
-          title: "Lower Body Power",
-          description: "Focus on building lower body strength and power",
-          category: "strength",
-          exercises: [
-            {
-              name: "Squats",
-              sets: 4,
-              reps: "6-8",
-              weight: "80kg",
-              rest_time: 120
-            },
-            {
-              name: "Leg Press",
-              sets: 3,
-              reps: "8-10",
-              weight: "120kg",
-              rest_time: 90
-            },
-            {
-              name: "Leg Curls",
-              sets: 3,
-              reps: "10-12",
-              weight: "40kg",
-              rest_time: 60
-            }
-          ]
-        }
-      ],
-      nutrition_plan: {
-        daily_calories: 2200,
-        protein_g: 170,
-        carbs_g: 50,
-        fat_g: 160,
-        diet_type: "keto",
-        meals: [
-          {
-            meal_type: "breakfast",
-            meal_title: "Keto Breakfast Bowl",
-            description: "Eggs, avocado, and bacon with cheese",
-            calories: 550,
-            protein_g: 35,
-            carbs_g: 8,
-            fat_g: 45
-          },
-          {
-            meal_type: "lunch",
-            meal_title: "Salmon Salad",
-            description: "Grilled salmon with mixed greens and olive oil dressing",
-            calories: 650,
-            protein_g: 45,
-            carbs_g: 12,
-            fat_g: 48
-          },
-          {
-            meal_type: "dinner",
-            meal_title: "Ribeye Steak with Vegetables",
-            description: "Grass-fed ribeye with buttered broccoli and cauliflower",
-            calories: 750,
-            protein_g: 60,
-            carbs_g: 15,
-            fat_g: 52
-          },
-          {
-            meal_type: "snack",
-            meal_title: "Keto Fat Bombs",
-            description: "Coconut oil, almond butter, and cocoa powder treats",
-            calories: 250,
-            protein_g: 8,
-            carbs_g: 5,
-            fat_g: 22
-          }
-        ]
-      },
-      recommendations: [
-        "Stay hydrated with plenty of water and electrolytes on your keto diet",
-        "Consider adding MCT oil to your morning coffee for an energy boost",
-        "Ensure you're getting enough sodium, potassium, and magnesium to avoid keto flu",
-        "Track your workouts to ensure progressive overload",
-        "Get at least 7 hours of sleep for optimal recovery"
-      ]
-    };
+    return generateMockResponse();
   }
 }

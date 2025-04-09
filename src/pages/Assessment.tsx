@@ -62,7 +62,7 @@ export default function Assessment() {
               Let's get to know you better to create your personalized fitness plan
             </p>
           </div>
-          <AssessmentForm onComplete={handleComplete} />
+          <AssessmentForm onComplete={handleComplete} isProcessing={isProcessing} />
         </div>
       )}
     </div>
