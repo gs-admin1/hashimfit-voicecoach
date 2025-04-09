@@ -1,3 +1,4 @@
+
 import supabase from '@/lib/supabase';
 import { WorkoutPlan, WorkoutExercise, WorkoutService } from './WorkoutService';
 import { NutritionPlan, MealPlan, NutritionService } from './NutritionService';
@@ -133,7 +134,7 @@ export class AssessmentService {
         throw new Error('No response from assessment analysis function');
       }
       
-      console.log("Received analysis response:", analysisResponse);
+      console.log("Received analysis response:", JSON.stringify(analysisResponse, null, 2));
       
       // Process and store the workout plans
       await this.processAndStoreWorkoutPlans(userId, analysisResponse.workout_plans);
@@ -283,12 +284,19 @@ export class AssessmentService {
           
           console.log(`Scheduling workout for date: ${dateStr}`);
           
-          await WorkoutService.scheduleWorkout({
-            user_id: userId,
-            workout_plan_id: createdPlan.id,
-            scheduled_date: dateStr,
-            duration: 60
-          });
+          // Schedule the workout
+          try {
+            const scheduleId = await WorkoutService.scheduleWorkout({
+              user_id: userId,
+              workout_plan_id: createdPlan.id,
+              scheduled_date: dateStr,
+              duration: 60
+            });
+            
+            console.log(`Workout scheduled with ID: ${scheduleId}`);
+          } catch (scheduleError) {
+            console.error(`Error scheduling workout for ${dateStr}:`, scheduleError);
+          }
         }
       } catch (error) {
         console.error(`Error processing workout plan for ${plan.day}:`, error);

@@ -312,6 +312,8 @@ export class WorkoutService {
       
       // If we have schedules to insert
       if (scheduleEntries.length > 0) {
+        console.log(`Inserting ${scheduleEntries.length} schedule entries`);
+        
         // Check for existing schedules first on the original date
         const { data: existingSchedules, error: checkError } = await supabase
           .from('workout_schedule')
@@ -343,34 +345,50 @@ export class WorkoutService {
           );
           
           if (recurringSchedules.length > 0) {
-            // Use upsert to handle potential duplicates
-            const { error: insertError } = await supabase
-              .from('workout_schedule')
-              .upsert(recurringSchedules, { 
-                onConflict: 'user_id,scheduled_date',
-                ignoreDuplicates: false
-              });
+            // Insert each recurring schedule individually to avoid upsert constraints issue
+            let insertedId = null;
+            
+            for (const entry of recurringSchedules) {
+              const { data: insertedData, error: insertError } = await supabase
+                .from('workout_schedule')
+                .insert(entry)
+                .select();
+                
+              if (insertError) {
+                console.error(`Error inserting schedule for ${entry.scheduled_date}:`, insertError);
+                continue; // Skip this one but continue with others
+              }
               
-            if (insertError) throw insertError;
+              if (!insertedId && insertedData && insertedData.length > 0) {
+                insertedId = insertedData[0].id;
+              }
+            }
+            
+            return data[0].id || insertedId;
           }
           
           return data[0].id;
         } else {
-          // No existing schedule for the original date, so insert all schedules
-          // Use upsert to handle potential duplicates for any date
-          const { data, error } = await supabase
-            .from('workout_schedule')
-            .upsert(scheduleEntries, { 
-              onConflict: 'user_id,scheduled_date',
-              ignoreDuplicates: false
-            })
-            .select();
-            
-          if (error) throw error;
+          // No existing schedule for the original date, insert each schedule individually
+          let firstInsertedId = null;
           
-          // Return the ID of the first inserted schedule (or original date's schedule)
-          const originalSchedule = data.find(item => item.scheduled_date === schedule.scheduled_date);
-          return originalSchedule ? originalSchedule.id : data[0].id;
+          for (const entry of scheduleEntries) {
+            const { data, error } = await supabase
+              .from('workout_schedule')
+              .insert(entry)
+              .select();
+              
+            if (error) {
+              console.error(`Error inserting schedule for ${entry.scheduled_date}:`, error);
+              continue; // Skip this one but continue with others
+            }
+            
+            if (!firstInsertedId && data && data.length > 0) {
+              firstInsertedId = data[0].id;
+            }
+          }
+          
+          return firstInsertedId;
         }
       }
       

@@ -69,8 +69,12 @@ export default function PlannerPage() {
       const weekStart = format(currentWeekStart, 'yyyy-MM-dd');
       const weekEnd = format(endOfWeek(currentWeekStart, { weekStartsOn: 0 }), 'yyyy-MM-dd');
       
+      console.log(`Fetching workouts from ${weekStart} to ${weekEnd}`);
+      
       try {
         const schedules = await WorkoutService.getWorkoutSchedule(userId, weekStart, weekEnd);
+        
+        console.log(`Found ${schedules.length} scheduled workouts`);
         
         if (schedules && schedules.length > 0) {
           const workoutSessions: WorkoutSession[] = [];
@@ -78,18 +82,32 @@ export default function PlannerPage() {
           // Fetch workout details for each schedule
           for (const schedule of schedules) {
             if (schedule.workout_plan_id) {
-              const workoutPlan = await WorkoutService.getWorkoutPlanById(schedule.workout_plan_id);
-              
-              if (workoutPlan) {
-                workoutSessions.push({
-                  id: schedule.id || '',
-                  date: parseISO(schedule.scheduled_date),
-                  title: workoutPlan.title,
-                  duration: schedule.duration ? parseInt(schedule.duration.toString()) : 45,
-                  notes: schedule.notes,
+              try {
+                const workoutPlan = await WorkoutService.getWorkoutPlanById(schedule.workout_plan_id);
+                
+                if (workoutPlan) {
                   // Map category to workout type or default to "strength"
-                  type: (workoutPlan.category as "strength" | "cardio" | "flexibility" | "recovery") || "strength"
-                });
+                  let workoutType: "strength" | "cardio" | "flexibility" | "recovery" = "strength";
+                  
+                  if (workoutPlan.category === "cardio") {
+                    workoutType = "cardio";
+                  } else if (workoutPlan.category === "recovery") {
+                    workoutType = "recovery";
+                  } else if (workoutPlan.category === "hiit" || workoutPlan.category === "flexibility") {
+                    workoutType = "flexibility";
+                  }
+                  
+                  workoutSessions.push({
+                    id: schedule.id || '',
+                    date: parseISO(schedule.scheduled_date),
+                    title: workoutPlan.title,
+                    duration: schedule.duration ? parseInt(schedule.duration.toString()) : 45,
+                    notes: schedule.notes,
+                    type: workoutType
+                  });
+                }
+              } catch (err) {
+                console.error(`Error fetching workout plan ${schedule.workout_plan_id}:`, err);
               }
             }
           }
@@ -164,8 +182,46 @@ export default function PlannerPage() {
         
         toast({
           title: "Workout scheduled",
-          description: "Your recurring workout has been scheduled for the next 6 months.",
+          description: "Your workout has been scheduled.",
         });
+        
+        // Refresh the weekly schedule
+        const weekStart = format(currentWeekStart, 'yyyy-MM-dd');
+        const weekEnd = format(endOfWeek(currentWeekStart, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+        const refreshedSchedules = await WorkoutService.getWorkoutSchedule(userId, weekStart, weekEnd);
+        
+        if (refreshedSchedules && refreshedSchedules.length > 0) {
+          const refreshedSessions: WorkoutSession[] = [];
+          
+          for (const schedule of refreshedSchedules) {
+            if (schedule.workout_plan_id) {
+              const workoutPlan = await WorkoutService.getWorkoutPlanById(schedule.workout_plan_id);
+              
+              if (workoutPlan) {
+                let workoutType: "strength" | "cardio" | "flexibility" | "recovery" = "strength";
+                
+                if (workoutPlan.category === "cardio") {
+                  workoutType = "cardio";
+                } else if (workoutPlan.category === "recovery") {
+                  workoutType = "recovery";
+                } else if (workoutPlan.category === "hiit" || workoutPlan.category === "flexibility") {
+                  workoutType = "flexibility";
+                }
+                
+                refreshedSessions.push({
+                  id: schedule.id || '',
+                  date: parseISO(schedule.scheduled_date),
+                  title: workoutPlan.title,
+                  duration: schedule.duration ? parseInt(schedule.duration.toString()) : 45,
+                  notes: schedule.notes,
+                  type: workoutType
+                });
+              }
+            }
+          }
+          
+          setSessions(refreshedSessions);
+        }
       } else {
         throw new Error("Failed to schedule workout");
       }
