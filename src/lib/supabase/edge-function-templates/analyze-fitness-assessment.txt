@@ -19,9 +19,13 @@ serve(async (req) => {
 
   try {
     // Get the request body
-    const { user_id, assessment } = await req.json()
+    const requestData = await req.json()
+    const { user_id, assessment } = requestData
+    
+    console.log("Received assessment request:", JSON.stringify({ user_id, assessment }, null, 2))
     
     if (!user_id || !assessment) {
+      console.error("Missing required fields in request:", { user_id, assessment })
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
@@ -31,11 +35,29 @@ serve(async (req) => {
     // Create a Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase environment variables")
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     // Initialize OpenAI
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!openaiApiKey) {
+      console.error("Missing OpenAI API key")
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error: Missing OpenAI API key' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
+    
     const configuration = new Configuration({
-      apiKey: Deno.env.get('OPENAI_API_KEY'),
+      apiKey: openaiApiKey,
     })
     const openai = new OpenAIApi(configuration)
     
@@ -52,8 +74,8 @@ serve(async (req) => {
     - Workout Frequency: ${assessment.workoutFrequency} days per week
     - Diet Type: ${assessment.diet}
     - Available Equipment: ${assessment.equipment}
-    - Sports Played: ${assessment.sportsPlayed ? assessment.sportsPlayed.join(', ') : 'None'}
-    - Allergies: ${assessment.allergies ? assessment.allergies.join(', ') : 'None'}
+    - Sports Played: ${assessment.sportsPlayed ? assessment.sportsPlayed : 'None'}
+    - Allergies: ${assessment.allergies ? assessment.allergies : 'None'}
     
     Please provide:
     1. A weekly workout plan with specific exercises for each day of the week (${assessment.workoutFrequency} workout days, the rest should be rest/recovery days)
@@ -109,50 +131,75 @@ serve(async (req) => {
     }
     
     Ensure the exercises are appropriate for the user's fitness level and available equipment.
-    For nutrition, adjust calorie and macronutrient recommendations based on the user's goals.
+    For nutrition, adjust calorie and macronutrient recommendations based on the user's goals and diet preferences (${assessment.diet}).
     `
     
-    // Call OpenAI API
-    const chatCompletion = await openai.createChatCompletion({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: "You are a certified fitness trainer and nutritionist. Provide personalized workout and nutrition plans based on fitness assessment data." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 3000
-    })
-    
-    // Parse the OpenAI response
-    const responseText = chatCompletion.data.choices[0].message.content
-    let jsonResponse
+    console.log("Calling OpenAI with prompt")
     
     try {
-      // Extract JSON from the response
-      jsonResponse = JSON.parse(responseText)
-    } catch (error) {
-      console.error('Error parsing OpenAI response as JSON:', error)
-      // Try to extract JSON using regex if direct parsing fails
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        try {
-          jsonResponse = JSON.parse(jsonMatch[0])
-        } catch (jsonError) {
-          throw new Error('Could not parse response as JSON')
+      // Call OpenAI API
+      const chatCompletion = await openai.createChatCompletion({
+        model: "gpt-4",  // Make sure this is updated to a current model
+        messages: [
+          { role: "system", content: "You are a certified fitness trainer and nutritionist. Provide personalized workout and nutrition plans based on fitness assessment data." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 3000
+      })
+      
+      console.log("Received response from OpenAI")
+      
+      // Parse the OpenAI response
+      const responseText = chatCompletion.data.choices[0].message.content
+      let jsonResponse
+      
+      try {
+        // Extract JSON from the response
+        jsonResponse = JSON.parse(responseText)
+        console.log("Successfully parsed JSON response")
+      } catch (error) {
+        console.error('Error parsing OpenAI response as JSON:', error)
+        // Try to extract JSON using regex if direct parsing fails
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          try {
+            jsonResponse = JSON.parse(jsonMatch[0])
+            console.log("Successfully parsed JSON from regex match")
+          } catch (jsonError) {
+            console.error('Could not parse response as JSON even with regex:', jsonError)
+            throw new Error('Could not parse response as JSON')
+          }
+        } else {
+          console.error('No JSON found in response')
+          throw new Error('No JSON found in response')
         }
-      } else {
-        throw new Error('No JSON found in response')
       }
+      
+      return new Response(
+        JSON.stringify(jsonResponse),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    } catch (openaiError) {
+      console.error('Error calling OpenAI:', openaiError)
+      
+      // Return a detailed error message
+      return new Response(
+        JSON.stringify({ 
+          error: 'Error generating fitness plan', 
+          details: openaiError.message,
+          stack: openaiError.stack
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
     }
-    
-    return new Response(
-      JSON.stringify(jsonResponse),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    )
   } catch (error) {
-    console.error('Error:', error)
+    console.error('General error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message, 
+        details: 'An unexpected error occurred while processing the fitness assessment'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
