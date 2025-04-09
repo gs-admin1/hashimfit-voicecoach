@@ -64,9 +64,26 @@ export interface AIAnalysisResponse {
 }
 
 export class AssessmentService {
-  static async analyzeAssessment(userId: string, assessmentData: FitnessAssessmentData): Promise<boolean> {
+  static async analyzeAssessment(userId: string, formData: any): Promise<boolean> {
     try {
       console.log("Analyzing assessment for user:", userId);
+      
+      // Transform form data to match the required FitnessAssessmentData structure
+      const assessmentData: FitnessAssessmentData = {
+        age: formData.age,
+        gender: formData.gender,
+        height: formData.height,
+        weight: formData.weight,
+        fitnessGoal: formData.fitnessGoal,
+        workoutFrequency: formData.workoutFrequency,
+        diet: formData.diet,
+        equipment: formData.equipment,
+        sportsPlayed: formData.sportsPlayed || [],
+        allergies: formData.allergies || []
+      };
+      
+      console.log("Formatted assessment data:", assessmentData);
+      
       // Call OpenAI through the analyze-fitness-assessment function
       const analysisResponse = await analyzeFitnessAssessment({
         user_id: userId,

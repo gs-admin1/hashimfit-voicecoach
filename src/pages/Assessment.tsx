@@ -10,9 +10,11 @@ import { toast } from "@/hooks/use-toast";
 export default function Assessment() {
   const navigate = useNavigate();
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleComplete = () => {
     try {
+      setIsProcessing(true);
       console.log("Assessment completed, showing success message");
       setShowSuccess(true);
       
@@ -28,6 +30,8 @@ export default function Assessment() {
         description: "There was an error processing your assessment",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 

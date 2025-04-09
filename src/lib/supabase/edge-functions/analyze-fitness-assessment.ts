@@ -74,10 +74,7 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
       // Fall back to the supabase client invoke method
       console.log("Falling back to supabase.functions.invoke method");
       const { data, error } = await supabase.functions.invoke('analyze-fitness-assessment', {
-        body: req,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: req
       });
 
       if (error) {

@@ -91,6 +91,12 @@ export function AssessmentForm({ onComplete }: AssessmentFormProps) {
     console.log("Submitting assessment data:", data);
     
     try {
+      // Ensure all required fields are present before submission
+      if (!data.age || !data.gender || !data.height || !data.weight || 
+          !data.fitnessGoal || !data.workoutFrequency || !data.diet || !data.equipment) {
+        throw new Error("Please complete all required fields");
+      }
+      
       const success = await AssessmentService.analyzeAssessment(userId, data);
       
       if (success) {
