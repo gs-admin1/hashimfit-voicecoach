@@ -1,25 +1,70 @@
 
-import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import supabase from '@/lib/supabase';
+import { WorkoutPlan, WorkoutExercise } from '../services/WorkoutService';
+import { NutritionPlan, MealPlan } from '../services/NutritionService';
 
-interface FitnessAssessmentRequest {
-  user_id: string;
-  assessment: {
-    age: number;
-    gender: string;
-    height: number;
-    weight: number;
-    fitnessGoal: string;
-    workoutFrequency: number;
-    diet: string;
-    equipment: string;
-    sportsPlayed?: string[];
-    allergies?: string[];
-  };
+// Define interfaces for API request and response
+export interface FitnessAssessmentData {
+  age: number;
+  gender: string;
+  height: number;
+  weight: number;
+  fitnessGoal: string;
+  workoutFrequency: number;
+  diet: string;
+  equipment: string;
+  sportsPlayed?: string[];
+  allergies?: string[];
+  existingConditions?: string[];
+  fitnessLevel?: string;
+  previousExperience?: string;
+}
+
+// Interfaces for the AI analysis response
+interface WorkoutExerciseAnalysis {
+  name: string;
+  sets: number;
+  reps: string;
+  weight: string;
+  rest_time?: number;
+  notes?: string;
+}
+
+interface DailyWorkoutPlan {
+  day: string;
+  title: string;
+  description: string;
+  category: 'strength' | 'cardio' | 'hiit' | 'recovery' | 'sport_specific' | 'custom';
+  exercises: WorkoutExerciseAnalysis[];
+}
+
+interface MealPlanAnalysis {
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  meal_title: string;
+  description?: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+}
+
+interface NutritionPlanAnalysis {
+  daily_calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  diet_type: 'standard' | 'vegetarian' | 'vegan' | 'keto' | 'paleo' | 'gluten_free';
+  meals: MealPlanAnalysis[];
+}
+
+export interface AIAnalysisResponse {
+  workout_plans: DailyWorkoutPlan[];
+  nutrition_plan: NutritionPlanAnalysis;
+  recommendations: string[];
 }
 
 // Mock response for when we're developing locally or if the edge function fails
-const generateMockResponse = () => {
+const generateMockResponse = (): AIAnalysisResponse => {
   return {
     workout_plans: [
       {
@@ -136,7 +181,7 @@ const generateMockResponse = () => {
   };
 };
 
-export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
+export async function analyzeFitnessAssessment(req: { user_id: string; assessment: FitnessAssessmentData }): Promise<AIAnalysisResponse> {
   try {
     console.log("Calling fitness assessment function with data:", {
       userId: req.user_id,
@@ -164,16 +209,18 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
       }
     }
     
-    // Test direct fetch call to the edge function endpoint 
+    // Simple direct fetch to the edge function
     try {
-      console.log("Calling edge function via direct fetch");
       const response = await fetch(`${supabaseUrl}/functions/v1/analyze-fitness-assessment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseAnonKey}`
         },
-        body: JSON.stringify(req)
+        body: JSON.stringify({
+          user_id: req.user_id,
+          assessment: req.assessment
+        })
       });
       
       console.log("Response status:", response.status);
@@ -181,40 +228,21 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Error from edge function:", errorText);
-        throw new Error(`Edge function error (${response.status}): ${errorText}`);
+        throw new Error(`Edge function error (${response.status})`);
       }
       
       const data = await response.json();
-      console.log("Received fitness assessment analysis:", data);
-      return data;
+      console.log("Received fitness assessment analysis");
+      return data as AIAnalysisResponse;
     } catch (fetchError: any) {
       console.error("Error fetching from edge function:", fetchError.message);
-      
-      // Fall back to the supabase client invoke method
-      console.log("Falling back to supabase.functions.invoke method");
-      const { data, error } = await supabase.functions.invoke('analyze-fitness-assessment', {
-        body: req
-      });
-
-      if (error) {
-        console.error("Supabase function error:", error);
-        throw error;
-      }
-      
-      if (!data) {
-        console.error("No response data from fitness assessment function");
-        throw new Error('No response from fitness assessment function');
-      }
-      
-      console.log("Received fitness assessment analysis from invoke method:", data);
-      return data;
+      throw fetchError;
     }
-    
   } catch (error) {
     console.error('Error calling fitness assessment function:', error);
     
     // Generate mock response for testing/development
-    console.log("Generating mock response for testing");
+    console.log("Generating mock response due to error");
     return generateMockResponse();
   }
 }

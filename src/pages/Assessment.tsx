@@ -4,17 +4,19 @@ import { useNavigate } from "react-router-dom";
 import { AssessmentForm } from "@/components/AssessmentForm";
 import { Logo } from "@/components/Logo";
 import { AnimatedCard } from "@/components/ui-components";
-import { Dumbbell, MessageSquare } from "lucide-react";
+import { Dumbbell, MessageSquare, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function Assessment() {
   const navigate = useNavigate();
   const [showSuccess, setShowSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleComplete = () => {
     try {
       setIsProcessing(true);
+      setError(null);
       console.log("Assessment completed, showing success message");
       setShowSuccess(true);
       
@@ -25,6 +27,7 @@ export default function Assessment() {
       }, 2000);
     } catch (error) {
       console.error("Error handling assessment completion:", error);
+      setError("There was an error processing your assessment. Please try again.");
       toast({
         title: "Error",
         description: "There was an error processing your assessment",
@@ -66,6 +69,16 @@ export default function Assessment() {
               Let's get to know you better to create your personalized fitness plan
             </p>
           </div>
+          
+          {error && (
+            <div className="mb-6 bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+              <div className="flex items-center">
+                <AlertCircle className="text-red-500 mr-2" size={18} />
+                <p className="text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            </div>
+          )}
+          
           <AssessmentForm onComplete={handleComplete} isProcessing={isProcessing} />
         </div>
       )}
