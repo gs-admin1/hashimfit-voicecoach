@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,6 +66,7 @@ export function AddWorkoutModal({ isOpen, onClose, onAddWorkout, selectedDay }: 
     }
     
     const workout = {
+      id: `temp-${Date.now()}`, // Add a temporary ID to prevent the "valid workout" error
       title,
       category,
       exercises: exercises.map(ex => ({
@@ -85,7 +86,10 @@ export function AddWorkoutModal({ isOpen, onClose, onAddWorkout, selectedDay }: 
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="mb-4">
-          <DialogTitle>Create Workout for {selectedDay}</DialogTitle>
+          <DialogTitle>Create Workout {selectedDay ? `for ${selectedDay}` : ""}</DialogTitle>
+          <DialogDescription>
+            Fill in the details to create a new workout
+          </DialogDescription>
           <DialogClose className="absolute right-4 top-4">
             <X size={18} />
             <span className="sr-only">Close</span>

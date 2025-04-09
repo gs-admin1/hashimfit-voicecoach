@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useUser, WorkoutFrequency } from "@/context/UserContext";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
@@ -150,7 +149,7 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
         height: formData.height,
         weight: formData.weight,
         fitnessGoal: formData.fitnessGoal,
-        workoutFrequency: formData.workoutFrequency as WorkoutFrequency,
+        workoutFrequency: formData.workoutFrequency,
         diet: formData.diet,
         equipment: formData.equipment,
         sportsPlayed,

@@ -28,6 +28,23 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
       }
     });
     
+    // Ensure there's a valid user ID
+    if (!req.user_id) {
+      throw new Error('User ID is required');
+    }
+    
+    // Make sure the assessment data is complete
+    const requiredFields = [
+      'age', 'gender', 'height', 'weight', 
+      'fitnessGoal', 'workoutFrequency', 'diet', 'equipment'
+    ];
+    
+    for (const field of requiredFields) {
+      if (req.assessment[field as keyof typeof req.assessment] === undefined) {
+        throw new Error(`Missing required field: ${field}`);
+      }
+    }
+    
     const { data, error } = await supabase.functions.invoke<any>('analyze-fitness-assessment', {
       body: req,
     });
