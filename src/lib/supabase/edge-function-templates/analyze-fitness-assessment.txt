@@ -51,7 +51,16 @@ serve(async (req) => {
     if (!openaiApiKey) {
       console.error("Missing OpenAI API key")
       return new Response(
-        JSON.stringify({ error: 'Server configuration error: Missing OpenAI API key' }),
+        JSON.stringify({ 
+          error: 'Server configuration error: Missing OpenAI API key',
+          debug: {
+            environment: {
+              SUPABASE_URL: !!supabaseUrl,
+              SUPABASE_SERVICE_ROLE_KEY: !!supabaseServiceKey,
+              OPENAI_API_KEY: !!openaiApiKey
+            }
+          }
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
@@ -139,7 +148,7 @@ serve(async (req) => {
     try {
       // Call OpenAI API
       const chatCompletion = await openai.createChatCompletion({
-        model: "gpt-4o",  // Make sure this is updated to a current model
+        model: "gpt-4o",  // Using gpt-4o as it's a current model
         messages: [
           { role: "system", content: "You are a certified fitness trainer and nutritionist. Provide personalized workout and nutrition plans based on fitness assessment data." },
           { role: "user", content: prompt }
@@ -156,10 +165,12 @@ serve(async (req) => {
       
       try {
         // Extract JSON from the response
-        jsonResponse = JSON.parse(responseText)
+        jsonResponse = JSON.parse(responseText.trim())
         console.log("Successfully parsed JSON response")
       } catch (error) {
         console.error('Error parsing OpenAI response as JSON:', error)
+        console.log("Response text:", responseText)
+        
         // Try to extract JSON using regex if direct parsing fails
         const jsonMatch = responseText.match(/\{[\s\S]*\}/)
         if (jsonMatch) {

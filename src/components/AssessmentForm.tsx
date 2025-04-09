@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useUser, WorkoutFrequency } from "@/context/UserContext";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
@@ -85,8 +86,19 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
       return;
     }
 
+    if (!userId) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to submit an assessment.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
+      setError(null);
+      
       toast({
         title: "Processing",
         description: "Analyzing your assessment data and creating personalized plans...",
@@ -116,20 +128,26 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
         }
       }
       
+      console.log("Completing assessment for user:", userId);
+      
       // First complete the assessment in the user profile
-      // Ensure we pass the correct types to completeAssessment
       const assessmentComplete = await completeAssessment({
         ...formData,
         workoutFrequency: formData.workoutFrequency as WorkoutFrequency,
-        sportsPlayed: sportsPlayed, // Pass the processed array, not the original union type
-        allergies: allergies // Pass the processed array, not the original union type
+        sportsPlayed: sportsPlayed,
+        allergies: allergies
       });
       
-      if (!assessmentComplete || !userId) {
-        throw new Error("Failed to complete assessment");
+      if (!assessmentComplete) {
+        console.error("Failed to complete user profile assessment");
+        throw new Error("Failed to update user profile");
       }
       
+      console.log("User profile assessment completed, sending to AI analysis");
+      
+      // Then send the data for AI analysis
       console.log("Sending assessment data to AI:", {
+        userId,
         age: formData.age,
         gender: formData.gender,
         height: formData.height,
@@ -142,7 +160,6 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
         allergies
       });
       
-      // Then send the data for AI analysis
       const analysisResult = await AssessmentService.analyzeAssessment(userId, {
         age: formData.age,
         gender: formData.gender,
@@ -155,6 +172,8 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
         sportsPlayed,
         allergies
       });
+      
+      console.log("Analysis result:", analysisResult);
       
       if (!analysisResult) {
         toast({
@@ -171,12 +190,12 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
       
       // Complete the assessment flow regardless
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting assessment:", error);
-      setError("There was an error submitting your assessment. Please try again.");
+      setError(error.message || "There was an error submitting your assessment. Please try again.");
       toast({
         title: "Error",
-        description: "There was an error submitting your assessment. Please try again.",
+        description: error.message || "There was an error submitting your assessment. Please try again.",
         variant: "destructive"
       });
       setIsSubmitting(false);

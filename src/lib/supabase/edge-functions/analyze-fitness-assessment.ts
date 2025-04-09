@@ -45,8 +45,34 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
       }
     }
     
-    // Direct call to the edge function with explicit headers
+    // Test direct fetch call to the edge function endpoint 
     try {
+      console.log("Attempting to call edge function via direct fetch");
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/analyze-fitness-assessment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}`
+        },
+        body: JSON.stringify(req)
+      });
+      
+      console.log("Response status:", response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error from edge function:", errorText);
+        throw new Error(`Edge function error: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log("Received fitness assessment analysis:", data);
+      return data;
+    } catch (fetchError: any) {
+      console.error("Error fetching from edge function:", fetchError.message);
+      
+      // Fall back to the supabase client invoke method
+      console.log("Falling back to supabase.functions.invoke method");
       const { data, error } = await supabase.functions.invoke('analyze-fitness-assessment', {
         body: req,
         headers: {
@@ -64,131 +90,129 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
         throw new Error('No response from fitness assessment function');
       }
       
-      console.log("Received fitness assessment analysis:", data);
+      console.log("Received fitness assessment analysis from invoke method:", data);
       return data;
-    } catch (invokeError: any) {
-      console.error("Error invoking Supabase function:", invokeError);
-      
-      // Create a default response for testing purposes
-      // This is only used when the edge function fails and is for development only
-      console.log("Generating mock response for testing");
-      return {
-        workout_plans: [
-          {
-            day: "Monday",
-            title: "Upper Body Strength",
-            description: "Focus on building upper body strength",
-            category: "strength",
-            exercises: [
-              {
-                name: "Bench Press",
-                sets: 3,
-                reps: "8-10",
-                weight: "60kg",
-                rest_time: 90
-              },
-              {
-                name: "Shoulder Press",
-                sets: 3,
-                reps: "8-10",
-                weight: "40kg",
-                rest_time: 90
-              },
-              {
-                name: "Bicep Curls",
-                sets: 3,
-                reps: "10-12",
-                weight: "15kg",
-                rest_time: 60
-              }
-            ]
-          },
-          {
-            day: "Thursday",
-            title: "Lower Body Power",
-            description: "Focus on building lower body strength and power",
-            category: "strength",
-            exercises: [
-              {
-                name: "Squats",
-                sets: 4,
-                reps: "6-8",
-                weight: "80kg",
-                rest_time: 120
-              },
-              {
-                name: "Leg Press",
-                sets: 3,
-                reps: "8-10",
-                weight: "120kg",
-                rest_time: 90
-              },
-              {
-                name: "Leg Curls",
-                sets: 3,
-                reps: "10-12",
-                weight: "40kg",
-                rest_time: 60
-              }
-            ]
-          }
-        ],
-        nutrition_plan: {
-          daily_calories: 2200,
-          protein_g: 170,
-          carbs_g: 50,
-          fat_g: 160,
-          diet_type: "keto",
-          meals: [
+    }
+    
+  } catch (error) {
+    console.error('Error calling fitness assessment function:', error);
+    
+    // Create a default response for testing purposes
+    // This is only used when the edge function fails and is for development only
+    console.log("Generating mock response for testing");
+    return {
+      workout_plans: [
+        {
+          day: "Monday",
+          title: "Upper Body Strength",
+          description: "Focus on building upper body strength",
+          category: "strength",
+          exercises: [
             {
-              meal_type: "breakfast",
-              meal_title: "Keto Breakfast Bowl",
-              description: "Eggs, avocado, and bacon with cheese",
-              calories: 550,
-              protein_g: 35,
-              carbs_g: 8,
-              fat_g: 45
+              name: "Bench Press",
+              sets: 3,
+              reps: "8-10",
+              weight: "60kg",
+              rest_time: 90
             },
             {
-              meal_type: "lunch",
-              meal_title: "Salmon Salad",
-              description: "Grilled salmon with mixed greens and olive oil dressing",
-              calories: 650,
-              protein_g: 45,
-              carbs_g: 12,
-              fat_g: 48
+              name: "Shoulder Press",
+              sets: 3,
+              reps: "8-10",
+              weight: "40kg",
+              rest_time: 90
             },
             {
-              meal_type: "dinner",
-              meal_title: "Ribeye Steak with Vegetables",
-              description: "Grass-fed ribeye with buttered broccoli and cauliflower",
-              calories: 750,
-              protein_g: 60,
-              carbs_g: 15,
-              fat_g: 52
-            },
-            {
-              meal_type: "snack",
-              meal_title: "Keto Fat Bombs",
-              description: "Coconut oil, almond butter, and cocoa powder treats",
-              calories: 250,
-              protein_g: 8,
-              carbs_g: 5,
-              fat_g: 22
+              name: "Bicep Curls",
+              sets: 3,
+              reps: "10-12",
+              weight: "15kg",
+              rest_time: 60
             }
           ]
         },
-        recommendations: [
-          "Stay hydrated with plenty of water and electrolytes on your keto diet",
-          "Consider adding MCT oil to your morning coffee for an energy boost",
-          "Ensure you're getting enough sodium, potassium, and magnesium to avoid keto flu",
-          "Track your workouts to ensure progressive overload",
-          "Get at least 7 hours of sleep for optimal recovery"
+        {
+          day: "Thursday",
+          title: "Lower Body Power",
+          description: "Focus on building lower body strength and power",
+          category: "strength",
+          exercises: [
+            {
+              name: "Squats",
+              sets: 4,
+              reps: "6-8",
+              weight: "80kg",
+              rest_time: 120
+            },
+            {
+              name: "Leg Press",
+              sets: 3,
+              reps: "8-10",
+              weight: "120kg",
+              rest_time: 90
+            },
+            {
+              name: "Leg Curls",
+              sets: 3,
+              reps: "10-12",
+              weight: "40kg",
+              rest_time: 60
+            }
+          ]
+        }
+      ],
+      nutrition_plan: {
+        daily_calories: 2200,
+        protein_g: 170,
+        carbs_g: 50,
+        fat_g: 160,
+        diet_type: "keto",
+        meals: [
+          {
+            meal_type: "breakfast",
+            meal_title: "Keto Breakfast Bowl",
+            description: "Eggs, avocado, and bacon with cheese",
+            calories: 550,
+            protein_g: 35,
+            carbs_g: 8,
+            fat_g: 45
+          },
+          {
+            meal_type: "lunch",
+            meal_title: "Salmon Salad",
+            description: "Grilled salmon with mixed greens and olive oil dressing",
+            calories: 650,
+            protein_g: 45,
+            carbs_g: 12,
+            fat_g: 48
+          },
+          {
+            meal_type: "dinner",
+            meal_title: "Ribeye Steak with Vegetables",
+            description: "Grass-fed ribeye with buttered broccoli and cauliflower",
+            calories: 750,
+            protein_g: 60,
+            carbs_g: 15,
+            fat_g: 52
+          },
+          {
+            meal_type: "snack",
+            meal_title: "Keto Fat Bombs",
+            description: "Coconut oil, almond butter, and cocoa powder treats",
+            calories: 250,
+            protein_g: 8,
+            carbs_g: 5,
+            fat_g: 22
+          }
         ]
-      };
-    }
-  } catch (error) {
-    console.error('Error calling fitness assessment function:', error);
-    throw error;
+      },
+      recommendations: [
+        "Stay hydrated with plenty of water and electrolytes on your keto diet",
+        "Consider adding MCT oil to your morning coffee for an energy boost",
+        "Ensure you're getting enough sodium, potassium, and magnesium to avoid keto flu",
+        "Track your workouts to ensure progressive overload",
+        "Get at least 7 hours of sleep for optimal recovery"
+      ]
+    };
   }
 }

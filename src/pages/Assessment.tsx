@@ -12,6 +12,8 @@ export default function Assessment() {
 
   const handleComplete = () => {
     setShowSuccess(true);
+    
+    // Add a delay to show the success message before navigating
     setTimeout(() => {
       navigate("/dashboard");
     }, 2000);
