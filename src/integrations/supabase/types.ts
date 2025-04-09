@@ -39,6 +39,69 @@ export type Database = {
         }
         Relationships: []
       }
+      assessment_data: {
+        Row: {
+          age: number
+          allergies: string[] | null
+          created_at: string | null
+          diet: string
+          equipment: string
+          existing_conditions: string[] | null
+          fitness_goal: string
+          fitness_level: string | null
+          gender: string
+          height: number
+          id: string
+          notes: string | null
+          previous_experience: string | null
+          sports_played: string[] | null
+          updated_at: string | null
+          user_id: string
+          weight: number
+          workout_frequency: number
+        }
+        Insert: {
+          age: number
+          allergies?: string[] | null
+          created_at?: string | null
+          diet: string
+          equipment: string
+          existing_conditions?: string[] | null
+          fitness_goal: string
+          fitness_level?: string | null
+          gender: string
+          height: number
+          id?: string
+          notes?: string | null
+          previous_experience?: string | null
+          sports_played?: string[] | null
+          updated_at?: string | null
+          user_id: string
+          weight: number
+          workout_frequency: number
+        }
+        Update: {
+          age?: number
+          allergies?: string[] | null
+          created_at?: string | null
+          diet?: string
+          equipment?: string
+          existing_conditions?: string[] | null
+          fitness_goal?: string
+          fitness_level?: string | null
+          gender?: string
+          height?: number
+          id?: string
+          notes?: string | null
+          previous_experience?: string | null
+          sports_played?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+          weight?: number
+          workout_frequency?: number
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           ai_completion_tokens: number | null

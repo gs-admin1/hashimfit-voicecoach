@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar } from "@/components/ui-components";
 import { ChatFAB } from "@/components/ChatFAB";
@@ -24,6 +24,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { WorkoutService, WorkoutSchedule } from "@/lib/supabase/services/WorkoutService";
+import { format, startOfWeek, endOfWeek, addDays, isSameDay, parseISO } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 
 interface WorkoutSession {
   id: string;
@@ -37,7 +40,9 @@ interface WorkoutSession {
 export default function PlannerPage() {
   const [showLogDialog, setShowLogDialog] = useState(false);
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 0 })); // Sunday start
   const { toast } = useToast();
+  const { userId } = useAuth();
   
   const workoutTypes = [
     { value: "strength", label: "Strength Training" },
@@ -56,24 +61,144 @@ export default function PlannerPage() {
     },
   });
 
-  const onSubmit = (data: any) => {
-    const newSession: WorkoutSession = {
-      id: Date.now().toString(),
-      date: new Date(data.date),
-      title: data.title,
-      duration: data.duration,
-      notes: data.notes,
-      type: data.type,
+  // Load scheduled workouts for the current week
+  useEffect(() => {
+    if (!userId) return;
+    
+    const loadWeeklySchedule = async () => {
+      const weekStart = format(currentWeekStart, 'yyyy-MM-dd');
+      const weekEnd = format(endOfWeek(currentWeekStart, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+      
+      try {
+        const schedules = await WorkoutService.getWorkoutSchedule(userId, weekStart, weekEnd);
+        
+        if (schedules && schedules.length > 0) {
+          const workoutSessions: WorkoutSession[] = [];
+          
+          // Fetch workout details for each schedule
+          for (const schedule of schedules) {
+            if (schedule.workout_plan_id) {
+              const workoutPlan = await WorkoutService.getWorkoutPlanById(schedule.workout_plan_id);
+              
+              if (workoutPlan) {
+                workoutSessions.push({
+                  id: schedule.id || '',
+                  date: parseISO(schedule.scheduled_date),
+                  title: workoutPlan.title,
+                  duration: schedule.duration ? parseInt(schedule.duration.toString()) : 45,
+                  notes: schedule.notes,
+                  // Map category to workout type or default to "strength"
+                  type: (workoutPlan.category as "strength" | "cardio" | "flexibility" | "recovery") || "strength"
+                });
+              }
+            }
+          }
+          
+          setSessions(workoutSessions);
+        } else {
+          setSessions([]);
+        }
+      } catch (error) {
+        console.error("Error loading weekly schedule:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load your workout schedule.",
+          variant: "destructive"
+        });
+      }
     };
     
-    setSessions([...sessions, newSession]);
-    setShowLogDialog(false);
-    form.reset();
+    loadWeeklySchedule();
+  }, [userId, currentWeekStart, toast]);
+
+  const onSubmit = async (data: any) => {
+    if (!userId) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to schedule workouts.",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    toast({
-      title: "Workout session logged",
-      description: "Your workout has been successfully recorded.",
-    });
+    try {
+      // Create a workout plan first
+      const workoutPlan = await WorkoutService.createWorkoutPlan({
+        user_id: userId,
+        title: data.title,
+        description: data.notes,
+        category: data.type,
+        difficulty: 3, // Medium difficulty by default
+      });
+      
+      if (!workoutPlan || !workoutPlan.id) {
+        throw new Error("Failed to create workout plan");
+      }
+      
+      // Now schedule the workout with the newly created plan
+      const schedule: WorkoutSchedule = {
+        user_id: userId,
+        workout_plan_id: workoutPlan.id,
+        scheduled_date: data.date,
+        duration: data.duration,
+        notes: data.notes,
+        is_completed: false
+      };
+      
+      const scheduleId = await WorkoutService.scheduleWorkout(schedule);
+      
+      if (scheduleId) {
+        // Add to local sessions state
+        const newSession: WorkoutSession = {
+          id: scheduleId,
+          date: new Date(data.date),
+          title: data.title,
+          duration: data.duration,
+          notes: data.notes,
+          type: data.type,
+        };
+        
+        setSessions(prev => [...prev, newSession]);
+        setShowLogDialog(false);
+        form.reset();
+        
+        toast({
+          title: "Workout scheduled",
+          description: "Your recurring workout has been scheduled for the next 6 months.",
+        });
+      } else {
+        throw new Error("Failed to schedule workout");
+      }
+    } catch (error) {
+      console.error("Error scheduling workout:", error);
+      toast({
+        title: "Error",
+        description: "Failed to schedule your workout. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    const newWeekStart = direction === 'prev'
+      ? addDays(currentWeekStart, -7)
+      : addDays(currentWeekStart, 7);
+    setCurrentWeekStart(newWeekStart);
+  };
+
+  // Get day names for the current week
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const day = addDays(currentWeekStart, i);
+    return {
+      date: day,
+      name: format(day, 'EEEE'),
+      formattedDate: format(day, 'MMM d')
+    };
+  });
+
+  // Filter sessions for the selected date
+  const getSessionsForDay = (date: Date) => {
+    return sessions.filter(session => isSameDay(session.date, date));
   };
 
   return (
@@ -96,62 +221,59 @@ export default function PlannerPage() {
           <h1 className="text-2xl font-bold mb-6">Workout Planner</h1>
           
           <div className="flex justify-between items-center mb-6">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => navigateWeek('prev')}>
               <ChevronLeft size={16} className="mr-1" />
               Previous
             </Button>
             <div className="font-medium">
               <Calendar size={16} className="inline mr-2" />
-              {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              {format(currentWeekStart, 'MMMM yyyy')}
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => navigateWeek('next')}>
               Next
               <ChevronRight size={16} className="ml-1" />
             </Button>
           </div>
           
-          {sessions.length > 0 ? (
-            <div className="space-y-4">
-              {sessions.map((session) => (
-                <div 
-                  key={session.id} 
-                  className="bg-white dark:bg-gray-800 rounded-lg border p-4 shadow-sm"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium">{session.title}</h3>
-                      <p className="text-sm text-muted-foreground flex items-center mt-1">
-                        <Calendar size={14} className="mr-1" />
-                        {session.date.toLocaleDateString()}
-                        <span className="mx-2">•</span>
-                        <Clock size={14} className="mr-1" />
-                        {session.duration} min
-                      </p>
-                    </div>
-                    <div className="bg-hashim-50 text-hashim-700 text-xs font-medium px-2.5 py-0.5 rounded">
-                      {workoutTypes.find(t => t.value === session.type)?.label}
-                    </div>
+          <div className="space-y-2 mb-6">
+            {weekDays.map(day => (
+              <div key={day.name} className="bg-white dark:bg-gray-800 rounded-lg border p-4 shadow-sm">
+                <div className="font-medium mb-2">{day.name} ({day.formattedDate})</div>
+                
+                {getSessionsForDay(day.date).length > 0 ? (
+                  <div className="space-y-2">
+                    {getSessionsForDay(day.date).map(session => (
+                      <div 
+                        key={session.id} 
+                        className="bg-hashim-50 dark:bg-hashim-900/20 rounded p-3"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-medium">{session.title}</h3>
+                            <p className="text-sm text-muted-foreground flex items-center mt-1">
+                              <Clock size={14} className="mr-1" />
+                              {session.duration} min
+                              <span className="mx-2">•</span>
+                              <span className="bg-hashim-100 text-hashim-700 text-xs font-medium px-2 py-0.5 rounded">
+                                {workoutTypes.find(t => t.value === session.type)?.label}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                        {session.notes && (
+                          <p className="text-sm mt-2 text-muted-foreground">{session.notes}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {session.notes && (
-                    <p className="text-sm mt-3 text-muted-foreground">{session.notes}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 border border-dashed rounded-lg">
-              <p className="text-muted-foreground">
-                No workout sessions logged yet.
-              </p>
-              <Button 
-                className="mt-4 bg-hashim-600 hover:bg-hashim-700 text-white"
-                onClick={() => setShowLogDialog(true)}
-              >
-                <Plus size={16} className="mr-2" />
-                Add Your First Session
-              </Button>
-            </div>
-          )}
+                ) : (
+                  <div className="text-center py-3 text-sm text-muted-foreground border border-dashed rounded">
+                    No workouts scheduled
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </main>
       

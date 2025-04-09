@@ -1,5 +1,6 @@
 
 import supabase from '@/lib/supabase';
+import { addDays, startOfWeek, addMonths, format } from 'date-fns';
 
 export interface WorkoutPlan {
   id?: string;
@@ -281,41 +282,99 @@ export class WorkoutService {
   // Workout Schedule
   static async scheduleWorkout(schedule: WorkoutSchedule): Promise<string | null> {
     try {
-      // Check if a workout is already scheduled for this date and user
-      const { data: existingSchedules, error: checkError } = await supabase
-        .from('workout_schedule')
-        .select('id')
-        .eq('user_id', schedule.user_id)
-        .eq('scheduled_date', schedule.scheduled_date);
-        
-      if (checkError) throw checkError;
+      // Create recurring schedules for 6 months
+      const scheduledDate = new Date(schedule.scheduled_date);
+      const endDate = addMonths(scheduledDate, 6);
       
-      if (existingSchedules && existingSchedules.length > 0) {
-        // Update existing schedule
-        const { data, error } = await supabase
-          .from('workout_schedule')
-          .update({
-            workout_plan_id: schedule.workout_plan_id,
-            is_completed: false,
-            workout_log_id: null,
-            completion_date: null
-          })
-          .eq('id', existingSchedules[0].id)
-          .select();
-          
-        if (error) throw error;
-        return data[0].id;
-      } else {
-        // Create new schedule
-        const { data, error } = await supabase
-          .from('workout_schedule')
-          .insert([schedule])
-          .select()
-          .single();
-          
-        if (error) throw error;
-        return data.id;
+      // Get the first day of the current week (Sunday)
+      const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 0 }); // 0 = Sunday
+      
+      // Start date should be the earlier of scheduledDate or currentWeekStart
+      const startDate = scheduledDate < currentWeekStart ? scheduledDate : currentWeekStart;
+      
+      // Create an array to store all schedule entries
+      const scheduleEntries: WorkoutSchedule[] = [];
+      let currentDate = new Date(startDate);
+      
+      // Loop through dates to create weekly recurring schedules for 6 months
+      while (currentDate <= endDate) {
+        // For each date, if it's the same day of week as the scheduled day
+        if (currentDate.getDay() === scheduledDate.getDay()) {
+          scheduleEntries.push({
+            ...schedule,
+            scheduled_date: format(currentDate, 'yyyy-MM-dd'),
+          });
+        }
+        
+        // Move to next day
+        currentDate = addDays(currentDate, 1);
       }
+      
+      // If we have schedules to insert
+      if (scheduleEntries.length > 0) {
+        // Check for existing schedules first on the original date
+        const { data: existingSchedules, error: checkError } = await supabase
+          .from('workout_schedule')
+          .select('id')
+          .eq('user_id', schedule.user_id)
+          .eq('scheduled_date', schedule.scheduled_date);
+          
+        if (checkError) throw checkError;
+        
+        // If there's an existing schedule for the exact original date
+        if (existingSchedules && existingSchedules.length > 0) {
+          // Update the existing schedule
+          const { data, error } = await supabase
+            .from('workout_schedule')
+            .update({
+              workout_plan_id: schedule.workout_plan_id,
+              is_completed: false,
+              workout_log_id: null,
+              completion_date: null
+            })
+            .eq('id', existingSchedules[0].id)
+            .select();
+            
+          if (error) throw error;
+          
+          // Then insert all the other recurring schedules (skip the first one we just updated)
+          const recurringSchedules = scheduleEntries.filter(
+            entry => entry.scheduled_date !== schedule.scheduled_date
+          );
+          
+          if (recurringSchedules.length > 0) {
+            // Use upsert to handle potential duplicates
+            const { error: insertError } = await supabase
+              .from('workout_schedule')
+              .upsert(recurringSchedules, { 
+                onConflict: 'user_id,scheduled_date',
+                ignoreDuplicates: false
+              });
+              
+            if (insertError) throw insertError;
+          }
+          
+          return data[0].id;
+        } else {
+          // No existing schedule for the original date, so insert all schedules
+          // Use upsert to handle potential duplicates for any date
+          const { data, error } = await supabase
+            .from('workout_schedule')
+            .upsert(scheduleEntries, { 
+              onConflict: 'user_id,scheduled_date',
+              ignoreDuplicates: false
+            })
+            .select();
+            
+          if (error) throw error;
+          
+          // Return the ID of the first inserted schedule (or original date's schedule)
+          const originalSchedule = data.find(item => item.scheduled_date === schedule.scheduled_date);
+          return originalSchedule ? originalSchedule.id : data[0].id;
+        }
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error scheduling workout:', error);
       return null;
