@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useUser, WorkoutFrequency } from "@/context/UserContext";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
@@ -14,10 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -95,16 +93,6 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
         description: "Analyzing your assessment data and creating personalized plans...",
       });
       
-      // First complete the assessment in the user profile
-      const assessmentComplete = await completeAssessment({
-        ...formData,
-        workoutFrequency: formData.workoutFrequency as WorkoutFrequency
-      });
-      
-      if (!assessmentComplete || !userId) {
-        throw new Error("Failed to complete assessment");
-      }
-      
       // Process sportsPlayed field - handle both string and array cases
       let sportsPlayed: string[] = [];
       if (Array.isArray(formData.sportsPlayed)) {
@@ -127,6 +115,19 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
         if (allergiesString !== '') {
           allergies = allergiesString.split(',').map(a => a.trim());
         }
+      }
+      
+      // First complete the assessment in the user profile
+      // Ensure we pass the correct types to completeAssessment
+      const assessmentComplete = await completeAssessment({
+        ...formData,
+        workoutFrequency: formData.workoutFrequency as WorkoutFrequency,
+        sportsPlayed: sportsPlayed, // Pass the processed array, not the original union type
+        allergies: allergies // Pass the processed array, not the original union type
+      });
+      
+      if (!assessmentComplete || !userId) {
+        throw new Error("Failed to complete assessment");
       }
       
       console.log("Sending assessment data to AI:", {
