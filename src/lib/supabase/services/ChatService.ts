@@ -1,4 +1,3 @@
-
 import supabase from '@/lib/supabase';
 
 export interface ChatMessage {
@@ -6,12 +5,9 @@ export interface ChatMessage {
   user_id: string;
   content: string;
   role: 'user' | 'assistant';
-  created_at?: string;
-  referenced_workout_id?: string;
-  referenced_nutrition_id?: string;
-  referenced_metric_id?: string;
-  referenced_assessment_id?: string;
-  ai_response_id?: string;
+  created_at: string;
+  thread_id?: string;
+  run_id?: string;
   ai_prompt_tokens?: number;
   ai_completion_tokens?: number;
 }
@@ -23,54 +19,75 @@ export class ChatService {
         .from('chat_messages')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(limit);
-        
-      if (error) throw error;
+
+      if (error) {
+        console.error('Error fetching chat history:', error);
+        return [];
+      }
+
       return data as ChatMessage[];
     } catch (error) {
-      console.error('Error fetching chat history:', error);
+      console.error('Error in getChatHistory:', error);
       return [];
     }
   }
 
-  static async saveChatMessage(message: ChatMessage): Promise<string | null> {
-    try {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .insert([message])
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data.id;
-    } catch (error) {
-      console.error('Error saving chat message:', error);
-      return null;
-    }
-  }
-
-  // Changed return type to be synchronous
-  static subscribeToNewMessages(userId: string, callback: (message: ChatMessage) => void): () => void {
-    const subscription = supabase
+  static subscribeToNewMessages(userId: string, callback: (newMessage: ChatMessage) => void): () => void {
+    const channel = supabase
       .channel('chat_messages')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `user_id=eq.${userId}`
-        },
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `user_id=eq.${userId}` },
         (payload) => {
+          //console.log('Change received!', payload)
           callback(payload.new as ChatMessage);
         }
       )
       .subscribe();
 
-    // Return unsubscribe function
+    // Return the unsubscribe function
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
+  }
+
+  static async saveChatMessage(message: ChatMessage): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert([message]);
+
+      if (error) {
+        console.error('Error saving chat message:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in saveChatMessage:', error);
+      return false;
+    }
+  }
+
+  static async getUserThread(userId: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('user_assistant_threads')
+        .select('thread_id')
+        .eq('user_id', userId)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching user thread:', error);
+        return null;
+      }
+      
+      return data?.thread_id || null;
+    } catch (error) {
+      console.error('Error in getUserThread:', error);
+      return null;
+    }
   }
 }

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AssessmentForm } from "@/components/AssessmentForm";
 import { Logo } from "@/components/Logo";
 import { AnimatedCard } from "@/components/ui-components";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell, MessageSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export default function Assessment() {
@@ -50,9 +50,13 @@ export default function Assessment() {
             <Dumbbell className="text-green-600" size={24} />
           </div>
           <h2 className="text-2xl font-bold mb-2">Assessment Complete!</h2>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-4">
             Your personalized fitness plan is ready. Redirecting to dashboard...
           </p>
+          <div className="flex items-center text-sm bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg mt-2">
+            <MessageSquare className="text-blue-500 mr-2" size={16} />
+            <p>You can now chat with your AI fitness assistant about your plan!</p>
+          </div>
         </AnimatedCard>
       ) : (
         <div className="w-full max-w-xl animate-slide-in">
