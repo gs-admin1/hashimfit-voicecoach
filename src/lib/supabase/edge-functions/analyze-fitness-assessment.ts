@@ -1,5 +1,5 @@
-
 import supabase from '@/lib/supabase';
+import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 
 interface FitnessAssessmentRequest {
   user_id: string;
@@ -48,11 +48,11 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
     // Test direct fetch call to the edge function endpoint 
     try {
       console.log("Attempting to call edge function via direct fetch");
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/analyze-fitness-assessment`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/analyze-fitness-assessment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`
+          'Authorization': `Bearer ${supabaseAnonKey}`
         },
         body: JSON.stringify(req)
       });

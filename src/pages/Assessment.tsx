@@ -5,18 +5,30 @@ import { AssessmentForm } from "@/components/AssessmentForm";
 import { Logo } from "@/components/Logo";
 import { AnimatedCard } from "@/components/ui-components";
 import { Dumbbell } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 export default function Assessment() {
   const navigate = useNavigate();
   const [showSuccess, setShowSuccess] = useState(false);
 
   const handleComplete = () => {
-    setShowSuccess(true);
-    
-    // Add a delay to show the success message before navigating
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 2000);
+    try {
+      console.log("Assessment completed, showing success message");
+      setShowSuccess(true);
+      
+      // Add a delay to show the success message before navigating
+      setTimeout(() => {
+        console.log("Navigating to dashboard");
+        navigate("/dashboard");
+      }, 2000);
+    } catch (error) {
+      console.error("Error handling assessment completion:", error);
+      toast({
+        title: "Error",
+        description: "There was an error processing your assessment",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
