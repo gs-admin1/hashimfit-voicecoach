@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useUser, WorkoutFrequency } from "@/context/UserContext";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
@@ -106,16 +105,20 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
         throw new Error("Failed to complete assessment");
       }
       
-      // Parse string arrays if needed
-      let sportsPlayed = formData.sportsPlayed;
-      let allergies = formData.allergies;
-      
-      if (typeof sportsPlayed === 'string') {
-        sportsPlayed = sportsPlayed.split(',').map(s => s.trim());
+      // Process sportsPlayed field - handle both string and array cases
+      let sportsPlayed: string[] = [];
+      if (Array.isArray(formData.sportsPlayed)) {
+        sportsPlayed = formData.sportsPlayed;
+      } else if (typeof formData.sportsPlayed === 'string' && formData.sportsPlayed.trim() !== '') {
+        sportsPlayed = formData.sportsPlayed.split(',').map(s => s.trim());
       }
       
-      if (typeof allergies === 'string') {
-        allergies = allergies.split(',').map(a => a.trim());
+      // Process allergies field - handle both string and array cases
+      let allergies: string[] = [];
+      if (Array.isArray(formData.allergies)) {
+        allergies = formData.allergies;
+      } else if (typeof formData.allergies === 'string' && formData.allergies.trim() !== '') {
+        allergies = formData.allergies.split(',').map(a => a.trim());
       }
       
       console.log("Sending assessment data to AI:", {
