@@ -1,5 +1,6 @@
 
 import supabase from '@/lib/supabase';
+import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { WorkoutPlan, WorkoutExercise } from '../services/WorkoutService';
 import { NutritionPlan, MealPlan } from '../services/NutritionService';
 
