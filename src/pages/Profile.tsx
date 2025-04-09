@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { WorkoutFrequency } from "@/context/UserContext";
 
 export default function ProfilePage() {
   const { user, setUser, updateUser } = useUser();
@@ -91,6 +92,19 @@ export default function ProfilePage() {
 
   const onSubmit = async (data) => {
     try {
+      // Convert workout frequency to the proper type (1-7)
+      const frequency = parseInt(data.workoutFrequency, 10) as WorkoutFrequency;
+      
+      // Ensure workout frequency is within valid range
+      if (frequency < 1 || frequency > 7) {
+        toast({
+          title: "Invalid frequency",
+          description: "Workout frequency must be between 1 and 7 days",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const updateData = {
         name: data.name,
         age: parseInt(data.age, 10),
@@ -98,7 +112,7 @@ export default function ProfilePage() {
         height: parseFloat(data.height),
         weight: parseFloat(data.weight),
         fitnessGoal: data.fitnessGoal,
-        workoutFrequency: parseInt(data.workoutFrequency, 10),
+        workoutFrequency: frequency,
         diet: data.diet,
         equipment: data.equipment,
       };

@@ -1,6 +1,6 @@
 
 import supabase from '@/lib/supabase';
-import { UserProfile } from '@/context/UserContext';
+import { UserProfile, WorkoutFrequency } from '@/context/UserContext';
 
 export interface ProfileData {
   id: string;
@@ -82,7 +82,7 @@ export class ProfileService {
       height: profile.height || 175,
       weight: profile.weight || 75,
       fitnessGoal: profile.fitness_goal || 'muscle_gain',
-      workoutFrequency: profile.workout_frequency || 3,
+      workoutFrequency: profile.workout_frequency as WorkoutFrequency || 3,
       diet: profile.diet || 'standard',
       equipment: profile.equipment || 'full_gym',
       targetWeight: profile.target_weight,
@@ -100,7 +100,7 @@ export class ProfileService {
       height: user.height,
       weight: user.weight,
       fitness_goal: user.fitnessGoal,
-      workout_frequency: user.workoutFrequency,
+      workout_frequency: user.workoutFrequency as 1 | 2 | 3 | 4 | 5 | 6 | 7,
       diet: user.diet,
       equipment: user.equipment,
       target_weight: user.targetWeight,
