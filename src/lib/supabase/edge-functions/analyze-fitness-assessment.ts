@@ -45,10 +45,13 @@ export async function analyzeFitnessAssessment(req: FitnessAssessmentRequest) {
       }
     }
     
-    // Add error handling for the function invocation
+    // Direct call to the edge function with explicit headers
     try {
-      const { data, error } = await supabase.functions.invoke<any>('analyze-fitness-assessment', {
+      const { data, error } = await supabase.functions.invoke('analyze-fitness-assessment', {
         body: req,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (error) {

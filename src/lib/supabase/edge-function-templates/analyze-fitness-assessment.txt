@@ -139,14 +139,14 @@ serve(async (req) => {
     try {
       // Call OpenAI API
       const chatCompletion = await openai.createChatCompletion({
-        model: "gpt-4",  // Make sure this is updated to a current model
+        model: "gpt-4o",  // Make sure this is updated to a current model
         messages: [
           { role: "system", content: "You are a certified fitness trainer and nutritionist. Provide personalized workout and nutrition plans based on fitness assessment data." },
           { role: "user", content: prompt }
         ],
         temperature: 0.7,
         max_tokens: 3000
-      })
+      });
       
       console.log("Received response from OpenAI")
       
