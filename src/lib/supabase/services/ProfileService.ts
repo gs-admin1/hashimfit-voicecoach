@@ -42,6 +42,9 @@ export class ProfileService {
 
   static async updateProfile(userId: string, profile: Partial<ProfileData>): Promise<boolean> {
     try {
+      // Add updated_at timestamp
+      profile.updated_at = new Date().toISOString();
+      
       const { error } = await supabase
         .from('profiles')
         .update(profile)
