@@ -45,8 +45,8 @@ const assessmentSchema = z.object({
   targetWeight: z.number().optional(),
   diet: z.enum(["standard", "vegetarian", "vegan", "keto", "paleo", "gluten_free"]),
   equipment: z.enum(["full_gym", "home_gym", "minimal", "bodyweight_only"]),
-  sportsPlayed: z.array(z.string()).optional(),
-  allergies: z.array(z.string()).optional(),
+  sportsPlayed: z.union([z.string(), z.array(z.string())]).optional(),
+  allergies: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
 type AssessmentValues = z.infer<typeof assessmentSchema>;
@@ -109,16 +109,24 @@ export function AssessmentForm({ onComplete }: { onComplete: () => void }) {
       let sportsPlayed: string[] = [];
       if (Array.isArray(formData.sportsPlayed)) {
         sportsPlayed = formData.sportsPlayed;
-      } else if (typeof formData.sportsPlayed === 'string' && formData.sportsPlayed.trim() !== '') {
-        sportsPlayed = formData.sportsPlayed.split(',').map(s => s.trim());
+      } else if (typeof formData.sportsPlayed === 'string') {
+        // Only call trim and split if it's a non-empty string
+        const sportsString = formData.sportsPlayed.trim();
+        if (sportsString !== '') {
+          sportsPlayed = sportsString.split(',').map(s => s.trim());
+        }
       }
       
       // Process allergies field - handle both string and array cases
       let allergies: string[] = [];
       if (Array.isArray(formData.allergies)) {
         allergies = formData.allergies;
-      } else if (typeof formData.allergies === 'string' && formData.allergies.trim() !== '') {
-        allergies = formData.allergies.split(',').map(a => a.trim());
+      } else if (typeof formData.allergies === 'string') {
+        // Only call trim and split if it's a non-empty string
+        const allergiesString = formData.allergies.trim();
+        if (allergiesString !== '') {
+          allergies = allergiesString.split(',').map(a => a.trim());
+        }
       }
       
       console.log("Sending assessment data to AI:", {
