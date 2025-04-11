@@ -127,12 +127,14 @@ export function MealCaptureCard() {
         description: "Uploading your meal photo...",
       });
       
+      console.log("Uploading image to Supabase Storage:", fileName);
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('meal-images')
         .upload(fileName, selectedFile);
         
       if (uploadError) {
+        console.error("Upload error:", uploadError);
         throw new Error(`Failed to upload image: ${uploadError.message}`);
       }
       
@@ -143,6 +145,7 @@ export function MealCaptureCard() {
         .getPublicUrl(fileName);
         
       const imageUrl = urlData.publicUrl;
+      console.log("Image uploaded successfully. URL:", imageUrl);
       
       toast({
         title: "Analyzing photo",
@@ -150,6 +153,12 @@ export function MealCaptureCard() {
       });
       
       // Step 2: Call Supabase Edge Function to process the image
+      console.log("Calling analyze-meal-photo function with data:", {
+        imageUrl,
+        userId,
+        mealType,
+      });
+      
       const { data, error } = await supabase.functions.invoke('analyze-meal-photo', {
         body: {
           imageUrl,
@@ -158,11 +167,15 @@ export function MealCaptureCard() {
         },
       });
       
+      console.log("Function response:", data);
+      
       if (error) {
+        console.error("Function error:", error);
         throw new Error(`Function error: ${error.message}`);
       }
       
       if (!data.success) {
+        console.error("Function returned failure:", data.error);
         throw new Error(data.error || "Failed to analyze meal");
       }
       
