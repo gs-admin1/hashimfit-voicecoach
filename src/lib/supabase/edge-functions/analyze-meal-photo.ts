@@ -104,73 +104,151 @@ serve(async (req) => {
 
     console.log(`Detected food items: ${foodLabels.join(", ")}`);
 
-    // Analyze nutritional content using OpenAI
-    console.log("Analyzing nutritional content with OpenAI...");
+    // Analyze nutritional content using OpenAI Assistant
+    console.log("Analyzing nutritional content with OpenAI Assistant...");
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    const openaiAssistantId = Deno.env.get("ss_openai_assistant_ID");
     
-    const prompt = `
-      Analyze the nutritional content for these foods: ${foodLabels.join(", ")}.
-      
-      For this meal, provide the following information in JSON format:
-      - Total calories
-      - Grams of protein
-      - Grams of carbohydrates
-      - Grams of fat
-      - Detailed list of identified food items with individual nutritional values
-      
-      Format your response as a valid JSON object with the following structure:
-      {
-        "meal_title": "A descriptive title for this meal",
-        "food_items": [
-          { "name": "Food 1", "calories": 100, "protein_g": 10, "carbs_g": 10, "fat_g": 5 },
-          { "name": "Food 2", "calories": 150, "protein_g": 15, "carbs_g": 20, "fat_g": 5 }
-        ],
-        "total": {
-          "calories": 250,
-          "protein_g": 25,
-          "carbs_g": 30,
-          "fat_g": 10
-        }
-      }
-      
-      Provide only the JSON object in your response, no other text.
-    `;
-
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    if (!openaiAssistantId) {
+      throw new Error("Missing OpenAI Assistant ID in environment variables");
+    }
+    
+    // Create a thread with the detected food items
+    const threadResponse = await fetch("https://api.openai.com/v1/threads", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${openaiApiKey}`,
+        "OpenAI-Beta": "assistants=v1"
       },
       body: JSON.stringify({
-        model: "gpt-4o",
         messages: [
-          { 
-            role: "system", 
-            content: "You are a nutritional analysis assistant that provides accurate estimates of calories and macronutrients for foods. Respond only with JSON." 
-          },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.3,
-      }),
+          {
+            role: "user",
+            content: `Analyze the nutritional content for these foods: ${foodLabels.join(", ")}.
+            
+            For this meal, provide the following information in JSON format:
+            - Total calories
+            - Grams of protein
+            - Grams of carbohydrates
+            - Grams of fat
+            - Detailed list of identified food items with individual nutritional values
+            
+            Format your response as a valid JSON object with the following structure:
+            {
+              "meal_title": "A descriptive title for this meal",
+              "food_items": [
+                { "name": "Food 1", "calories": 100, "protein_g": 10, "carbs_g": 10, "fat_g": 5 },
+                { "name": "Food 2", "calories": 150, "protein_g": 15, "carbs_g": 20, "fat_g": 5 }
+              ],
+              "total": {
+                "calories": 250,
+                "protein_g": 25,
+                "carbs_g": 30,
+                "fat_g": 10
+              }
+            }
+            
+            Provide only the JSON object in your response, no other text.`
+          }
+        ]
+      })
     });
-
-    const openaiData = await openaiResponse.json();
     
-    if (!openaiData.choices || openaiData.choices.length === 0) {
-      throw new Error("Failed to analyze nutritional content");
+    if (!threadResponse.ok) {
+      const error = await threadResponse.json();
+      throw new Error(`Failed to create thread: ${error.error?.message || JSON.stringify(error)}`);
     }
-
-    // Parse the JSON response from OpenAI
+    
+    const thread = await threadResponse.json();
+    const threadId = thread.id;
+    
+    // Run the assistant on the thread
+    const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openaiApiKey}`,
+        "OpenAI-Beta": "assistants=v1"
+      },
+      body: JSON.stringify({
+        assistant_id: openaiAssistantId
+      })
+    });
+    
+    if (!runResponse.ok) {
+      const error = await runResponse.json();
+      throw new Error(`Failed to run assistant: ${error.error?.message || JSON.stringify(error)}`);
+    }
+    
+    const run = await runResponse.json();
+    const runId = run.id;
+    
+    // Poll for run completion
+    let runStatus = "queued";
+    let attempts = 0;
+    const maxAttempts = 30; // Maximum polling attempts (30 * 1s = 30s timeout)
+    
+    while (runStatus !== "completed" && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between polls
+      
+      const statusResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
+        headers: {
+          "Authorization": `Bearer ${openaiApiKey}`,
+          "OpenAI-Beta": "assistants=v1"
+        }
+      });
+      
+      if (!statusResponse.ok) {
+        const error = await statusResponse.json();
+        throw new Error(`Failed to get run status: ${error.error?.message || JSON.stringify(error)}`);
+      }
+      
+      const statusData = await statusResponse.json();
+      runStatus = statusData.status;
+      
+      if (runStatus === "failed" || runStatus === "cancelled" || runStatus === "expired") {
+        throw new Error(`Assistant run ${runStatus}: ${statusData.last_error?.message || "Unknown error"}`);
+      }
+      
+      attempts++;
+    }
+    
+    if (runStatus !== "completed") {
+      throw new Error("Assistant run timed out");
+    }
+    
+    // Get the messages from the thread
+    const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      headers: {
+        "Authorization": `Bearer ${openaiApiKey}`,
+        "OpenAI-Beta": "assistants=v1"
+      }
+    });
+    
+    if (!messagesResponse.ok) {
+      const error = await messagesResponse.json();
+      throw new Error(`Failed to get messages: ${error.error?.message || JSON.stringify(error)}`);
+    }
+    
+    const messagesData = await messagesResponse.json();
+    const assistantMessages = messagesData.data.filter(msg => msg.role === "assistant");
+    
+    if (assistantMessages.length === 0) {
+      throw new Error("No response from assistant");
+    }
+    
+    // Parse the JSON response from the assistant
+    const assistantMessage = assistantMessages[0].content[0].text.value;
+    
     let nutritionData;
     try {
-      const contentText = openaiData.choices[0].message.content;
       // Extract JSON if it's wrapped in markdown code blocks
-      const jsonStr = contentText.includes("```json")
-        ? contentText.split("```json")[1].split("```")[0].trim()
-        : contentText.includes("```")
-          ? contentText.split("```")[1].split("```")[0].trim()
-          : contentText;
+      const jsonStr = assistantMessage.includes("```json")
+        ? assistantMessage.split("```json")[1].split("```")[0].trim()
+        : assistantMessage.includes("```")
+          ? assistantMessage.split("```")[1].split("```")[0].trim()
+          : assistantMessage;
       
       nutritionData = JSON.parse(jsonStr);
     } catch (error) {
