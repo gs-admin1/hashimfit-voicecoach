@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService, WorkoutPlan } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { v4 as uuidv4 } from "uuid";
 
 export default function WorkoutsPage() {
   const [filter, setFilter] = useState("all");
@@ -104,6 +105,85 @@ export default function WorkoutsPage() {
     }
   });
 
+  // Mutation for adding an exercise to an existing workout
+  const addExerciseMutation = useMutation({
+    mutationFn: async ({ workoutId, exercise }: { workoutId: string, exercise: any }) => {
+      if (!userId) throw new Error("User not authenticated");
+      
+      console.log("Adding exercise to workout:", workoutId, exercise);
+      
+      // Get current exercises to determine the next order_index
+      const currentExercises = await WorkoutService.getWorkoutExercises(workoutId);
+      const orderIndex = currentExercises.length;
+      
+      // Create the new exercise
+      const newExercise = {
+        workout_plan_id: workoutId,
+        name: exercise.name,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        weight: exercise.weight,
+        order_index: orderIndex
+      };
+      
+      const result = await WorkoutService.createWorkoutExercises([newExercise]);
+      
+      if (!result) {
+        throw new Error('Failed to add exercise');
+      }
+      
+      return { workoutId, exercise: result[0] };
+    },
+    onSuccess: (data) => {
+      console.log("Successfully added exercise:", data);
+      queryClient.invalidateQueries({ queryKey: ['workoutPlans'] });
+      toast({
+        title: "Exercise Added",
+        description: "Your exercise has been added successfully."
+      });
+    },
+    onError: (error) => {
+      console.error('Error adding exercise:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add exercise. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation for removing an exercise
+  const removeExerciseMutation = useMutation({
+    mutationFn: async (exerciseId: string) => {
+      if (!userId) throw new Error("User not authenticated");
+      
+      console.log("Removing exercise:", exerciseId);
+      const result = await WorkoutService.deleteWorkoutExercise(exerciseId);
+      
+      if (!result) {
+        throw new Error('Failed to remove exercise');
+      }
+      
+      return exerciseId;
+    },
+    onSuccess: () => {
+      console.log("Successfully removed exercise");
+      queryClient.invalidateQueries({ queryKey: ['workoutPlans'] });
+      toast({
+        title: "Exercise Removed",
+        description: "Your exercise has been removed successfully."
+      });
+    },
+    onError: (error) => {
+      console.error('Error removing exercise:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove exercise. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const addWorkout = (workout: any) => {
     if (!userId) {
       toast({
@@ -116,6 +196,32 @@ export default function WorkoutsPage() {
     
     addWorkoutMutation.mutate(workout);
     setShowAddWorkout(false);
+  };
+
+  const handleAddExercise = (workoutId: string, exercise: any) => {
+    if (!userId) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to add exercises.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    addExerciseMutation.mutate({ workoutId, exercise });
+  };
+
+  const handleRemoveExercise = (exerciseId: string) => {
+    if (!userId) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to remove exercises.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    removeExerciseMutation.mutate(exerciseId);
   };
 
   const filteredWorkouts = filter === "all" 
@@ -182,7 +288,13 @@ export default function WorkoutsPage() {
             <div className="space-y-4">
               {filteredWorkouts.length > 0 ? (
                 filteredWorkouts.map((workout, index) => (
-                  <WorkoutCard key={workout.id || index} workout={workout} editable={true} />
+                  <WorkoutCard 
+                    key={workout.id || index} 
+                    workout={workout} 
+                    editable={true} 
+                    onAddExercise={handleAddExercise}
+                    onRemoveExercise={handleRemoveExercise}
+                  />
                 ))
               ) : (
                 <AnimatedCard className="text-center py-8">

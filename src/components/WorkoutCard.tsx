@@ -27,7 +27,7 @@ interface WorkoutCardProps {
   };
   editable?: boolean;
   onExerciseComplete?: (exerciseId: string, completed: boolean) => void;
-  onAddExercise?: (exercise: { name: string; sets: number; reps: string; weight: string }) => void;
+  onAddExercise?: (workoutId: string, exercise: { name: string; sets: number; reps: string; weight: string }) => void;
   onRemoveExercise?: (exerciseId: string) => void;
 }
 
@@ -59,8 +59,8 @@ export function WorkoutCard({
     }
     
     // Call parent callback
-    if (onAddExercise) {
-      onAddExercise(newExercise);
+    if (onAddExercise && workout.id) {
+      onAddExercise(workout.id, newExercise);
       // Reset form
       setNewExercise({ name: '', sets: 3, reps: '10', weight: 'bodyweight' });
       setShowAddExercise(false);
