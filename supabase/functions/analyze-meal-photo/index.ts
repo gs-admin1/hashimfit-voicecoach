@@ -110,6 +110,7 @@ serve(async (req) => {
       });
       
       // Make the HTTP request to AWS Rekognition
+      console.log("Sending request to AWS Rekognition API");
       const rekognitionResponse = await fetch("https://rekognition.us-east-1.amazonaws.com/", {
         method: "POST",
         headers: {
@@ -123,6 +124,8 @@ serve(async (req) => {
         body: requestBody
       });
       
+      console.log("AWS Rekognition response status:", rekognitionResponse.status);
+      
       if (rekognitionResponse.ok) {
         const rekognitionData = await rekognitionResponse.json();
         console.log("Rekognition API response:", JSON.stringify(rekognitionData).substring(0, 200) + "...");
@@ -130,19 +133,24 @@ serve(async (req) => {
         // Filter for food-related labels
         const foodCategories = ['Food', 'Meal', 'Fruit', 'Vegetable', 'Meat', 'Drink', 'Beverage', 'Breakfast', 'Lunch', 'Dinner'];
         
-        foodLabels = rekognitionData.Labels
-          .filter(label => {
-            return (label.Categories && Array.isArray(label.Categories) && 
-                  label.Categories.some(cat => foodCategories.includes(cat.Name))) || 
-                  foodCategories.some(cat => label.Name.includes(cat));
-          })
-          .map(label => label.Name);
-        
-        if (foodLabels.length > 0) {
-          rekognitionSuccess = true;
-          console.log(`Detected food items from AWS Rekognition: ${foodLabels.join(", ")}`);
+        if (rekognitionData.Labels && Array.isArray(rekognitionData.Labels)) {
+          foodLabels = rekognitionData.Labels
+            .filter(label => {
+              return (label.Categories && Array.isArray(label.Categories) && 
+                    label.Categories.some(cat => foodCategories.includes(cat.Name))) || 
+                    foodCategories.some(cat => label.Name.includes(cat));
+            })
+            .map(label => label.Name);
+          
+          if (foodLabels.length > 0) {
+            rekognitionSuccess = true;
+            console.log(`Detected food items from AWS Rekognition: ${foodLabels.join(", ")}`);
+          } else {
+            console.log("No food items detected by AWS Rekognition");
+          }
         } else {
-          console.log("No food items detected by AWS Rekognition");
+          console.error("Unexpected Rekognition response format:", JSON.stringify(rekognitionData));
+          throw new Error("Unexpected Rekognition response format");
         }
       } else {
         const errorText = await rekognitionResponse.text();
@@ -184,6 +192,8 @@ serve(async (req) => {
       JSON.stringify({
         success: false,
         error: error.message || "An unknown error occurred",
+        timestamp: new Date().toISOString(),
+        stack: error.stack || "No stack trace available"
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -196,6 +206,7 @@ serve(async (req) => {
 // Function to analyze detected food items with OpenAI
 async function analyzeWithOpenAI(openaiApiKey, foodLabels, mealType) {
   console.log("Analyzing nutritional content with OpenAI...");
+  console.log("Food items for analysis:", foodLabels);
   
   // System instructions for portion size inference
   const systemInstructions = `You are a nutritionist AI assistant. Your job is to analyze lists of common meal items based on typical adult portions and return an estimated nutritional breakdown for each food.
@@ -257,16 +268,25 @@ Estimate realistic portion sizes and provide a nutrition breakdown. Assume a nor
     })
   });
   
+  console.log("OpenAI API response status:", openaiResponse.status);
+  
   if (!openaiResponse.ok) {
-    const error = await openaiResponse.text();
-    console.error("Error from OpenAI API:", error);
-    throw new Error(`OpenAI API error: ${error}`);
+    const errorText = await openaiResponse.text();
+    console.error("Error from OpenAI API:", errorText);
+    throw new Error(`OpenAI API error: ${errorText}`);
   }
   
   const openaiData = await openaiResponse.json();
+  console.log("OpenAI response received, processing...");
+  
+  if (!openaiData.choices || !openaiData.choices[0] || !openaiData.choices[0].message) {
+    console.error("Unexpected OpenAI response format:", JSON.stringify(openaiData));
+    throw new Error("Unexpected OpenAI response format");
+  }
+  
   const assistantMessage = openaiData.choices[0].message.content;
   
-  console.log("OpenAI response:", assistantMessage);
+  console.log("OpenAI response content:", assistantMessage.substring(0, 200) + "...");
   
   let nutritionData;
   try {
@@ -274,11 +294,13 @@ Estimate realistic portion sizes and provide a nutrition breakdown. Assume a nor
     const jsonMatch = assistantMessage.match(/{[\s\S]*}/);
     if (jsonMatch) {
       nutritionData = JSON.parse(jsonMatch[0]);
+      console.log("Successfully parsed nutrition data JSON");
     } else {
+      console.error("Could not extract JSON from response:", assistantMessage);
       throw new Error("Could not extract JSON from response");
     }
   } catch (error) {
-    console.error("Error parsing OpenAI response:", error);
+    console.error("Error parsing OpenAI response:", error.message);
     console.log("Raw response:", assistantMessage);
     throw new Error(`Failed to parse nutritional data: ${error.message}`);
   }
@@ -345,15 +367,24 @@ Return only the JSON in your response. No explanations or extra formatting.`;
     })
   });
   
+  console.log("OpenAI fallback API response status:", openaiResponse.status);
+  
   if (!openaiResponse.ok) {
-    const error = await openaiResponse.text();
-    throw new Error(`OpenAI API error: ${error}`);
+    const errorText = await openaiResponse.text();
+    console.error("Error from OpenAI API (fallback):", errorText);
+    throw new Error(`OpenAI API error: ${errorText}`);
   }
   
   const openaiData = await openaiResponse.json();
-  const assistantMessage = openaiData.choices[0].message.content;
+  console.log("OpenAI fallback response received");
   
-  console.log("OpenAI fallback response:", assistantMessage);
+  if (!openaiData.choices || !openaiData.choices[0] || !openaiData.choices[0].message) {
+    console.error("Unexpected OpenAI fallback response format:", JSON.stringify(openaiData));
+    throw new Error("Unexpected OpenAI fallback response format");
+  }
+  
+  const assistantMessage = openaiData.choices[0].message.content;
+  console.log("OpenAI fallback response content:", assistantMessage.substring(0, 200) + "...");
   
   let nutritionData;
   try {
@@ -361,12 +392,14 @@ Return only the JSON in your response. No explanations or extra formatting.`;
     const jsonMatch = assistantMessage.match(/{[\s\S]*}/);
     if (jsonMatch) {
       nutritionData = JSON.parse(jsonMatch[0]);
+      console.log("Successfully parsed fallback nutrition data JSON");
     } else {
-      throw new Error("Could not extract JSON from response");
+      console.error("Could not extract JSON from fallback response:", assistantMessage);
+      throw new Error("Could not extract JSON from fallback response");
     }
   } catch (error) {
-    console.error("Error parsing OpenAI fallback response:", error);
-    console.log("Raw response:", assistantMessage);
+    console.error("Error parsing OpenAI fallback response:", error.message);
+    console.log("Raw fallback response:", assistantMessage);
     throw new Error(`Failed to parse nutritional data: ${error.message}`);
   }
 
@@ -384,6 +417,7 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
   
   let nutritionLog;
   try {
+    console.log(`Looking for existing nutrition log for user ${userId} on ${today}`);
     const { data, error } = await supabase
       .from('nutrition_logs')
       .select('*')
@@ -391,7 +425,10 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
       .eq('log_date', today)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error retrieving nutrition log:", error);
+      throw error;
+    }
     
     if (!data) {
       // Create new log if it doesn't exist
@@ -402,6 +439,8 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
       const totalProtein = Math.round(nutritionData.total.protein_g);
       const totalCarbs = Math.round(nutritionData.total.carbs_g);
       const totalFat = Math.round(nutritionData.total.fat_g);
+      
+      console.log(`Creating nutrition log with values: calories=${totalCalories}, protein=${totalProtein}g, carbs=${totalCarbs}g, fat=${totalFat}g`);
       
       const { data: newLog, error: createError } = await supabase
         .from('nutrition_logs')
@@ -416,18 +455,25 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error("Error creating nutrition log:", createError);
+        throw createError;
+      }
       
       nutritionLog = newLog;
+      console.log("New nutrition log created with ID:", nutritionLog.id);
     } else {
       // Update existing log with new totals
-      console.log("Updating existing nutrition log");
+      console.log("Updating existing nutrition log:", data.id);
       
       // Ensure values are integers for database columns
       const totalCalories = Math.round(nutritionData.total.calories);
       const totalProtein = Math.round(nutritionData.total.protein_g);
       const totalCarbs = Math.round(nutritionData.total.carbs_g);
       const totalFat = Math.round(nutritionData.total.fat_g);
+      
+      console.log(`Updating nutrition log. Current values: calories=${data.total_calories || 0}, protein=${data.total_protein_g || 0}g, carbs=${data.total_carbs_g || 0}g, fat=${data.total_fat_g || 0}g`);
+      console.log(`Adding: calories=${totalCalories}, protein=${totalProtein}g, carbs=${totalCarbs}g, fat=${totalFat}g`);
       
       const { data: updatedLog, error: updateError } = await supabase
         .from('nutrition_logs')
@@ -441,9 +487,13 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
         .select()
         .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error updating nutrition log:", updateError);
+        throw updateError;
+      }
       
       nutritionLog = updatedLog;
+      console.log("Nutrition log updated successfully");
     }
   } catch (error) {
     console.error("Error managing nutrition log:", error);
@@ -459,6 +509,10 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
     const protein = Math.round(nutritionData.total.protein_g);
     const carbs = Math.round(nutritionData.total.carbs_g);
     const fat = Math.round(nutritionData.total.fat_g);
+    
+    console.log(`Creating meal log with values: calories=${calories}, protein=${protein}g, carbs=${carbs}g, fat=${fat}g`);
+    console.log(`Meal title: ${nutritionData.meal_title}`);
+    console.log(`Food items: ${nutritionData.food_items.map(item => item.name).join(', ')}`);
     
     const { data: mealLog, error: mealError } = await supabase
       .from('meal_logs')
@@ -477,8 +531,12 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
       .select()
       .single();
 
-    if (mealError) throw mealError;
+    if (mealError) {
+      console.error("Error creating meal log:", mealError);
+      throw mealError;
+    }
 
+    console.log("Meal log created successfully with ID:", mealLog.id);
     console.log("Process completed successfully");
     
     return new Response(
