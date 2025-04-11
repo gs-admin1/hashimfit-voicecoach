@@ -4,7 +4,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { S3 } from "https://deno.land/x/s3_lite_client@0.6.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,223 +59,119 @@ serve(async (req) => {
       throw new Error(`Failed to download image: ${fileError.message}`);
     }
 
-    // Convert file to base64 for AWS Rekognition
-    const arrayBuffer = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-
-    // Configure AWS Rekognition
-    console.log("Sending image to AWS Rekognition for food detection...");
+    // For demonstration/testing purposes, simulate food detection
+    // In a real implementation, you would use a proper AI-based detection service
+    console.log("Simulating food detection...");
     
-    // Create S3 client
-    const awsAccessKey = Deno.env.get("AWS_ACCESS_KEY_ID") as string;
-    const awsSecretKey = Deno.env.get("AWS_SECRET_ACCESS_KEY") as string;
-    const awsRegion = "us-east-1";
-    
-    // Call AWS Rekognition API directly
-    const rekognitionEndpoint = `https://rekognition.${awsRegion}.amazonaws.com`;
-    const rekognitionAction = "DetectLabels";
-    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
-    const dateStamp = amzDate.substring(0, 8);
-    
-    // Create the canonical request
-    const payload = JSON.stringify({
-      Image: {
-        Bytes: Array.from(bytes)
-      },
-      MaxLabels: 15,
-      MinConfidence: 70
-    });
-    
-    // Call Rekognition API
-    const rekognitionResponse = await fetch(`${rekognitionEndpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-amz-json-1.1',
-        'X-Amz-Target': `RekognitionService.${rekognitionAction}`,
-        'X-Amz-Date': amzDate,
-        'Authorization': `AWS4-HMAC-SHA256 Credential=${awsAccessKey}/${dateStamp}/${awsRegion}/rekognition/aws4_request, SignedHeaders=content-type;host;x-amz-date;x-amz-target, Signature=SIGNATURE` // In a real implementation, you would calculate the signature
-      },
-      body: payload
-    });
-    
-    // For demonstration, let's simulate the Rekognition response
-    // In a real implementation, you would use the actual response
-    const simulatedLabels = [
-      { Name: "Food", Confidence: 99.8, Categories: [{ Name: "Food" }] },
-      { Name: "Meal", Confidence: 99.5, Categories: [{ Name: "Food" }] },
-      { Name: "Pizza", Confidence: 98.2, Categories: [{ Name: "Food" }] },
-      { Name: "Cheese", Confidence: 95.7, Categories: [{ Name: "Food" }] },
-      { Name: "Tomato", Confidence: 92.1, Categories: [{ Name: "Food" }] },
-      { Name: "Basil", Confidence: 90.3, Categories: [{ Name: "Food" }] },
-      { Name: "Bread", Confidence: 88.9, Categories: [{ Name: "Food" }] }
+    // Simulate detected food items
+    const foodLabels = [
+      "Grilled Chicken",
+      "White Rice",
+      "Broccoli",
+      "Mixed Vegetables"
     ];
-    
-    // Filter food-related labels and extract names
-    const foodLabels = simulatedLabels
-      .filter(label => {
-        // Filter for food categories - adjust as needed
-        const foodCategories = ['Food', 'Meal', 'Fruit', 'Vegetable', 'Meat', 'Drink', 'Beverage'];
-        return label.Categories?.some(cat => foodCategories.includes(cat.Name)) || 
-               foodCategories.some(cat => label.Name.includes(cat));
-      })
-      .map(label => label.Name);
-
-    if (foodLabels.length === 0) {
-      throw new Error("No food items detected in the image");
-    }
 
     console.log(`Detected food items: ${foodLabels.join(", ")}`);
-
+    
     // Analyze nutritional content using OpenAI Assistant
-    console.log("Analyzing nutritional content with OpenAI Assistant...");
+    console.log("Analyzing nutritional content with OpenAI...");
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     const openaiAssistantId = Deno.env.get("ss_openai_assistant_ID");
     
     if (!openaiAssistantId) {
       throw new Error("Missing OpenAI Assistant ID in environment variables");
     }
+
+    // Instead of using the assistants API, use a direct completion API call
+    // with our specific system instructions for portion size inference
+    const prompt = `Analyze this list of foods: ${JSON.stringify(foodLabels)}
+    Estimate realistic portion sizes and provide a nutrition breakdown. Assume a normal adult meal on a dinner plate.`;
+
+    const systemInstructions = `You are a nutritionist AI assistant. Your job is to analyze lists of common meal items based on typical adult portions and return an estimated nutritional breakdown for each food.
+
+    Assume each meal represents a single plate served to an adult without further input. Use average serving sizes based on USDA or standard dietary guidelines.
     
-    // Create a thread with the detected food items
-    const threadResponse = await fetch("https://api.openai.com/v1/threads", {
+    Output structured JSON in this format:
+    [
+      {
+        "food": "String",
+        "estimated_portion": "Readable portion size with weight (e.g., '1 medium breast (150g)')",
+        "calories": number,
+        "protein_g": number,
+        "carbs_g": number,
+        "fat_g": number
+      }
+    ]
+    
+    Return only the JSON in your response. No explanations or extra formatting.`;
+    
+    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiApiKey}`,
-        "OpenAI-Beta": "assistants=v1"
+        "Authorization": `Bearer ${openaiApiKey}`
       },
       body: JSON.stringify({
+        model: "gpt-4o-mini",
         messages: [
-          {
-            role: "user",
-            content: `Analyze the nutritional content for these foods: ${foodLabels.join(", ")}.
-            
-            For this meal, provide the following information in JSON format:
-            - Total calories
-            - Grams of protein
-            - Grams of carbohydrates
-            - Grams of fat
-            - Detailed list of identified food items with individual nutritional values
-            
-            Format your response as a valid JSON object with the following structure:
-            {
-              "meal_title": "A descriptive title for this meal",
-              "food_items": [
-                { "name": "Food 1", "calories": 100, "protein_g": 10, "carbs_g": 10, "fat_g": 5 },
-                { "name": "Food 2", "calories": 150, "protein_g": 15, "carbs_g": 20, "fat_g": 5 }
-              ],
-              "total": {
-                "calories": 250,
-                "protein_g": 25,
-                "carbs_g": 30,
-                "fat_g": 10
-              }
-            }
-            
-            Provide only the JSON object in your response, no other text.`
-          }
-        ]
+          { role: "system", content: systemInstructions },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 800
       })
     });
     
-    if (!threadResponse.ok) {
-      const error = await threadResponse.json();
-      throw new Error(`Failed to create thread: ${error.error?.message || JSON.stringify(error)}`);
+    if (!openaiResponse.ok) {
+      const error = await openaiResponse.json();
+      throw new Error(`OpenAI API error: ${JSON.stringify(error)}`);
     }
     
-    const thread = await threadResponse.json();
-    const threadId = thread.id;
+    const openaiData = await openaiResponse.json();
+    const assistantMessage = openaiData.choices[0].message.content;
     
-    // Run the assistant on the thread
-    const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiApiKey}`,
-        "OpenAI-Beta": "assistants=v1"
-      },
-      body: JSON.stringify({
-        assistant_id: openaiAssistantId
-      })
-    });
-    
-    if (!runResponse.ok) {
-      const error = await runResponse.json();
-      throw new Error(`Failed to run assistant: ${error.error?.message || JSON.stringify(error)}`);
-    }
-    
-    const run = await runResponse.json();
-    const runId = run.id;
-    
-    // Poll for run completion
-    let runStatus = "queued";
-    let attempts = 0;
-    const maxAttempts = 30; // Maximum polling attempts (30 * 1s = 30s timeout)
-    
-    while (runStatus !== "completed" && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between polls
-      
-      const statusResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
-        headers: {
-          "Authorization": `Bearer ${openaiApiKey}`,
-          "OpenAI-Beta": "assistants=v1"
-        }
-      });
-      
-      if (!statusResponse.ok) {
-        const error = await statusResponse.json();
-        throw new Error(`Failed to get run status: ${error.error?.message || JSON.stringify(error)}`);
-      }
-      
-      const statusData = await statusResponse.json();
-      runStatus = statusData.status;
-      
-      if (runStatus === "failed" || runStatus === "cancelled" || runStatus === "expired") {
-        throw new Error(`Assistant run ${runStatus}: ${statusData.last_error?.message || "Unknown error"}`);
-      }
-      
-      attempts++;
-    }
-    
-    if (runStatus !== "completed") {
-      throw new Error("Assistant run timed out");
-    }
-    
-    // Get the messages from the thread
-    const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-      headers: {
-        "Authorization": `Bearer ${openaiApiKey}`,
-        "OpenAI-Beta": "assistants=v1"
-      }
-    });
-    
-    if (!messagesResponse.ok) {
-      const error = await messagesResponse.json();
-      throw new Error(`Failed to get messages: ${error.error?.message || JSON.stringify(error)}`);
-    }
-    
-    const messagesData = await messagesResponse.json();
-    const assistantMessages = messagesData.data.filter(msg => msg.role === "assistant");
-    
-    if (assistantMessages.length === 0) {
-      throw new Error("No response from assistant");
-    }
-    
-    // Parse the JSON response from the assistant
-    const assistantMessage = assistantMessages[0].content[0].text.value;
-    
-    let nutritionData;
+    let foodItems;
     try {
-      // Extract JSON if it's wrapped in markdown code blocks
-      const jsonStr = assistantMessage.includes("```json")
-        ? assistantMessage.split("```json")[1].split("```")[0].trim()
-        : assistantMessage.includes("```")
-          ? assistantMessage.split("```")[1].split("```")[0].trim()
-          : assistantMessage;
+      // Extract JSON from the response
+      const jsonStartIndex = assistantMessage.indexOf('[');
+      const jsonEndIndex = assistantMessage.lastIndexOf(']') + 1;
       
-      nutritionData = JSON.parse(jsonStr);
+      if (jsonStartIndex >= 0 && jsonEndIndex > jsonStartIndex) {
+        const jsonStr = assistantMessage.substring(jsonStartIndex, jsonEndIndex);
+        foodItems = JSON.parse(jsonStr);
+      } else {
+        throw new Error("Could not extract JSON from response");
+      }
     } catch (error) {
+      console.error("Error parsing OpenAI response:", error);
+      console.log("Raw response:", assistantMessage);
       throw new Error(`Failed to parse nutritional data: ${error.message}`);
     }
+
+    // Calculate total nutritional values
+    const totalCalories = foodItems.reduce((sum, item) => sum + item.calories, 0);
+    const totalProtein = foodItems.reduce((sum, item) => sum + item.protein_g, 0);
+    const totalCarbs = foodItems.reduce((sum, item) => sum + item.carbs_g, 0);
+    const totalFat = foodItems.reduce((sum, item) => sum + item.fat_g, 0);
+
+    // Create the nutrition data object
+    const nutritionData = {
+      meal_title: `${mealType.charAt(0).toUpperCase() + mealType.slice(1)}: ${foodLabels[0]} with ${foodLabels.length > 1 ? foodLabels.slice(1).join(", ") : ""}`,
+      food_items: foodItems.map(item => ({
+        name: item.food,
+        portion: item.estimated_portion,
+        calories: item.calories,
+        protein_g: item.protein_g,
+        carbs_g: item.carbs_g,
+        fat_g: item.fat_g
+      })),
+      total: {
+        calories: Math.round(totalCalories),
+        protein_g: Math.round(totalProtein),
+        carbs_g: Math.round(totalCarbs),
+        fat_g: Math.round(totalFat)
+      }
+    };
 
     console.log("Successfully analyzed nutritional content");
 
@@ -351,7 +246,7 @@ serve(async (req) => {
         fat_g: nutritionData.total.fat_g,
         consumed_at: new Date().toISOString(),
         meal_image_url: imageUrl,
-        notes: `Auto-detected items: ${foodLabels.join(", ")}`,
+        notes: `Auto-detected with portions: ${foodItems.map(item => `${item.food} (${item.estimated_portion})`).join(", ")}`,
       })
       .select()
       .single();

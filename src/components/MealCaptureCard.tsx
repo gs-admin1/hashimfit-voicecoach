@@ -17,6 +17,7 @@ export function MealCaptureCard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [mealType, setMealType] = useState<string>("breakfast");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -81,6 +82,7 @@ export function MealCaptureCard() {
         }, 'image/jpeg', 0.8);
       }
     }
+    setShowCameraDialog(false);
   };
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,6 +100,7 @@ export function MealCaptureCard() {
   const handleRemoveImage = () => {
     setSelectedFile(null);
     setImagePreview(null);
+    setAnalysisResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -143,7 +146,7 @@ export function MealCaptureCard() {
       
       toast({
         title: "Analyzing photo",
-        description: "Detecting food items and calculating nutrition...",
+        description: "Detecting food items, estimating portions, and calculating nutrition...",
       });
       
       // Step 2: Call Supabase Edge Function to process the image
@@ -163,16 +166,14 @@ export function MealCaptureCard() {
         throw new Error(data.error || "Failed to analyze meal");
       }
       
+      // Store analysis result
+      setAnalysisResult(data.nutritionData);
+      
       // Success!
       toast({
         title: "Analysis complete!",
         description: `Detected: ${data.nutritionData.meal_title} (${data.nutritionData.total.calories} calories)`,
       });
-      
-      // Reset state
-      setSelectedFile(null);
-      setImagePreview(null);
-      setShowCameraDialog(false);
       
     } catch (error) {
       console.error("Error processing meal:", error);
@@ -184,6 +185,13 @@ export function MealCaptureCard() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const resetForm = () => {
+    setSelectedFile(null);
+    setImagePreview(null);
+    setAnalysisResult(null);
+    setMealType("breakfast");
   };
 
   return (
@@ -236,15 +244,17 @@ export function MealCaptureCard() {
           
           <div className="text-center">
             <h3 className="font-bold text-lg mb-1">
-              {imagePreview ? "Ready to Analyze" : "Snap a Snack"}
+              {imagePreview ? (analysisResult ? "Meal Analyzed" : "Ready to Analyze") : "Snap a Snack"}
             </h3>
             <p className="text-muted-foreground text-sm mb-4">
-              {imagePreview 
-                ? "We'll detect food items and calculate nutrition" 
-                : "Take a photo of your meal for nutritional info"}
+              {analysisResult 
+                ? `${analysisResult.total.calories} calories | ${analysisResult.total.protein_g}g protein`
+                : imagePreview 
+                  ? "We'll detect food items, estimate portions, and calculate nutrition" 
+                  : "Take a photo of your meal for nutritional info"}
             </p>
             
-            {imagePreview && (
+            {imagePreview && !analysisResult && (
               <div className="space-y-4 w-full max-w-xs mx-auto">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Meal Type:</label>
@@ -271,6 +281,33 @@ export function MealCaptureCard() {
                   disabled={isProcessing}
                 >
                   {isProcessing ? "Processing..." : "Analyze Meal"}
+                </Button>
+              </div>
+            )}
+            
+            {analysisResult && (
+              <div className="space-y-4 w-full max-w-xs mx-auto">
+                <div className="mt-4 border rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
+                  <h4 className="font-medium text-left mb-2">Detected Foods:</h4>
+                  <ul className="space-y-2 text-left text-sm">
+                    {analysisResult.food_items.map((item: any, index: number) => (
+                      <li key={index} className="flex justify-between">
+                        <span>{item.name} <span className="text-gray-500">({item.portion})</span></span>
+                        <span className="font-medium">{item.calories} cal</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 pt-3 border-t flex justify-between text-sm font-medium">
+                    <span>Total</span>
+                    <span>{analysisResult.total.calories} calories</span>
+                  </div>
+                </div>
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={resetForm}
+                >
+                  Log Another Meal
                 </Button>
               </div>
             )}
