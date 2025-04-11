@@ -2,7 +2,6 @@
 # A string used to distinguish different Supabase projects on the same host. Defaults to the working
 # directory name when running `supabase init`.
 project_id = "haxiwqgajhanpapvicbm"
-organization_id = "1"
 
 [api]
 # Port to use for the API URL.
@@ -12,7 +11,8 @@ port = 54321
 schemas = ["public", "storage", "graphql_public"]
 # Extra schemas to add to the search_path of every request. public is always included.
 extra_search_path = ["public", "extensions"]
-# Maximum rows returns in a single response
+# Maximum rows to return from a view, table, or stored procedure. Limits payload size for accidental
+# or malicious requests.
 max_rows = 1000
 
 [db]
@@ -23,36 +23,34 @@ port = 54322
 major_version = 15
 
 [studio]
-enabled = true
 # Port to use for Supabase Studio.
 port = 54323
-# External URL of the API server that frontend connects to.
-api_url = "http://127.0.0.1"
 
 # Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
 # are monitored, and you can view the emails that would have been sent from the web interface.
 [inbucket]
-enabled = true
 # Port to use for the email testing server web interface.
 port = 54324
-# Uncomment to expose additional ports for testing user applications that send emails.
-# smtp_port = 54325
-# pop3_port = 54326
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+# The maximum file size allowed (e.g. "5MB", "500KB").
+file_size_limit = "50MiB"
 
 [auth]
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
-# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
+additional_redirect_urls = ["https://localhost:3000"]
+# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (1
+# week).
 jwt_expiry = 3600
-# If disabled, the refresh token will never expire.
-enable_refresh_token_rotation = true
-# Allows refresh tokens to be reused after expiry, up to the specified interval in seconds.
-refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
 enable_signup = true
+# If disabled, the user will not be able to determine the existence of a jwt. If not provided, this flag will be determined by checking if a signing key is available.
+enable_nopass = true
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
@@ -80,10 +78,12 @@ url = ""
 enabled = false
 port = 54327
 vector_port = 54328
-# Setup BigQuery for analytics.
-# big_query_project = ""
-# big_query_dataset = ""
-# big_query_table = ""
+# Setup BigQuery for analytics
+gcp_project_id = ""
+gcp_project_number = ""
+gcp_jwt_path = ""
 
+# Enables one-click functions and deno tasks
+[functions]
 [functions.analyze-meal-photo]
 verify_jwt = true
