@@ -21,7 +21,7 @@ export function MealCaptureCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { userId } = useAuth();
+  const { isAuthenticated, userId } = useAuth();
   
   const openCamera = async () => {
     setShowCameraDialog(true);

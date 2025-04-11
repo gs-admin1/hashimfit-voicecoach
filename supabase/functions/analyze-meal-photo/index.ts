@@ -71,6 +71,7 @@ serve(async (req) => {
 
     // Convert file to binary for AWS Rekognition
     const arrayBuffer = await fileData.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
     
     // Call AWS Rekognition for food detection
     console.log("Calling AWS Rekognition for food detection...");
@@ -84,63 +85,55 @@ serve(async (req) => {
     
     console.log("AWS credentials are configured");
     
-    // Current date for AWS signature
-    const date = new Date();
-    const amzdate = date.toISOString().replace(/[:\-]|\.\d{3}/g, '');
-    const datestamp = amzdate.substring(0, 8);
+    // Direct AWS Rekognition API call
+    const rekognitionEndpoint = "https://rekognition.us-east-1.amazonaws.com";
     
-    // AWS Rekognition request
-    const service = 'rekognition';
-    const region = 'us-east-1';
-    const host = `${service}.${region}.amazonaws.com`;
-    const endpoint = `https://${host}`;
-    const contentType = 'application/x-amz-json-1.1';
-    
-    // Request body containing the image bytes
-    const requestBody = JSON.stringify({
-      Image: {
-        Bytes: Array.from(new Uint8Array(arrayBuffer))
-      },
-      MaxLabels: 15,
-      MinConfidence: 70
-    });
-    
-    // Simple request to Rekognition API
-    // Note: In production, a proper AWS signature should be used
-    console.log("Sending request to AWS Rekognition...");
     try {
-      const rekognitionResponse = await fetch(endpoint, {
-        method: 'POST',
+      console.log("Sending request to AWS Rekognition...");
+      
+      const rekognitionResponse = await fetch(rekognitionEndpoint, {
+        method: "POST",
         headers: {
-          'Content-Type': contentType,
-          'X-Amz-Target': 'RekognitionService.DetectLabels',
-          'Host': host,
-          'X-Amz-Date': amzdate,
-          'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD',
-          'Authorization': `AWS4-HMAC-SHA256 Credential=${awsAccessKey}/${datestamp}/${region}/${service}/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date;x-amz-target, Signature=signature`
+          "Content-Type": "application/x-amz-json-1.1",
+          "X-Amz-Target": "RekognitionService.DetectLabels",
+          "Host": "rekognition.us-east-1.amazonaws.com",
+          "X-Amz-Content-Sha256": "UNSIGNED-PAYLOAD",
+          "X-Amz-Date": new Date().toISOString().replace(/[:\-]|\.\d{3}/g, ''),
+          "Authorization": `AWS4-HMAC-SHA256 Credential=${awsAccessKey}/${new Date().toISOString().slice(0, 10).replace(/-/g, '')}/us-east-1/rekognition/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date;x-amz-target, Signature=signature`
         },
-        body: requestBody
+        body: JSON.stringify({
+          Image: {
+            Bytes: Array.from(bytes)
+          },
+          MaxLabels: 15,
+          MinConfidence: 70
+        })
       });
       
-      const rekognitionResult = await rekognitionResponse.text();
-      console.log("Rekognition API response status:", rekognitionResponse.status);
-      console.log("Rekognition API response:", rekognitionResult.substring(0, 200) + "...");
-      
       if (!rekognitionResponse.ok) {
-        console.error("Error from Rekognition API:", rekognitionResult);
+        const errorText = await rekognitionResponse.text();
+        console.error("Error from AWS Rekognition:", errorText);
         console.log("Falling back to OpenAI for food detection and analysis...");
-        
-        // Fallback to OpenAI for both detection and analysis
         return await handleOpenAIFallback(supabase, imageUrl, userId, mealType);
       }
       
-      const rekognitionData = JSON.parse(rekognitionResult);
+      const rekognitionData = await rekognitionResponse.json();
+      console.log("Rekognition API response:", JSON.stringify(rekognitionData).substring(0, 200) + "...");
       
       // Filter for food-related labels
       const foodCategories = ['Food', 'Meal', 'Fruit', 'Vegetable', 'Meat', 'Drink', 'Beverage', 'Breakfast', 'Lunch', 'Dinner'];
+      
+      // Check if Labels exists and is an array
+      if (!rekognitionData.Labels || !Array.isArray(rekognitionData.Labels)) {
+        console.error("Invalid response from Rekognition:", rekognitionData);
+        console.log("Falling back to OpenAI for food detection and analysis...");
+        return await handleOpenAIFallback(supabase, imageUrl, userId, mealType);
+      }
+      
       const foodLabels = rekognitionData.Labels
         .filter(label => {
-          return label.Categories?.some(cat => foodCategories.includes(cat.Name)) || 
+          return (label.Categories && Array.isArray(label.Categories) && 
+                 label.Categories.some(cat => foodCategories.includes(cat.Name))) || 
                  foodCategories.some(cat => label.Name.includes(cat));
         })
         .map(label => label.Name);
@@ -232,16 +225,13 @@ Estimate realistic portion sizes and provide a nutrition breakdown. Assume a nor
       })
     });
     
-    const openaiResult = await openaiResponse.text();
-    console.log("OpenAI API response status:", openaiResponse.status);
-    console.log("OpenAI API response:", openaiResult.substring(0, 200) + "...");
-    
     if (!openaiResponse.ok) {
-      console.error("Error from OpenAI API:", openaiResult);
-      throw new Error(`OpenAI API error: ${openaiResult}`);
+      const error = await openaiResponse.text();
+      console.error("Error from OpenAI API:", error);
+      throw new Error(`OpenAI API error: ${error}`);
     }
     
-    const openaiData = JSON.parse(openaiResult);
+    const openaiData = await openaiResponse.json();
     const assistantMessage = openaiData.choices[0].message.content;
     
     console.log("OpenAI response:", assistantMessage);
@@ -262,10 +252,10 @@ Estimate realistic portion sizes and provide a nutrition breakdown. Assume a nor
     }
 
     // Calculate total nutritional values
-    const totalCalories = foodItems.reduce((sum, item) => sum + item.calories, 0);
-    const totalProtein = foodItems.reduce((sum, item) => sum + item.protein_g, 0);
-    const totalCarbs = foodItems.reduce((sum, item) => sum + item.carbs_g, 0);
-    const totalFat = foodItems.reduce((sum, item) => sum + item.fat_g, 0);
+    const totalCalories = Math.round(foodItems.reduce((sum, item) => sum + item.calories, 0));
+    const totalProtein = Math.round(foodItems.reduce((sum, item) => sum + item.protein_g, 0));
+    const totalCarbs = Math.round(foodItems.reduce((sum, item) => sum + item.carbs_g, 0));
+    const totalFat = Math.round(foodItems.reduce((sum, item) => sum + item.fat_g, 0));
 
     // Create the nutrition data object
     const nutritionData = {
@@ -279,10 +269,10 @@ Estimate realistic portion sizes and provide a nutrition breakdown. Assume a nor
         fat_g: item.fat_g
       })),
       total: {
-        calories: Math.round(totalCalories),
-        protein_g: Math.round(totalProtein),
-        carbs_g: Math.round(totalCarbs),
-        fat_g: Math.round(totalFat)
+        calories: totalCalories,
+        protein_g: totalProtein,
+        carbs_g: totalCarbs,
+        fat_g: totalFat
       }
     };
 
@@ -361,8 +351,8 @@ async function handleOpenAIFallback(supabase, imageUrl, userId, mealType) {
     });
     
     if (!openaiResponse.ok) {
-      const error = await openaiResponse.json();
-      throw new Error(`OpenAI API error: ${JSON.stringify(error)}`);
+      const error = await openaiResponse.text();
+      throw new Error(`OpenAI API error: ${error}`);
     }
     
     const openaiData = await openaiResponse.json();
@@ -416,15 +406,22 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
     if (!data) {
       // Create new log if it doesn't exist
       console.log("Creating new nutrition log for today");
+      
+      // Ensure values are integers for database columns
+      const totalCalories = Math.round(nutritionData.total.calories);
+      const totalProtein = Math.round(nutritionData.total.protein_g);
+      const totalCarbs = Math.round(nutritionData.total.carbs_g);
+      const totalFat = Math.round(nutritionData.total.fat_g);
+      
       const { data: newLog, error: createError } = await supabase
         .from('nutrition_logs')
         .insert({
           user_id: userId,
           log_date: today,
-          total_calories: nutritionData.total.calories,
-          total_protein_g: nutritionData.total.protein_g,
-          total_carbs_g: nutritionData.total.carbs_g,
-          total_fat_g: nutritionData.total.fat_g,
+          total_calories: totalCalories,
+          total_protein_g: totalProtein,
+          total_carbs_g: totalCarbs,
+          total_fat_g: totalFat,
         })
         .select()
         .single();
@@ -435,13 +432,20 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
     } else {
       // Update existing log with new totals
       console.log("Updating existing nutrition log");
+      
+      // Ensure values are integers for database columns
+      const totalCalories = Math.round(nutritionData.total.calories);
+      const totalProtein = Math.round(nutritionData.total.protein_g);
+      const totalCarbs = Math.round(nutritionData.total.carbs_g);
+      const totalFat = Math.round(nutritionData.total.fat_g);
+      
       const { data: updatedLog, error: updateError } = await supabase
         .from('nutrition_logs')
         .update({
-          total_calories: (data.total_calories || 0) + nutritionData.total.calories,
-          total_protein_g: (data.total_protein_g || 0) + nutritionData.total.protein_g,
-          total_carbs_g: (data.total_carbs_g || 0) + nutritionData.total.carbs_g,
-          total_fat_g: (data.total_fat_g || 0) + nutritionData.total.fat_g,
+          total_calories: (data.total_calories || 0) + totalCalories,
+          total_protein_g: (data.total_protein_g || 0) + totalProtein,
+          total_carbs_g: (data.total_carbs_g || 0) + totalCarbs,
+          total_fat_g: (data.total_fat_g || 0) + totalFat,
         })
         .eq('id', data.id)
         .select()
@@ -459,16 +463,23 @@ async function storeMealData(supabase, nutritionData, imageUrl, userId, mealType
   // Create meal log entry
   try {
     console.log("Creating meal log entry");
+    
+    // Ensure values are integers for database columns
+    const calories = Math.round(nutritionData.total.calories);
+    const protein = Math.round(nutritionData.total.protein_g);
+    const carbs = Math.round(nutritionData.total.carbs_g);
+    const fat = Math.round(nutritionData.total.fat_g);
+    
     const { data: mealLog, error: mealError } = await supabase
       .from('meal_logs')
       .insert({
         nutrition_log_id: nutritionLog.id,
         meal_type: mealType,
         meal_title: nutritionData.meal_title,
-        calories: nutritionData.total.calories,
-        protein_g: nutritionData.total.protein_g,
-        carbs_g: nutritionData.total.carbs_g,
-        fat_g: nutritionData.total.fat_g,
+        calories: calories,
+        protein_g: protein,
+        carbs_g: carbs,
+        fat_g: fat,
         consumed_at: new Date().toISOString(),
         meal_image_url: imageUrl,
         notes: `Auto-detected with portions: ${nutritionData.food_items.map(item => `${item.name} (${item.portion})`).join(", ")}`,
