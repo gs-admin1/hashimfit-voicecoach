@@ -1,4 +1,3 @@
-
 import supabase from '@/lib/supabase';
 import { addDays, startOfWeek, addMonths, format } from 'date-fns';
 
@@ -514,6 +513,76 @@ export class WorkoutService {
         logs: [],
         scheduledWorkouts: []
       };
+    }
+  }
+
+  // Add new methods for handling exercise unchecking
+
+  static async deleteWorkoutLog(logId: string): Promise<boolean> {
+    try {
+      // First delete all related exercise logs to maintain referential integrity
+      await this.deleteExerciseLogs(logId);
+      
+      // Then delete the workout log
+      const { error } = await supabase
+        .from('workout_logs')
+        .delete()
+        .eq('id', logId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting workout log:', error);
+      return false;
+    }
+  }
+
+  static async deleteExerciseLogs(workoutLogId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('exercise_logs')
+        .delete()
+        .eq('workout_log_id', workoutLogId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting exercise logs:', error);
+      return false;
+    }
+  }
+
+  static async addExerciseLogs(workoutLogId: string, exercises: Omit<ExerciseLog, 'workout_log_id'>[]): Promise<boolean> {
+    try {
+      const exerciseLogs = exercises.map(ex => ({
+        workout_log_id: workoutLogId,
+        ...ex
+      }));
+      
+      const { error } = await supabase
+        .from('exercise_logs')
+        .insert(exerciseLogs);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error adding exercise logs:', error);
+      return false;
+    }
+  }
+
+  static async updateScheduledWorkout(scheduleId: string, updates: Partial<WorkoutSchedule>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('workout_schedule')
+        .update(updates)
+        .eq('id', scheduleId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error updating scheduled workout:', error);
+      return false;
     }
   }
 }

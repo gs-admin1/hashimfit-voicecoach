@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -160,7 +159,7 @@ export function Dashboard() {
     }
   });
 
-  // Mutation to complete exercise
+  // Mutation to complete or uncomplete exercise
   const completeExerciseMutation = useMutation({
     mutationFn: async ({
       scheduleId,
@@ -183,17 +182,49 @@ export function Dashboard() {
       
       console.log(`Updating exercise completion for ${exerciseName} to ${completed}`);
       
-      // If we already have a workout log and the exercise is already marked as completed, 
-      // we might need to update it instead of creating a new one
-      if (schedule.workout_log_id && !completed) {
-        // For simplicity, we'll just create a new log for now
-        // In a real app, you would update the existing log
-        console.log("Would update existing log here to mark exercise as incomplete");
-        return scheduleId;
-      }
+      // Get all exercises that should be considered completed
+      const updatedCompletedExercises = allExercises
+        .filter(ex => ex.id === exerciseId ? completed : !!ex.completed)
+        .map((ex, index) => ({
+          exercise_name: ex.name,
+          sets_completed: ex.sets,
+          reps_completed: ex.reps,
+          weight_used: ex.weight,
+          order_index: index
+        } as Omit<ExerciseLog, 'workout_log_id'>));
       
-      if (!schedule.workout_log_id) {
-        // Create a workout log since this is the first completed exercise
+      // If unchecking and we have a workout log
+      if (schedule.workout_log_id) {
+        if (updatedCompletedExercises.length === 0) {
+          // If no exercises are completed anymore, remove the workout log entirely
+          await WorkoutService.deleteWorkoutLog(schedule.workout_log_id);
+          await WorkoutService.updateScheduledWorkout(scheduleId, {
+            is_completed: false,
+            workout_log_id: null,
+            completion_date: null
+          });
+          return scheduleId;
+        } else {
+          // Update the existing exercise logs
+          await WorkoutService.deleteExerciseLogs(schedule.workout_log_id);
+          await WorkoutService.addExerciseLogs(
+            schedule.workout_log_id, 
+            updatedCompletedExercises
+          );
+          
+          // Check if we need to update completion status
+          const isStillCompleted = updatedCompletedExercises.length > 0;
+          if (isStillCompleted !== schedule.is_completed) {
+            await WorkoutService.updateScheduledWorkout(scheduleId, {
+              is_completed: isStillCompleted
+            });
+          }
+          
+          return scheduleId;
+        }
+      } else if (updatedCompletedExercises.length > 0) {
+        // No workout log exists yet and we're checking exercises
+        // Create a new workout log
         const log: WorkoutLog = {
           user_id: userId,
           workout_plan_id: schedule.workout_plan_id,
@@ -201,34 +232,18 @@ export function Dashboard() {
           end_time: new Date().toISOString(),
         };
         
-        // Only log completed exercises
-        const completedExercises = allExercises
-          .filter(ex => ex.id === exerciseId ? completed : !!ex.completed)
-          .map((ex, index) => ({
-            exercise_name: ex.name,
-            sets_completed: ex.sets,
-            reps_completed: ex.reps,
-            weight_used: ex.weight,
-            order_index: index
-          } as Omit<ExerciseLog, 'workout_log_id'>));
+        // Log the workout and exercises
+        const logId = await WorkoutService.logWorkout(log, updatedCompletedExercises);
         
-        if (completedExercises.length > 0) {
-          // Log the workout and exercises
-          const logId = await WorkoutService.logWorkout(log, completedExercises);
-          
-          // Update the schedule with the workout log id
-          if (logId) {
-            console.log(`Created workout log ${logId} and updating schedule ${scheduleId}`);
-            await WorkoutService.completeScheduledWorkout(scheduleId, logId);
-            return scheduleId;
-          }
+        // Update the schedule with the workout log id
+        if (logId) {
+          console.log(`Created workout log ${logId} and updating schedule ${scheduleId}`);
+          await WorkoutService.completeScheduledWorkout(scheduleId, logId);
+          return scheduleId;
         }
-      } else {
-        // Update existing workout log
-        // This is simplified - in a real app you'd update the specific exercise in the log
-        console.log("Would update existing log here");
-        return scheduleId;
       }
+      
+      return scheduleId;
     },
     onSuccess: () => {
       console.log("Successfully updated exercise completion");
