@@ -39,25 +39,16 @@ export function WorkoutCard({
   onRemoveExercise 
 }: WorkoutCardProps) {
   const [expanded, setExpanded] = useState(true);
-  const [exercises, setExercises] = useState(workout.exercises);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [newExercise, setNewExercise] = useState({ name: '', sets: 3, reps: '10', weight: 'bodyweight' });
 
-  const toggleExerciseCompletion = (index: number) => {
-    const exerciseId = exercises[index].id;
-    const newCompletedStatus = !exercises[index].completed;
-    
-    // Update local state
-    const updatedExercises = [...exercises];
-    updatedExercises[index] = {
-      ...updatedExercises[index],
-      completed: newCompletedStatus,
-    };
-    setExercises(updatedExercises);
-    
+  // Note: We're no longer managing exercises state locally in this component
+  // Instead, we'll rely on the parent component to manage this state
+  
+  const toggleExerciseCompletion = (exerciseId: string, currentStatus: boolean) => {
     // Call parent callback if provided
     if (onExerciseComplete) {
-      onExerciseComplete(exerciseId, newCompletedStatus);
+      onExerciseComplete(exerciseId, !currentStatus);
     }
   };
 
@@ -79,13 +70,11 @@ export function WorkoutCard({
   const handleRemoveExercise = (exerciseId: string) => {
     if (onRemoveExercise) {
       onRemoveExercise(exerciseId);
-      // Update local state
-      setExercises(exercises.filter(ex => ex.id !== exerciseId));
     }
   };
 
-  const completedCount = exercises.filter((ex) => ex.completed).length;
-  const progress = exercises.length > 0 ? (completedCount / exercises.length) * 100 : 0;
+  const completedCount = workout.exercises.filter((ex) => ex.completed).length;
+  const progress = workout.exercises.length > 0 ? (completedCount / workout.exercises.length) * 100 : 0;
 
   return (
     <AnimatedCard>
@@ -93,7 +82,7 @@ export function WorkoutCard({
         <div>
           <h3 className="font-bold text-lg">{workout.title}</h3>
           <p className="text-sm text-muted-foreground">
-            {exercises.length} exercises • {completedCount} completed
+            {workout.exercises.length} exercises • {completedCount} completed
           </p>
         </div>
         <button 
@@ -112,7 +101,7 @@ export function WorkoutCard({
 
       {expanded && (
         <div className="space-y-3 mt-6">
-          {exercises.map((exercise, index) => (
+          {workout.exercises.map((exercise) => (
             <div 
               key={exercise.id}
               className={cn(
@@ -121,17 +110,20 @@ export function WorkoutCard({
               )}
             >
               <Checkbox
-                checked={exercise.completed}
-                onCheckedChange={() => toggleExerciseCompletion(index)}
+                checked={!!exercise.completed}
+                onCheckedChange={() => toggleExerciseCompletion(exercise.id, !!exercise.completed)}
                 className="mr-3"
-                disabled={workout.is_completed}
+                id={`exercise-${exercise.id}`}
               />
-              <div className="flex-1">
+              <label 
+                htmlFor={`exercise-${exercise.id}`} 
+                className="flex-1 cursor-pointer"
+              >
                 <p className="font-medium">{exercise.name}</p>
                 <p className="text-sm text-muted-foreground">
                   {exercise.sets} sets • {exercise.reps} reps • {exercise.weight}
                 </p>
-              </div>
+              </label>
               
               {editable && (
                 <button

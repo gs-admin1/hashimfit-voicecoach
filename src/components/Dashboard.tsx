@@ -182,7 +182,7 @@ export function Dashboard() {
       
       console.log(`Updating exercise completion for ${exerciseName} to ${completed}`);
       
-      // Get all exercises that should be considered completed
+      // Get all exercises that should be considered completed after this action
       const updatedCompletedExercises = allExercises
         .filter(ex => ex.id === exerciseId ? completed : !!ex.completed)
         .map((ex, index) => ({
@@ -193,7 +193,7 @@ export function Dashboard() {
           order_index: index
         } as Omit<ExerciseLog, 'workout_log_id'>));
       
-      // If unchecking and we have a workout log
+      // If we already have a workout log
       if (schedule.workout_log_id) {
         if (updatedCompletedExercises.length === 0) {
           // If no exercises are completed anymore, remove the workout log entirely
@@ -293,7 +293,7 @@ export function Dashboard() {
   const handleExerciseComplete = (exerciseId: string, completed: boolean) => {
     if (!selectedWorkout || !selectedWorkout.schedule_id) return;
     
-    console.log(`Completing exercise ${exerciseId}: ${completed}`);
+    console.log(`Toggling exercise ${exerciseId} completion to: ${completed}`);
     completeExerciseMutation.mutate({
       scheduleId: selectedWorkout.schedule_id,
       exerciseId,
