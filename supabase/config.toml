@@ -1,1 +1,58 @@
+
 project_id = "haxiwqgajhanpapvicbm"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[api.jwt_secret]
+hostname = "api"
+scheme = "http"
+port = "5555"
+
+[api.root_jwt]
+hostname = "api"
+scheme = "http"
+port = "5555"
+
+[auth]
+enabled = true
+port = 54321
+site_url = "http://localhost:3000"
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pool]
+port = 54322
+size = 10
+connection_string = ""
+connection_timeout = 5
+private_dns = ""
+
+[realtime]
+enabled = true
+port = 54323
+wal_port = 54324
+
+[studio]
+enabled = true
+port = 54325
+api_url = "http://api:54321"
+site_url = "http://localhost:3000"
+
+[storage]
+enabled = true
+port = 54326
+
+[functions]
+enabled = true
+port = 54327
+
+[functions.analyze-meal-photo]
+verify_jwt = true
