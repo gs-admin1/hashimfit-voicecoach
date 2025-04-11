@@ -6,13 +6,15 @@ import { ChatFAB } from "@/components/ChatFAB";
 import { 
   Calendar,
   ChevronLeft, 
-  ChevronRight
+  ChevronRight,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { WorkoutService, WorkoutSchedule } from "@/lib/supabase/services/WorkoutService";
 import { format, startOfWeek, endOfWeek, addDays, isSameDay, parseISO } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 
 interface WorkoutSession {
   id: string;
@@ -33,6 +35,8 @@ interface WorkoutSession {
 export default function PlannerPage() {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 0 })); // Sunday start
+  const [showAddWorkout, setShowAddWorkout] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
   const { userId } = useAuth();
   
@@ -136,6 +140,119 @@ export default function PlannerPage() {
     return sessions.filter(session => isSameDay(session.date, date));
   };
 
+  // Handle adding a new workout
+  const handleAddWorkout = (date: Date) => {
+    setSelectedDate(date);
+    setShowAddWorkout(true);
+  };
+
+  // Handle workout submission from the modal
+  const handleWorkoutSelected = (workout: any) => {
+    if (!workout || !workout.id) {
+      toast({
+        title: "Error",
+        description: "Please select a valid workout.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Schedule the workout for the selected date
+    const scheduledDate = format(selectedDate, 'yyyy-MM-dd');
+    console.log(`Scheduling workout: ${workout.id} for date: ${scheduledDate}`);
+    
+    scheduleWorkout(workout.id, scheduledDate);
+    setShowAddWorkout(false);
+  };
+
+  // Function to schedule a workout
+  const scheduleWorkout = async (workoutPlanId: string, scheduledDate: string) => {
+    if (!userId) return;
+    
+    try {
+      const schedule: WorkoutSchedule = {
+        user_id: userId,
+        workout_plan_id: workoutPlanId,
+        scheduled_date: scheduledDate,
+        is_completed: false
+      };
+      
+      const result = await WorkoutService.scheduleWorkout(schedule);
+      
+      if (result) {
+        toast({
+          title: "Success",
+          description: "Workout has been scheduled successfully."
+        });
+        
+        // Reload the schedule to show the new workout
+        const weekStart = format(currentWeekStart, 'yyyy-MM-dd');
+        const weekEnd = format(endOfWeek(currentWeekStart, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+        const schedules = await WorkoutService.getWorkoutSchedule(userId, weekStart, weekEnd);
+        
+        if (schedules && schedules.length > 0) {
+          // Same code as in useEffect to fetch workout details
+          const workoutSessions: WorkoutSession[] = [];
+          
+          for (const schedule of schedules) {
+            if (schedule.workout_plan_id) {
+              try {
+                const workoutPlan = await WorkoutService.getWorkoutPlanById(schedule.workout_plan_id);
+                
+                if (workoutPlan) {
+                  let workoutType: "strength" | "cardio" | "flexibility" | "recovery" = "strength";
+                  
+                  if (workoutPlan.category === "cardio") {
+                    workoutType = "cardio";
+                  } else if (workoutPlan.category === "recovery") {
+                    workoutType = "recovery";
+                  } else if (workoutPlan.category === "hiit") {
+                    workoutType = "flexibility";
+                  }
+                  
+                  const exercises = await WorkoutService.getWorkoutExercises(schedule.workout_plan_id);
+                  
+                  workoutSessions.push({
+                    id: schedule.id || '',
+                    date: parseISO(schedule.scheduled_date),
+                    title: workoutPlan.title,
+                    duration: schedule.duration ? parseInt(schedule.duration.toString()) : 45,
+                    notes: schedule.notes,
+                    type: workoutType,
+                    exercises: exercises.map(ex => ({
+                      id: ex.id || '',
+                      name: ex.name,
+                      sets: ex.sets,
+                      reps: ex.reps,
+                      weight: ex.weight || 'bodyweight'
+                    }))
+                  });
+                }
+              } catch (err) {
+                console.error(`Error fetching workout plan ${schedule.workout_plan_id}:`, err);
+              }
+            }
+          }
+          
+          setSessions(workoutSessions);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to schedule workout.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error scheduling workout:", error);
+      toast({
+        title: "Error",
+        description: "Failed to schedule workout.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
@@ -209,7 +326,16 @@ export default function PlannerPage() {
                   </div>
                 ) : (
                   <div className="text-center py-3 text-sm text-muted-foreground border border-dashed rounded">
-                    No workouts scheduled
+                    <p className="mb-2">No workouts scheduled</p>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center mx-auto"
+                      onClick={() => handleAddWorkout(day.date)}
+                    >
+                      <Plus size={16} className="mr-1" />
+                      Add a workout
+                    </Button>
                   </div>
                 )}
               </div>
@@ -220,6 +346,14 @@ export default function PlannerPage() {
       
       <NavigationBar />
       <ChatFAB />
+      
+      {/* Add Workout Modal */}
+      <AddWorkoutModal 
+        isOpen={showAddWorkout} 
+        onClose={() => setShowAddWorkout(false)}
+        onAddWorkout={handleWorkoutSelected}
+        selectedDay={format(selectedDate, 'EEEE')}
+      />
     </div>
   );
 }
