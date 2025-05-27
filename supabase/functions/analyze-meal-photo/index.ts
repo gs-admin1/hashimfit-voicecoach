@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { imageUrl, userId, mealType } = await req.json();
+    const { imageUrl, userId, mealType, userPrompt } = await req.json();
 
     if (!imageUrl || !userId || !mealType) {
       return new Response(
@@ -29,6 +29,7 @@ serve(async (req) => {
 
     console.log(`Processing meal photo for user ${userId}, meal type: ${mealType}`);
     console.log(`Image URL: ${imageUrl}`);
+    console.log(`User prompt: ${userPrompt || 'Using default prompt'}`);
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
@@ -78,8 +79,8 @@ serve(async (req) => {
       throw new Error("OpenAI API key not configured");
     }
     
-    // Use OpenAI Vision API to analyze the image directly
-    const nutritionData = await analyzeImageWithOpenAI(openaiApiKey, base64Image, mealType);
+    // Use OpenAI Vision API to analyze the image with flexible prompt
+    const nutritionData = await analyzeImageWithOpenAI(openaiApiKey, base64Image, mealType, userPrompt);
     
     console.log("Successfully analyzed nutritional content");
     
@@ -105,14 +106,12 @@ serve(async (req) => {
   }
 });
 
-// Function to analyze image directly with OpenAI Vision API
-async function analyzeImageWithOpenAI(openaiApiKey: string, base64Image: string, mealType: string) {
+// Function to analyze image with OpenAI Vision API using flexible prompts
+async function analyzeImageWithOpenAI(openaiApiKey: string, base64Image: string, mealType: string, userPrompt?: string) {
   console.log("Analyzing image with OpenAI Vision API...");
   
-  // System instructions for portion size inference
-  const systemInstructions = `You are a nutritionist AI assistant with vision capabilities. Your job is to analyze food images and return an estimated nutritional breakdown for each food item you can identify.
-
-Look at the image carefully and identify all visible food items. Estimate realistic portion sizes based on typical adult servings and use average serving sizes based on USDA or standard dietary guidelines.
+  // Default prompt if none provided
+  const defaultPrompt = `Please analyze this ${mealType} image and identify all the food items you can see. Estimate realistic portion sizes and provide a comprehensive nutrition breakdown for each item. Consider this a typical adult meal portion.
 
 Output structured JSON in this format:
 {
@@ -145,8 +144,10 @@ Output structured JSON in this format:
 
 Return only the JSON in your response. No explanations or extra formatting.`;
 
-  // User prompt with the image
-  const prompt = `Please analyze this ${mealType} image and identify all the food items you can see. Estimate realistic portion sizes and provide a comprehensive nutrition breakdown for each item. Consider this a typical adult meal portion.`;
+  // Use provided prompt or default
+  const finalPrompt = userPrompt || defaultPrompt;
+  
+  console.log("Using prompt:", finalPrompt.substring(0, 200) + "...");
 
   // Call OpenAI Vision API
   console.log("Sending request to OpenAI Vision API...");
@@ -160,11 +161,10 @@ Return only the JSON in your response. No explanations or extra formatting.`;
     body: JSON.stringify({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: systemInstructions },
         { 
           role: "user", 
           content: [
-            { type: "text", text: prompt },
+            { type: "text", text: finalPrompt },
             { 
               type: "image_url", 
               image_url: { 
@@ -220,7 +220,7 @@ Return only the JSON in your response. No explanations or extra formatting.`;
   return nutritionData;
 }
 
-// Function to store the meal data in the database
+// Function to store the meal data in the database with new food_items column
 async function storeMealData(supabase: any, nutritionData: any, imageUrl: string, userId: string, mealType: string) {
   console.log("Storing meal data in the database...");
   
@@ -312,9 +312,9 @@ async function storeMealData(supabase: any, nutritionData: any, imageUrl: string
     throw new Error(`Failed to manage nutrition log: ${error.message}`);
   }
 
-  // Create meal log entry
+  // Create meal log entry with food_items JSONB data
   try {
-    console.log("Creating meal log entry");
+    console.log("Creating meal log entry with food_items data");
     
     // Ensure values are integers for database columns
     const calories = Math.round(nutritionData.total.calories);
@@ -324,7 +324,7 @@ async function storeMealData(supabase: any, nutritionData: any, imageUrl: string
     
     console.log(`Creating meal log with values: calories=${calories}, protein=${protein}g, carbs=${carbs}g, fat=${fat}g`);
     console.log(`Meal title: ${nutritionData.meal_title}`);
-    console.log(`Food items: ${nutritionData.food_items.map((item: any) => item.name).join(', ')}`);
+    console.log(`Food items count: ${nutritionData.food_items?.length || 0}`);
     
     const { data: mealLog, error: mealError } = await supabase
       .from('meal_logs')
@@ -338,7 +338,8 @@ async function storeMealData(supabase: any, nutritionData: any, imageUrl: string
         fat_g: fat,
         consumed_at: new Date().toISOString(),
         meal_image_url: imageUrl,
-        notes: `AI-analyzed from image: ${nutritionData.food_items.map((item: any) => `${item.name} (${item.portion})`).join(", ")}`,
+        food_items: nutritionData.food_items || [], // Store the detailed food items array
+        notes: `AI-analyzed from image: ${nutritionData.food_items?.map((item: any) => `${item.name} (${item.portion})`).join(", ") || "No items detected"}`,
       })
       .select()
       .single();
