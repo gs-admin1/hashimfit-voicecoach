@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 // ^ Adding this directive to ignore TypeScript errors for this file
 
@@ -9,6 +8,102 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// AWS Signature Version 4 implementation for Deno
+async function sha256(data: string): Promise<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  return await crypto.subtle.digest('SHA-256', encoder.encode(data));
+}
+
+async function hmacSha256(key: ArrayBuffer | Uint8Array, data: string): Promise<ArrayBuffer> {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const encoder = new TextEncoder();
+  return await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(data));
+}
+
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function getSignatureKey(key: string, dateStamp: string, regionName: string, serviceName: string): Promise<ArrayBuffer> {
+  const kDate = await hmacSha256(new TextEncoder().encode('AWS4' + key), dateStamp);
+  const kRegion = await hmacSha256(kDate, regionName);
+  const kService = await hmacSha256(kRegion, serviceName);
+  const kSigning = await hmacSha256(kService, 'aws4_request');
+  return kSigning;
+}
+
+async function signRequest(
+  accessKeyId: string,
+  secretAccessKey: string,
+  region: string,
+  service: string,
+  host: string,
+  method: string,
+  path: string,
+  queryString: string,
+  headers: Record<string, string>,
+  payload: string
+): Promise<string> {
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
+  const dateStamp = amzDate.substring(0, 8);
+
+  // Create canonical headers
+  const canonicalHeaders = Object.keys(headers)
+    .sort()
+    .map(key => `${key.toLowerCase()}:${headers[key].trim()}\n`)
+    .join('');
+
+  const signedHeaders = Object.keys(headers)
+    .sort()
+    .map(key => key.toLowerCase())
+    .join(';');
+
+  // Create payload hash
+  const payloadHash = toHex(await sha256(payload));
+
+  // Create canonical request
+  const canonicalRequest = [
+    method,
+    path,
+    queryString,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash
+  ].join('\n');
+
+  console.log('Canonical Request:', canonicalRequest);
+
+  // Create string to sign
+  const algorithm = 'AWS4-HMAC-SHA256';
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const stringToSign = [
+    algorithm,
+    amzDate,
+    credentialScope,
+    toHex(await sha256(canonicalRequest))
+  ].join('\n');
+
+  console.log('String to Sign:', stringToSign);
+
+  // Calculate signature
+  const signingKey = await getSignatureKey(secretAccessKey, dateStamp, region, service);
+  const signature = toHex(await hmacSha256(signingKey, stringToSign));
+
+  // Create authorization header
+  const authorizationHeader = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  return authorizationHeader;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -45,7 +140,6 @@ serve(async (req) => {
     console.log("Downloading image from Storage...");
     
     // Extract bucket and path from URL
-    // Assuming URL format: https://<project-ref>.supabase.co/storage/v1/object/public/<bucket>/<path>
     const urlParts = imageUrl.split('/storage/v1/object/public/');
     if (urlParts.length < 2) {
       throw new Error("Invalid image URL format");
@@ -86,20 +180,19 @@ serve(async (req) => {
         throw new Error("AWS credentials not configured");
       }
       
-      // AWS SDK for JavaScript v3 is not directly available in Deno
-      // We'll use a REST API call to AWS Rekognition instead
+      console.log("AWS credentials found, proceeding with Rekognition API call");
       
-      // Current date in required format for AWS Signature V4
-      const amzDate = new Date().toISOString().replace(/[:\-]|\.\d{3}/g, '');
-      const dateStamp = amzDate.substring(0, 8);
-      
-      // Create canonical request components
-      const host = "rekognition.us-east-1.amazonaws.com";
+      // Prepare request details
       const region = "us-east-1";
       const service = "rekognition";
+      const host = "rekognition.us-east-1.amazonaws.com";
+      const method = "POST";
+      const path = "/";
+      const queryString = "";
       
-      // Encode image bytes for AWS
+      // Encode image as base64
       const base64Image = btoa(String.fromCharCode(...bytes));
+      console.log(`Image encoded to base64, length: ${base64Image.length}`);
       
       const requestBody = JSON.stringify({
         Image: {
@@ -109,17 +202,43 @@ serve(async (req) => {
         MinConfidence: 70
       });
       
+      console.log(`Request body prepared, size: ${requestBody.length} bytes`);
+      
+      // Prepare headers for signing
+      const now = new Date();
+      const amzDate = now.toISOString().replace(/[:\-]|\.\d{3}/g, '');
+      
+      const headersToSign = {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'Host': host,
+        'X-Amz-Date': amzDate,
+        'X-Amz-Target': 'RekognitionService.DetectLabels'
+      };
+      
+      console.log("Signing request with AWS Signature Version 4...");
+      
+      // Sign the request
+      const authorizationHeader = await signRequest(
+        awsAccessKey,
+        awsSecretKey,
+        region,
+        service,
+        host,
+        method,
+        path,
+        queryString,
+        headersToSign,
+        requestBody
+      );
+      
+      console.log("Request signed successfully");
+      
       // Make the HTTP request to AWS Rekognition
-      console.log("Sending request to AWS Rekognition API");
-      const rekognitionResponse = await fetch("https://rekognition.us-east-1.amazonaws.com/", {
-        method: "POST",
+      const rekognitionResponse = await fetch(`https://${host}/`, {
+        method: method,
         headers: {
-          "Content-Type": "application/x-amz-json-1.1",
-          "X-Amz-Target": "RekognitionService.DetectLabels",
-          "Host": host,
-          "X-Amz-Date": amzDate,
-          "X-Amz-Content-Sha256": "UNSIGNED-PAYLOAD",
-          "Authorization": `AWS4-HMAC-SHA256 Credential=${awsAccessKey}/${dateStamp}/${region}/${service}/aws4_request, SignedHeaders=content-type;host;x-amz-date;x-amz-target, Signature=dummy_signature`
+          ...headersToSign,
+          'Authorization': authorizationHeader
         },
         body: requestBody
       });
@@ -128,7 +247,8 @@ serve(async (req) => {
       
       if (rekognitionResponse.ok) {
         const rekognitionData = await rekognitionResponse.json();
-        console.log("Rekognition API response:", JSON.stringify(rekognitionData).substring(0, 200) + "...");
+        console.log("Rekognition API response received successfully");
+        console.log("Number of labels detected:", rekognitionData.Labels?.length || 0);
         
         // Filter for food-related labels
         const foodCategories = ['Food', 'Meal', 'Fruit', 'Vegetable', 'Meat', 'Drink', 'Beverage', 'Breakfast', 'Lunch', 'Dinner'];
@@ -136,29 +256,36 @@ serve(async (req) => {
         if (rekognitionData.Labels && Array.isArray(rekognitionData.Labels)) {
           foodLabels = rekognitionData.Labels
             .filter(label => {
-              return (label.Categories && Array.isArray(label.Categories) && 
+              const isFoodRelated = (label.Categories && Array.isArray(label.Categories) && 
                     label.Categories.some(cat => foodCategories.includes(cat.Name))) || 
                     foodCategories.some(cat => label.Name.includes(cat));
+              
+              if (isFoodRelated) {
+                console.log(`Food label detected: ${label.Name} (confidence: ${label.Confidence}%)`);
+              }
+              
+              return isFoodRelated;
             })
             .map(label => label.Name);
           
           if (foodLabels.length > 0) {
             rekognitionSuccess = true;
-            console.log(`Detected food items from AWS Rekognition: ${foodLabels.join(", ")}`);
+            console.log(`Successfully detected ${foodLabels.length} food items: ${foodLabels.join(", ")}`);
           } else {
             console.log("No food items detected by AWS Rekognition");
           }
         } else {
-          console.error("Unexpected Rekognition response format:", JSON.stringify(rekognitionData));
+          console.error("Unexpected Rekognition response format");
           throw new Error("Unexpected Rekognition response format");
         }
       } else {
         const errorText = await rekognitionResponse.text();
         console.error("Error from AWS Rekognition:", errorText);
-        throw new Error(`AWS Rekognition error: ${errorText}`);
+        throw new Error(`AWS Rekognition error (${rekognitionResponse.status}): ${errorText}`);
       }
     } catch (rekognitionError) {
       console.error("Error with AWS Rekognition:", rekognitionError.message);
+      console.error("Rekognition error stack:", rekognitionError.stack);
       console.log("Falling back to OpenAI for food detection and analysis...");
     }
     
@@ -187,6 +314,7 @@ serve(async (req) => {
     
   } catch (error) {
     console.error("Error in analyze-meal-photo function:", error);
+    console.error("Error stack:", error.stack);
     
     return new Response(
       JSON.stringify({
