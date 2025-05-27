@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Camera, Upload, X } from "lucide-react";
 import { AnimatedCard } from "./ui-components";
@@ -9,6 +8,7 @@ import supabase from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
 
 export function MealCaptureCard() {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -22,6 +22,7 @@ export function MealCaptureCard() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { isAuthenticated, userId } = useAuth();
+  
   
   const openCamera = async () => {
     setShowCameraDialog(true);
@@ -261,7 +262,7 @@ export function MealCaptureCard() {
             </h3>
             <p className="text-muted-foreground text-sm mb-4">
               {analysisResult 
-                ? `${analysisResult.total.calories} calories | ${analysisResult.total.protein_g}g protein`
+                ? `Complete nutritional breakdown available`
                 : imagePreview 
                   ? "We'll detect food items, estimate portions, and calculate nutrition" 
                   : "Take a photo of your meal for nutritional info"}
@@ -299,25 +300,71 @@ export function MealCaptureCard() {
             )}
             
             {analysisResult && (
-              <div className="space-y-4 w-full max-w-xs mx-auto">
-                <div className="mt-4 border rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
-                  <h4 className="font-medium text-left mb-2">Detected Foods:</h4>
-                  <ul className="space-y-2 text-left text-sm">
-                    {analysisResult.food_items.map((item: any, index: number) => (
-                      <li key={index} className="flex justify-between">
-                        <span>{item.name} <span className="text-gray-500">({item.portion})</span></span>
-                        <span className="font-medium">{item.calories} cal</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-3 pt-3 border-t flex justify-between text-sm font-medium">
-                    <span>Total</span>
-                    <span>{analysisResult.total.calories} calories</span>
-                  </div>
-                </div>
+              <div className="space-y-6 w-full max-w-lg mx-auto">
+                {/* Total Macros Summary */}
+                <Card className="bg-gradient-to-r from-hashim-50 to-orange-50 border-hashim-200">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-hashim-800 mb-3 text-center">Total Meal Macros</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white/70 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-hashim-600">{analysisResult.total.calories}</div>
+                        <div className="text-xs text-gray-600">Calories</div>
+                      </div>
+                      <div className="bg-white/70 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-blue-600">{analysisResult.total.protein_g}g</div>
+                        <div className="text-xs text-gray-600">Protein</div>
+                      </div>
+                      <div className="bg-white/70 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-green-600">{analysisResult.total.carbs_g}g</div>
+                        <div className="text-xs text-gray-600">Carbs</div>
+                      </div>
+                      <div className="bg-white/70 rounded-lg p-3 text-center">
+                        <div className="text-2xl font-bold text-yellow-600">{analysisResult.total.fat_g}g</div>
+                        <div className="text-xs text-gray-600">Fat</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Detected Foods */}
+                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-blue-800 mb-4 text-center">Detected Foods</h4>
+                    <div className="space-y-3">
+                      {analysisResult.food_items.map((item: any, index: number) => (
+                        <div key={index} className="bg-white/80 rounded-lg p-3 border border-blue-100">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h5 className="font-medium text-gray-800">{item.name}</h5>
+                              <p className="text-sm text-gray-600">{item.portion}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-lg font-bold text-hashim-600">{item.calories}</span>
+                              <span className="text-sm text-gray-500 ml-1">cal</span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="bg-blue-50 rounded px-2 py-1">
+                              <div className="text-sm font-semibold text-blue-700">{item.protein_g}g</div>
+                              <div className="text-xs text-blue-600">Protein</div>
+                            </div>
+                            <div className="bg-green-50 rounded px-2 py-1">
+                              <div className="text-sm font-semibold text-green-700">{item.carbs_g}g</div>
+                              <div className="text-xs text-green-600">Carbs</div>
+                            </div>
+                            <div className="bg-yellow-50 rounded px-2 py-1">
+                              <div className="text-sm font-semibold text-yellow-700">{item.fat_g}g</div>
+                              <div className="text-xs text-yellow-600">Fat</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+                
                 <Button 
-                  className="w-full" 
-                  variant="outline"
+                  className="w-full bg-hashim-600 hover:bg-hashim-700" 
                   onClick={resetForm}
                 >
                   Log Another Meal
