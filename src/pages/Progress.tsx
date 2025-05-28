@@ -9,6 +9,9 @@ import { toast } from "@/hooks/use-toast";
 import { AICoachBanner } from "@/components/AICoachBanner";
 import { WeeklyAnalytics } from "@/components/WeeklyAnalytics";
 import { ProgressMetricCard } from "@/components/ProgressMetricCard";
+import { WeeklyReviewCard } from "@/components/WeeklyReviewCard";
+import { WorkoutHeatmap } from "@/components/WorkoutHeatmap";
+import { GoalTrackerCard } from "@/components/GoalTrackerCard";
 import { 
   Activity, 
   Weight, 
@@ -19,6 +22,7 @@ import {
   Calendar,
   Target,
   TrendingUp,
+  TrendingDown,
   Award
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
