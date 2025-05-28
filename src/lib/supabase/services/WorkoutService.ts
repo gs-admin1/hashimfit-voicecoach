@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface WorkoutPlan {
@@ -71,6 +72,16 @@ export interface WorkoutSchedule {
   updated_at?: string;
 }
 
+// Helper function to safely convert interval to string
+const formatInterval = (interval: any): string | undefined => {
+  if (!interval) return undefined;
+  if (typeof interval === 'string') return interval;
+  if (typeof interval === 'object' && interval.hours !== undefined) {
+    return `${interval.hours}:${interval.minutes || 0}:${interval.seconds || 0}`;
+  }
+  return String(interval);
+};
+
 export class WorkoutService {
   static async getWorkoutPlans(userId: string): Promise<WorkoutPlan[]> {
     try {
@@ -84,7 +95,10 @@ export class WorkoutService {
         return [];
       }
 
-      return data || [];
+      return (data || []).map(plan => ({
+        ...plan,
+        estimated_duration: formatInterval(plan.estimated_duration)
+      }));
     } catch (error) {
       console.error("Error in getWorkoutPlans:", error);
       return [];
@@ -104,7 +118,10 @@ export class WorkoutService {
         return null;
       }
 
-      return data || null;
+      return data ? {
+        ...data,
+        estimated_duration: formatInterval(data.estimated_duration)
+      } : null;
     } catch (error) {
       console.error("Error in createWorkoutPlan:", error);
       return null;
@@ -124,7 +141,10 @@ export class WorkoutService {
         return null;
       }
 
-      return data || null;
+      return data ? {
+        ...data,
+        estimated_duration: formatInterval(data.estimated_duration)
+      } : null;
     } catch (error) {
       console.error("Error in getWorkoutPlanById:", error);
       return null;
@@ -144,7 +164,10 @@ export class WorkoutService {
         return [];
       }
 
-      return data || [];
+      return (data || []).map(exercise => ({
+        ...exercise,
+        rest_time: formatInterval(exercise.rest_time)
+      }));
     } catch (error) {
       console.error("Error in getWorkoutExercises:", error);
       return [];
@@ -164,7 +187,10 @@ export class WorkoutService {
         return null;
       }
 
-      return data || null;
+      return data ? {
+        ...data,
+        rest_time: formatInterval(data.rest_time)
+      } : null;
     } catch (error) {
       console.error("Error in createWorkoutExercise:", error);
       return null;
@@ -185,7 +211,10 @@ export class WorkoutService {
         return null;
       }
 
-      return data || null;
+      return data ? {
+        ...data,
+        rest_time: formatInterval(data.rest_time)
+      } : null;
     } catch (error) {
       console.error("Error in updateWorkoutExercise:", error);
       return null;
@@ -225,7 +254,10 @@ export class WorkoutService {
         return [];
       }
 
-      return data || [];
+      return (data || []).map(schedule => ({
+        ...schedule,
+        duration: formatInterval(schedule.duration)
+      }));
     } catch (error) {
       console.error("Error in getWorkoutSchedule:", error);
       return [];
@@ -245,7 +277,10 @@ export class WorkoutService {
         return null;
       }
 
-      return data || null;
+      return data ? {
+        ...data,
+        duration: formatInterval(data.duration)
+      } : null;
     } catch (error) {
       console.error("Error in scheduleWorkout:", error);
       return null;
@@ -266,7 +301,10 @@ export class WorkoutService {
         return null;
       }
 
-      return data || null;
+      return data ? {
+        ...data,
+        duration: formatInterval(data.duration)
+      } : null;
     } catch (error) {
       console.error("Error in updateScheduledWorkout:", error);
       return null;
@@ -286,12 +324,12 @@ export class WorkoutService {
 
       if (logError) {
         console.error("❌ Error creating workout log:", logError);
-        throw logError;
+        return null;
       }
 
       if (!logData?.id) {
         console.error("❌ No workout log ID returned");
-        throw new Error("Failed to create workout log - no ID returned");
+        return null;
       }
 
       console.log("✅ Workout log created with ID:", logData.id);
@@ -311,7 +349,7 @@ export class WorkoutService {
 
         if (exerciseError) {
           console.error("❌ Error adding exercise logs:", exerciseError);
-          // Don't throw here, just log the error since the workout log was created successfully
+          // Don't return null here, just log the error since the workout log was created successfully
         } else {
           console.log("✅ Exercise logs added successfully");
         }
@@ -388,7 +426,10 @@ export class WorkoutService {
         return [];
       }
 
-      return data || [];
+      return (data || []).map(log => ({
+        ...log,
+        rest_time: formatInterval(log.rest_time)
+      }));
     } catch (error) {
       console.error("Error in getExerciseLogs:", error);
       return [];
