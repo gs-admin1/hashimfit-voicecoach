@@ -1,3 +1,4 @@
+
 import supabase from '@/lib/supabase';
 import { addDays, startOfWeek, addMonths, format } from 'date-fns';
 
@@ -217,7 +218,9 @@ export class WorkoutService {
   // Workout Logs
   static async logWorkout(log: WorkoutLog, exercises: Omit<ExerciseLog, 'workout_log_id'>[]): Promise<string | null> {
     try {
-      // Start a transaction
+      console.log("🔄 Starting logWorkout with log:", log);
+      console.log("🔄 Exercises to log:", exercises);
+      
       // First insert the workout log
       const { data: workoutData, error: workoutError } = await supabase
         .from('workout_logs')
@@ -225,23 +228,37 @@ export class WorkoutService {
         .select()
         .single();
         
-      if (workoutError) throw workoutError;
+      if (workoutError) {
+        console.error("❌ Error creating workout log:", workoutError);
+        throw workoutError;
+      }
+      
+      console.log("✅ Created workout log:", workoutData);
       
       // Then insert the exercise logs
-      const exerciseLogs = exercises.map(ex => ({
-        workout_log_id: workoutData.id,
-        ...ex
-      }));
-      
-      const { error: exerciseError } = await supabase
-        .from('exercise_logs')
-        .insert(exerciseLogs);
+      if (exercises.length > 0) {
+        const exerciseLogs = exercises.map(ex => ({
+          workout_log_id: workoutData.id,
+          ...ex
+        }));
         
-      if (exerciseError) throw exerciseError;
+        console.log("🔄 Inserting exercise logs:", exerciseLogs);
+        
+        const { error: exerciseError } = await supabase
+          .from('exercise_logs')
+          .insert(exerciseLogs);
+          
+        if (exerciseError) {
+          console.error("❌ Error creating exercise logs:", exerciseError);
+          throw exerciseError;
+        }
+        
+        console.log("✅ Successfully created exercise logs");
+      }
       
       return workoutData.id;
     } catch (error) {
-      console.error('Error logging workout:', error);
+      console.error('❌ Error in logWorkout:', error);
       return null;
     }
   }
@@ -418,6 +435,8 @@ export class WorkoutService {
 
   static async completeScheduledWorkout(scheduleId: string, workoutLogId: string): Promise<boolean> {
     try {
+      console.log(`🔄 Completing scheduled workout ${scheduleId} with log ${workoutLogId}`);
+      
       const { error } = await supabase
         .from('workout_schedule')
         .update({
@@ -427,7 +446,12 @@ export class WorkoutService {
         })
         .eq('id', scheduleId);
         
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error completing scheduled workout:", error);
+        throw error;
+      }
+      
+      console.log("✅ Successfully completed scheduled workout");
       return true;
     } catch (error) {
       console.error('Error completing scheduled workout:', error);
@@ -554,6 +578,8 @@ export class WorkoutService {
 
   static async addExerciseLogs(workoutLogId: string, exercises: Omit<ExerciseLog, 'workout_log_id'>[]): Promise<boolean> {
     try {
+      console.log(`🔄 Adding exercise logs to workout ${workoutLogId}:`, exercises);
+      
       const exerciseLogs = exercises.map(ex => ({
         workout_log_id: workoutLogId,
         ...ex
@@ -563,7 +589,12 @@ export class WorkoutService {
         .from('exercise_logs')
         .insert(exerciseLogs);
         
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error adding exercise logs:", error);
+        throw error;
+      }
+      
+      console.log("✅ Successfully added exercise logs");
       return true;
     } catch (error) {
       console.error('Error adding exercise logs:', error);
@@ -573,12 +604,19 @@ export class WorkoutService {
 
   static async updateScheduledWorkout(scheduleId: string, updates: Partial<WorkoutSchedule>): Promise<boolean> {
     try {
+      console.log(`🔄 Updating scheduled workout ${scheduleId}:`, updates);
+      
       const { error } = await supabase
         .from('workout_schedule')
         .update(updates)
         .eq('id', scheduleId);
         
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error updating scheduled workout:", error);
+        throw error;
+      }
+      
+      console.log("✅ Successfully updated scheduled workout");
       return true;
     } catch (error) {
       console.error('Error updating scheduled workout:', error);
