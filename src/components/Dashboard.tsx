@@ -108,26 +108,46 @@ export function Dashboard() {
       const exercises = await WorkoutService.getWorkoutExercises(workoutPlan.id!);
       
       let completedExercises: Record<string, boolean> = {};
+      let allExerciseLogs: any[] = [];
+      
       if (scheduledWorkout.is_completed && scheduledWorkout.workout_log_id) {
         const exerciseLogs = await WorkoutService.getExerciseLogs(scheduledWorkout.workout_log_id);
+        allExerciseLogs = exerciseLogs;
         completedExercises = exerciseLogs.reduce((acc, log) => {
           acc[log.exercise_name] = true;
           return acc;
         }, {} as Record<string, boolean>);
       }
       
+      // Combine planned exercises with logged exercises (including voice-logged ones)
+      const plannedExercises = exercises.map(ex => ({
+        id: ex.id!,
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight || 'bodyweight',
+        completed: completedExercises[ex.name] || false,
+        source: 'planned'
+      }));
+
+      // Add voice-logged exercises that aren't in the plan
+      const voiceLoggedExercises = allExerciseLogs
+        .filter(log => !exercises.some(ex => ex.name === log.exercise_name))
+        .map(log => ({
+          id: `voice-${log.id}`,
+          name: log.exercise_name,
+          sets: log.sets_completed,
+          reps: log.reps_completed,
+          weight: log.weight_used || 'bodyweight',
+          completed: true,
+          source: 'voice'
+        }));
+      
       return {
         schedule_id: scheduledWorkout.id,
         id: workoutPlan.id,
         title: workoutPlan.title,
-        exercises: exercises.map(ex => ({
-          id: ex.id!,
-          name: ex.name,
-          sets: ex.sets,
-          reps: ex.reps,
-          weight: ex.weight || 'bodyweight',
-          completed: completedExercises[ex.name] || false
-        })),
+        exercises: [...plannedExercises, ...voiceLoggedExercises],
         is_completed: scheduledWorkout.is_completed || false
       };
     },
@@ -269,6 +289,13 @@ export function Dashboard() {
     }
   });
 
+  // Function to refresh workout data after voice logging
+  const handleWorkoutUpdated = () => {
+    queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
+    queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
+    queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
+  };
+
   const handleDaySelect = (day: string) => {
     console.log(`Selected day: ${day}`);
     setSelectedDay(day);
@@ -313,52 +340,6 @@ export function Dashboard() {
     }));
   };
 
-  const handleVoiceWorkoutLogged = async (workoutData: any) => {
-    if (!selectedWorkout || !selectedWorkout.schedule_id) {
-      toast({
-        title: "No Active Workout",
-        description: "Please add a workout to your schedule first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      // Create a mock exercise to add to the current workout
-      const exerciseLog = {
-        exercise_name: workoutData.exercise,
-        sets_completed: workoutData.sets,
-        reps_completed: workoutData.reps,
-        weight_used: workoutData.weight_lbs ? `${workoutData.weight_lbs} lbs` : 'bodyweight',
-        order_index: selectedWorkout.exercises.length
-      };
-
-      // Add to the workout using the existing mutation
-      await completeExerciseMutation.mutateAsync({
-        scheduleId: selectedWorkout.schedule_id,
-        exerciseId: `voice-${Date.now()}`, // Temporary ID for voice exercises
-        exerciseName: workoutData.exercise,
-        completed: true,
-        allExercises: [...selectedWorkout.exercises, {
-          id: `voice-${Date.now()}`,
-          name: workoutData.exercise,
-          sets: workoutData.sets,
-          reps: workoutData.reps,
-          weight: workoutData.weight_lbs ? `${workoutData.weight_lbs} lbs` : 'bodyweight',
-          completed: true
-        }]
-      });
-
-    } catch (error) {
-      console.error("Error logging voice workout:", error);
-      toast({
-        title: "Error",
-        description: "Failed to log your workout. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
   return (
     <div className="max-w-lg mx-auto pb-20">
       <div className="flex justify-between items-center mb-6">
@@ -377,7 +358,6 @@ export function Dashboard() {
         </div>
       </div>
       
-      {/* New Modular Dashboard Cards */}
       <div className="space-y-4 mb-6">
         <DailyWorkoutSummaryCard 
           isCollapsed={cardStates.workoutSummary}
@@ -405,7 +385,6 @@ export function Dashboard() {
         />
       </div>
       
-      {/* Day Selector */}
       <div className="flex flex-nowrap overflow-x-auto mb-6 pb-1 scrollbar-none">
         {weekDates.map((date, index) => {
           const dayName = format(date, 'EEEE');
@@ -430,7 +409,6 @@ export function Dashboard() {
         })}
       </div>
       
-      {/* Workout Section */}
       <AnimatedCard className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -476,7 +454,10 @@ export function Dashboard() {
       <MealCaptureCard />
       
       <div className="my-6">
-        <VoiceInput onWorkoutLogged={handleVoiceWorkoutLogged} />
+        <VoiceInput 
+          selectedWorkout={selectedWorkout}
+          onWorkoutUpdated={handleWorkoutUpdated}
+        />
       </div>
       
       <AddWorkoutModal 

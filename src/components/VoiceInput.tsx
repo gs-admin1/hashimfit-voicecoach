@@ -7,6 +7,9 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import supabase from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { WorkoutService, WorkoutLog, ExerciseLog } from "@/lib/supabase/services/WorkoutService";
+import { format } from "date-fns";
 
 interface WorkoutData {
   sets: number;
@@ -17,10 +20,11 @@ interface WorkoutData {
 }
 
 interface VoiceInputProps {
-  onWorkoutLogged?: (workoutData: WorkoutData) => void;
+  selectedWorkout?: any;
+  onWorkoutUpdated?: () => void;
 }
 
-export function VoiceInput({ onWorkoutLogged }: VoiceInputProps) {
+export function VoiceInput({ selectedWorkout, onWorkoutUpdated }: VoiceInputProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -30,13 +34,13 @@ export function VoiceInput({ onWorkoutLogged }: VoiceInputProps) {
   const [editData, setEditData] = useState<WorkoutData | null>(null);
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   
+  const { userId } = useAuth();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Check microphone permission on mount
     checkMicrophonePermission();
   }, []);
 
@@ -96,7 +100,6 @@ export function VoiceInput({ onWorkoutLogged }: VoiceInputProps) {
 
       mediaRecorder.start();
 
-      // Auto-stop after 10 seconds of recording
       timeoutRef.current = setTimeout(() => {
         stopListening();
       }, 10000);
@@ -133,7 +136,6 @@ export function VoiceInput({ onWorkoutLogged }: VoiceInputProps) {
     try {
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
       
-      // Convert blob to base64
       const arrayBuffer = await audioBlob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
       let binary = '';
@@ -176,16 +178,87 @@ export function VoiceInput({ onWorkoutLogged }: VoiceInputProps) {
     }
   };
 
-  const handleSave = () => {
-    if (workoutData) {
-      onWorkoutLogged?.(workoutData);
-      setShowConfirmation(false);
-      setWorkoutData(null);
-      setTranscript("");
+  const handleSave = async () => {
+    if (!workoutData || !userId) return;
+
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
       
+      // Create exercise log entry
+      const exerciseLog: Omit<ExerciseLog, 'workout_log_id'> = {
+        exercise_name: workoutData.exercise,
+        sets_completed: workoutData.sets,
+        reps_completed: workoutData.reps,
+        weight_used: workoutData.weight_lbs ? `${workoutData.weight_lbs} lbs` : workoutData.duration_min ? `${workoutData.duration_min} min` : 'bodyweight',
+        order_index: 0 // Will be updated based on existing exercises
+      };
+
+      let workoutLogId: string | null = null;
+
+      // Check if there's already a workout log for today
+      if (selectedWorkout && selectedWorkout.schedule_id) {
+        // Get the workout schedule to check for existing workout log
+        const schedules = await WorkoutService.getWorkoutSchedule(userId, today, today);
+        const todaySchedule = schedules.find(s => s.scheduled_date === today);
+        
+        if (todaySchedule && todaySchedule.workout_log_id) {
+          // Add to existing workout log
+          workoutLogId = todaySchedule.workout_log_id;
+          
+          // Get existing exercise logs to determine order index
+          const existingLogs = await WorkoutService.getExerciseLogs(workoutLogId);
+          exerciseLog.order_index = existingLogs.length;
+          
+          // Add the new exercise log
+          await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLog]);
+        } else if (todaySchedule) {
+          // Create new workout log for existing schedule
+          const workoutLog: WorkoutLog = {
+            user_id: userId,
+            workout_plan_id: todaySchedule.workout_plan_id,
+            start_time: new Date().toISOString(),
+            end_time: new Date().toISOString(),
+          };
+          
+          workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLog]);
+          
+          if (workoutLogId && todaySchedule.id) {
+            await WorkoutService.completeScheduledWorkout(todaySchedule.id, workoutLogId);
+          }
+        }
+      } else {
+        // No scheduled workout, create a standalone workout log
+        const workoutLog: WorkoutLog = {
+          user_id: userId,
+          start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(),
+        };
+        
+        workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLog]);
+      }
+
+      if (workoutLogId) {
+        setShowConfirmation(false);
+        setWorkoutData(null);
+        setTranscript("");
+        
+        // Call the callback to refresh the UI
+        onWorkoutUpdated?.();
+        
+        toast({
+          title: "Exercise Logged!",
+          description: `${workoutData.exercise} has been added to today's workout.`,
+        });
+      } else {
+        throw new Error('Failed to create workout log');
+      }
+
+    } catch (error) {
+      console.error('Error saving workout:', error);
       toast({
-        title: "Exercise Logged!",
-        description: `${workoutData.exercise} has been added to your workout.`,
+        title: "Save Failed",
+        description: "Could not save your workout. Please try again.",
+        variant: "destructive",
       });
     }
   };
