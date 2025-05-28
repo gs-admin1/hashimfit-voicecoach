@@ -45,7 +45,8 @@ export default function WorkoutsPage() {
               reps: ex.reps,
               weight: ex.weight || 'bodyweight'
             })),
-            category: plan.category
+            category: plan.category,
+            isFavorite: false // Add default favorite status
           };
         })
       );
