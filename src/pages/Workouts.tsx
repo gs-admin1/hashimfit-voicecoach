@@ -15,8 +15,8 @@ import { v4 as uuidv4 } from "uuid";
 
 export default function WorkoutsPage() {
   const [filter, setFilter] = useState("all");
-  const [view, setView: "list" | "session">("list");
-  const [selectedWorkout, setSelectedWorkout: any>(null);
+  const [view, setView] = useState<"list" | "session">("list");
+  const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const { isAuthenticated, userId } = useAuth();
