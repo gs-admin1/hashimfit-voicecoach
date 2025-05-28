@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -5,6 +6,9 @@ import { NavigationBar, AnimatedCard, SectionTitle, Chip } from "@/components/ui
 import { ProgressChart } from "@/components/ProgressChart";
 import { ChatFAB } from "@/components/ChatFAB";
 import { toast } from "@/hooks/use-toast";
+import { AICoachBanner } from "@/components/AICoachBanner";
+import { WeeklyAnalytics } from "@/components/WeeklyAnalytics";
+import { ProgressMetricCard } from "@/components/ProgressMetricCard";
 import { 
   Activity, 
   Weight, 
@@ -12,13 +16,60 @@ import {
   ArrowUp,
   ArrowDown,
   Minus,
-  Calendar
+  Calendar,
+  Target,
+  TrendingUp,
+  Award
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
-// Define the strength data that was missing
+// Mock data - in real implementation this would come from ProgressService
+const aiInsights = [
+  {
+    type: 'achievement' as const,
+    title: 'Weight Goal',
+    message: 'You\'ve lost 3.2kg this month while maintaining muscle mass - excellent progress!',
+    action: 'View details'
+  },
+  {
+    type: 'suggestion' as const,
+    title: 'Consistency',
+    message: 'Try scheduling workouts on Sunday evenings to improve weekly completion rates.',
+    action: 'Add to calendar'
+  }
+];
+
+const weeklyStats = {
+  workoutCompletion: 85,
+  nutritionCompliance: 78,
+  habitsCompleted: 12,
+  totalHabits: 15,
+  progressTrend: 'up' as const,
+  weeklyGoals: {
+    workouts: { completed: 4, target: 5 },
+    calories: { avg: 2350, target: 2400 },
+    protein: { avg: 182, target: 180 }
+  }
+};
+
+const badges = [
+  { id: 1, name: 'First 10 Workouts', earned: true, icon: '🏋️' },
+  { id: 2, name: '30-Day Streak', earned: true, icon: '🔥' },
+  { id: 3, name: '5kg Lost', earned: false, icon: '⚖️' },
+  { id: 4, name: 'AI Plan Master', earned: true, icon: '🤖' },
+  { id: 5, name: 'Consistency King', earned: false, icon: '👑' }
+];
+
+const goals = [
+  { name: 'Target Weight', current: 79.3, target: 75, unit: 'kg', progress: 68 },
+  { name: 'Bench Press', current: 85, target: 100, unit: 'kg', progress: 85 },
+  { name: 'Workout Streak', current: 12, target: 30, unit: 'days', progress: 40 }
+];
+
 const strengthData = [
   { exercise: "Bench Press", previous: "80kg x 8", current: "85kg x 8", change: "up" },
   { exercise: "Squat", previous: "120kg x 5", current: "125kg x 5", change: "up" },
@@ -27,7 +78,6 @@ const strengthData = [
   { exercise: "Pull-ups", previous: "BW x 10", current: "BW x 12", change: "up" }
 ];
 
-// Define the measurements data that was missing
 const measurementsData = [
   { part: "Chest", previous: "98cm", current: "100cm", change: "up" },
   { part: "Waist", previous: "84cm", current: "82cm", change: "down" },
@@ -40,6 +90,8 @@ export default function ProgressPage() {
   const { isAuthenticated, userId } = useAuth();
   const [timeRange, setTimeRange] = useState("week");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedMetric, setSelectedMetric] = useState<'weight' | 'waist' | 'chest' | 'arms' | 'hips'>('weight');
+  const [showAIInsights, setShowAIInsights] = useState(true);
 
   // Toggle state for each metric
   const [metrics, setMetrics] = useState({
@@ -61,23 +113,14 @@ export default function ProgressPage() {
     { date: "Sun", weight: 79.3, calories: 2350, protein: 183, carbs: 222, fat: 81 },
   ]);
   
-  // State for single metric view
-  const [selectedMetric, setSelectedMetric] = useState<'weight' | 'calories' | 'protein' | 'carbs' | 'fat'>('weight');
-  const [showMultiMetric, setShowMultiMetric] = useState(true);
+  const [showMultiMetric, setShowMultiMetric] = useState(false);
   
-  // Function to fetch progress data based on the selected timeframe
   const fetchProgressData = async (range: string) => {
     setIsLoading(true);
     
     try {
-      // In a real implementation, you would fetch data from the database
-      // based on the user ID and timeframe
-      
-      // For now, we'll just simulate a delay
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Update data based on the selected range
-      // In a real app, this would be API data
       if (range === "month") {
         setMultiMetricData([
           { date: "Week 1", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 78 },
@@ -91,32 +134,7 @@ export default function ProgressPage() {
           { date: "Feb", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
           { date: "Mar", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
         ]);
-      } else if (range === "half-year") {
-        setMultiMetricData([
-          { date: "Jan", weight: 85, calories: 2500, protein: 170, carbs: 235, fat: 85 },
-          { date: "Feb", weight: 84, calories: 2480, protein: 175, carbs: 230, fat: 83 },
-          { date: "Mar", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
-          { date: "Apr", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
-          { date: "May", weight: 81, calories: 2380, protein: 182, carbs: 218, fat: 79 },
-          { date: "Jun", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
-        ]);
-      } else if (range === "year") {
-        setMultiMetricData([
-          { date: "Jan", weight: 85, calories: 2500, protein: 170, carbs: 235, fat: 85 },
-          { date: "Feb", weight: 84, calories: 2480, protein: 175, carbs: 230, fat: 83 },
-          { date: "Mar", weight: 83, calories: 2450, protein: 175, carbs: 230, fat: 82 },
-          { date: "Apr", weight: 82, calories: 2400, protein: 180, carbs: 220, fat: 80 },
-          { date: "May", weight: 81, calories: 2380, protein: 182, carbs: 218, fat: 79 },
-          { date: "Jun", weight: 80.5, calories: 2350, protein: 185, carbs: 215, fat: 78 },
-          { date: "Jul", weight: 80, calories: 2330, protein: 187, carbs: 212, fat: 77 },
-          { date: "Aug", weight: 79.5, calories: 2320, protein: 190, carbs: 210, fat: 76 },
-          { date: "Sep", weight: 79, calories: 2300, protein: 192, carbs: 208, fat: 75 },
-          { date: "Oct", weight: 78.5, calories: 2290, protein: 195, carbs: 205, fat: 74 },
-          { date: "Nov", weight: 78, calories: 2280, protein: 197, carbs: 200, fat: 73 },
-          { date: "Dec", weight: 77.5, calories: 2270, protein: 200, carbs: 195, fat: 72 },
-        ]);
       } else {
-        // week is default
         setMultiMetricData([
           { date: "Mon", weight: 80.8, calories: 2400, protein: 180, carbs: 215, fat: 80 },
           { date: "Tue", weight: 80.5, calories: 2350, protein: 175, carbs: 215, fat: 78 },
@@ -147,18 +165,29 @@ export default function ProgressPage() {
     }
   }, [isAuthenticated, userId]);
 
-  const toggleMetric = (metric: keyof typeof metrics) => {
-    setMetrics(prev => ({
-      ...prev,
-      [metric]: !prev[metric]
-    }));
+  const handleOptimizeWeek = () => {
+    toast({
+      title: "AI Analysis",
+      description: "Analyzing your progress patterns...",
+    });
   };
 
-  // Get single metric data from multiMetricData
+  const handleDismissInsight = (index: number) => {
+    // In real implementation, update the insights state
+    console.log("Dismissing insight:", index);
+  };
+
+  const handleExplainTrends = () => {
+    toast({
+      title: "AI Coach",
+      description: "Opening detailed trend analysis...",
+    });
+  };
+
   const getSingleMetricData = () => {
     return multiMetricData.map(item => ({
       date: item.date,
-      value: item[selectedMetric]
+      value: item[selectedMetric === 'weight' ? 'weight' : selectedMetric === 'waist' ? 'calories' : selectedMetric === 'chest' ? 'protein' : selectedMetric === 'arms' ? 'carbs' : 'fat']
     }));
   };
 
@@ -171,12 +200,80 @@ export default function ProgressPage() {
       </header>
       
       <main className="pt-4 px-4 animate-fade-in pb-20">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto space-y-6">
           <SectionTitle 
             title="Progress" 
-            subtitle="Track your fitness journey" 
+            subtitle="Your fitness journey insights" 
           />
-          
+
+          {/* AI Coach Insights */}
+          {showAIInsights && (
+            <AICoachBanner
+              insights={aiInsights}
+              onOptimizeWeek={handleOptimizeWeek}
+              onDismissInsight={handleDismissInsight}
+              className="animate-fade-in"
+            />
+          )}
+
+          {/* Weekly Analytics Summary */}
+          <WeeklyAnalytics stats={weeklyStats} className="animate-fade-in" />
+
+          {/* Achievement Badges */}
+          <AnimatedCard delay={100}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Award className="h-5 w-5 text-hashim-600" />
+                <h3 className="font-semibold">Achievements</h3>
+              </div>
+              <Button variant="ghost" size="sm" className="text-hashim-600">
+                View All
+              </Button>
+            </div>
+            <div className="flex space-x-3 overflow-x-auto pb-2">
+              {badges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className={`flex-shrink-0 text-center p-3 rounded-xl border transition-all ${
+                    badge.earned 
+                      ? 'bg-gradient-to-br from-hashim-50 to-purple-50 border-hashim-200 scale-105' 
+                      : 'bg-gray-50 border-gray-200 opacity-60'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{badge.icon}</div>
+                  <p className="text-xs font-medium">{badge.name}</p>
+                </div>
+              ))}
+            </div>
+          </AnimatedCard>
+
+          {/* Goals Tracker */}
+          <AnimatedCard delay={150}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Target className="h-5 w-5 text-hashim-600" />
+                <h3 className="font-semibold">Goals</h3>
+              </div>
+              <Button variant="ghost" size="sm" className="text-hashim-600">
+                Set Goal
+              </Button>
+            </div>
+            <div className="space-y-4">
+              {goals.map((goal, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">{goal.name}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {goal.current}/{goal.target} {goal.unit}
+                    </span>
+                  </div>
+                  <Progress value={goal.progress} className="h-3" />
+                </div>
+              ))}
+            </div>
+          </AnimatedCard>
+
+          {/* Time Range Selector */}
           <div className="flex space-x-3 mb-6 overflow-x-auto pb-2 scrollbar-none">
             <Chip 
               label="Week" 
@@ -193,146 +290,40 @@ export default function ProgressPage() {
               active={timeRange === "quarter"}
               onClick={() => fetchProgressData("quarter")}
             />
-            <Chip 
-              label="6 Months" 
-              active={timeRange === "half-year"}
-              onClick={() => fetchProgressData("half-year")}
-            />
-            <Chip 
-              label="Year" 
-              active={timeRange === "year"}
-              onClick={() => fetchProgressData("year")}
-            />
           </div>
-          
-          <AnimatedCard className="mb-6">
+
+          {/* Weight & Body Metrics Chart */}
+          <AnimatedCard delay={200}>
             <div className="flex justify-between items-center mb-4">
-              <div className="flex space-x-1">
+              <div className="flex items-center space-x-2">
+                <Weight className="h-5 w-5 text-hashim-600" />
+                <h3 className="font-semibold">Body Metrics</h3>
+              </div>
+              <div className="flex items-center space-x-2">
                 <Button 
+                  variant="ghost" 
                   size="sm"
-                  variant={showMultiMetric ? "default" : "outline"}
-                  onClick={() => setShowMultiMetric(true)}
+                  onClick={handleExplainTrends}
+                  className="text-hashim-600"
                 >
-                  Multi
-                </Button>
-                <Button 
-                  size="sm"
-                  variant={!showMultiMetric ? "default" : "outline"}
-                  onClick={() => setShowMultiMetric(false)}
-                >
-                  Single
+                  Explain Trends
                 </Button>
               </div>
-              
-              {!showMultiMetric && (
-                <div className="flex flex-wrap gap-1">
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "weight" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("weight")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Weight
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "calories" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("calories")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Cal
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "protein" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("protein")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Prot
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "carbs" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("carbs")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Carbs
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant={selectedMetric === "fat" ? "default" : "outline"}
-                    onClick={() => setSelectedMetric("fat")}
-                    className="text-xs py-1 h-7"
-                  >
-                    Fat
-                  </Button>
-                </div>
-              )}
             </div>
             
-            {showMultiMetric && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="weight-toggle" 
-                    checked={metrics.weight}
-                    onCheckedChange={() => toggleMetric('weight')}
-                  />
-                  <Label htmlFor="weight-toggle" className="flex items-center">
-                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#be123c' }}></span>
-                    Weight
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="calories-toggle" 
-                    checked={metrics.calories}
-                    onCheckedChange={() => toggleMetric('calories')}
-                  />
-                  <Label htmlFor="calories-toggle" className="flex items-center">
-                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#0891b2' }}></span>
-                    Calories
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="protein-toggle" 
-                    checked={metrics.protein}
-                    onCheckedChange={() => toggleMetric('protein')}
-                  />
-                  <Label htmlFor="protein-toggle" className="flex items-center">
-                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#4d7c0f' }}></span>
-                    Protein
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="carbs-toggle" 
-                    checked={metrics.carbs}
-                    onCheckedChange={() => toggleMetric('carbs')}
-                  />
-                  <Label htmlFor="carbs-toggle" className="flex items-center">
-                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#b45309' }}></span>
-                    Carbs
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch 
-                    id="fat-toggle" 
-                    checked={metrics.fat}
-                    onCheckedChange={() => toggleMetric('fat')}
-                  />
-                  <Label htmlFor="fat-toggle" className="flex items-center">
-                    <span className="inline-block w-3 h-3 mr-1 rounded-full" style={{ backgroundColor: '#7c3aed' }}></span>
-                    Fat
-                  </Label>
-                </div>
-              </div>
-            )}
+            <div className="flex space-x-2 mb-4 overflow-x-auto">
+              {(['weight', 'waist', 'chest', 'arms', 'hips'] as const).map((metric) => (
+                <Button
+                  key={metric}
+                  size="sm"
+                  variant={selectedMetric === metric ? "default" : "outline"}
+                  onClick={() => setSelectedMetric(metric)}
+                  className="capitalize flex-shrink-0"
+                >
+                  {metric}
+                </Button>
+              ))}
+            </div>
             
             <div className="h-48 overflow-hidden">
               {isLoading ? (
@@ -340,22 +331,26 @@ export default function ProgressPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hashim-600"></div>
                 </div>
               ) : (
-                showMultiMetric ? (
-                  <ProgressChart 
-                    data={multiMetricData} 
-                    metrics={metrics} 
-                  />
-                ) : (
-                  <ProgressChart 
-                    data={getSingleMetricData()} 
-                    singleMetric={selectedMetric} 
-                  />
-                )
+                <ProgressChart 
+                  data={getSingleMetricData()} 
+                  singleMetric={selectedMetric === 'weight' ? 'weight' : 'calories'} 
+                />
               )}
+            </div>
+            
+            <div className="mt-4 p-3 bg-hashim-50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Weekly Trend</span>
+                <div className="flex items-center space-x-1">
+                  <TrendingDown className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-semibold text-green-600">-0.5kg/week</span>
+                </div>
+              </div>
             </div>
           </AnimatedCard>
           
-          <AnimatedCard className="mb-6" delay={100}>
+          {/* Exercise Progress */}
+          <AnimatedCard delay={250}>
             <div className="flex items-center mb-4">
               <Dumbbell className="mr-2 text-hashim-600" size={20} />
               <h3 className="font-semibold">Exercise Progress</h3>
@@ -379,7 +374,8 @@ export default function ProgressPage() {
             </div>
           </AnimatedCard>
           
-          <AnimatedCard delay={200}>
+          {/* Body Measurements */}
+          <AnimatedCard delay={300}>
             <div className="flex items-center mb-4">
               <Activity className="mr-2 text-hashim-600" size={20} />
               <h3 className="font-semibold">Body Measurements</h3>
