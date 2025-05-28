@@ -41,7 +41,7 @@ export default function WorkoutsPage() {
     return 45; // Default fallback
   };
   
-  // Query for scheduled workouts for the selected date
+  // Query for scheduled workouts for the selected date WITH voice-logged exercises
   const { data: scheduledWorkouts = [], isLoading: isLoadingScheduled } = useQuery({
     queryKey: ['scheduledWorkouts', userId, format(selectedDate, 'yyyy-MM-dd')],
     queryFn: async () => {
@@ -66,21 +66,54 @@ export default function WorkoutsPage() {
           
           const exercises = await WorkoutService.getWorkoutExercises(schedule.workout_plan_id);
           
+          // Get completed exercises and voice-logged exercises
+          let completedExercises: Record<string, boolean> = {};
+          let allExerciseLogs: any[] = [];
+          
+          if (schedule.is_completed && schedule.workout_log_id) {
+            const exerciseLogs = await WorkoutService.getExerciseLogs(schedule.workout_log_id);
+            allExerciseLogs = exerciseLogs;
+            completedExercises = exerciseLogs.reduce((acc, log) => {
+              acc[log.exercise_name] = true;
+              return acc;
+            }, {} as Record<string, boolean>);
+          }
+          
+          // Combine planned exercises with logged exercises (including voice-logged ones)
+          const plannedExercises = exercises.map(ex => ({
+            id: ex.id!,
+            name: ex.name,
+            sets: ex.sets,
+            reps: ex.reps,
+            weight: ex.weight || 'bodyweight',
+            completed: completedExercises[ex.name] || false,
+            source: 'planned'
+          }));
+
+          // Add voice-logged exercises that aren't in the plan
+          const voiceLoggedExercises = allExerciseLogs
+            .filter(log => !exercises.some(ex => ex.name === log.exercise_name))
+            .map(log => ({
+              id: `voice-${log.id}`,
+              name: log.exercise_name,
+              sets: log.sets_completed,
+              reps: log.reps_completed,
+              weight: log.weight_used || 'bodyweight',
+              completed: true,
+              source: 'voice'
+            }));
+          
+          const allExercises = [...plannedExercises, ...voiceLoggedExercises];
+          
           return {
             id: workoutPlan.id,
             schedule_id: schedule.id,
             title: workoutPlan.title,
-            exercises: exercises.map(ex => ({
-              id: ex.id,
-              name: ex.name,
-              sets: ex.sets,
-              reps: ex.reps,
-              weight: ex.weight || 'bodyweight'
-            })),
+            exercises: allExercises,
             category: workoutPlan.category,
             isFavorite: false,
             estimatedDuration: parseEstimatedDuration(workoutPlan.estimated_duration) || 
-              45 + exercises.length * 3,
+              45 + allExercises.length * 3,
             targetMuscles: workoutPlan.target_muscles || ["Full Body"],
             difficulty: workoutPlan.difficulty || 3,
             aiGenerated: workoutPlan.ai_generated || false,
