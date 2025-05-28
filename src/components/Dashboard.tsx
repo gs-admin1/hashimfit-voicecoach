@@ -10,7 +10,7 @@ import { VoiceInput } from "@/components/VoiceInput";
 import { Button } from "@/components/ui/button";
 import { DayTab } from "@/components/DayTab";
 import { AnimatedCard, IconButton } from "@/components/ui-components";
-import { Plus, User, Settings } from "lucide-react";
+import { Plus, User, Settings, Camera, Mic, Dumbbell, CheckCircle2, Play } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { WorkoutService, WorkoutSchedule, WorkoutLog, ExerciseLog } from "@/lib/supabase/services/WorkoutService";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
@@ -289,7 +289,6 @@ export function Dashboard() {
     }
   });
 
-  // Function to refresh workout data after voice logging
   const handleWorkoutUpdated = () => {
     queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
     queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
@@ -340,6 +339,15 @@ export function Dashboard() {
     }));
   };
 
+  // Calculate workout progress
+  const workoutProgress = selectedWorkout 
+    ? {
+        completed: selectedWorkout.exercises.filter(ex => ex.completed).length,
+        total: selectedWorkout.exercises.length,
+        percentage: Math.round((selectedWorkout.exercises.filter(ex => ex.completed).length / selectedWorkout.exercises.length) * 100)
+      }
+    : { completed: 0, total: 0, percentage: 0 };
+
   return (
     <div className="max-w-lg mx-auto pb-20">
       <div className="flex justify-between items-center mb-6">
@@ -357,32 +365,31 @@ export function Dashboard() {
           />
         </div>
       </div>
-      
-      <div className="space-y-4 mb-6">
-        <DailyWorkoutSummaryCard 
-          isCollapsed={cardStates.workoutSummary}
-          onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
-        />
+
+      {/* Quick Actions - Moved to top */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <Button 
+          className="h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg rounded-2xl flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105"
+          onClick={() => {}}
+        >
+          <Camera size={20} />
+          <span className="font-semibold">Snap a Snack</span>
+        </Button>
         
-        <NutritionProgressCard 
-          isCollapsed={cardStates.nutrition}
-          onToggleCollapse={() => toggleCardCollapse('nutrition')}
-        />
-        
-        <TDEEBalanceCard 
-          isCollapsed={cardStates.tdeeBalance}
-          onToggleCollapse={() => toggleCardCollapse('tdeeBalance')}
-        />
-        
-        <HabitStreakCard 
-          isCollapsed={cardStates.habitStreak}
-          onToggleCollapse={() => toggleCardCollapse('habitStreak')}
-        />
-        
-        <AICoachInsightCard 
-          isCollapsed={cardStates.aiInsights}
-          onToggleCollapse={() => toggleCardCollapse('aiInsights')}
-        />
+        <div className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-105">
+          <VoiceInput 
+            selectedWorkout={selectedWorkout}
+            onWorkoutUpdated={handleWorkoutUpdated}
+            className="w-full h-full bg-transparent border-0 shadow-none p-0"
+            buttonClassName="w-full h-full bg-transparent hover:bg-transparent text-white flex items-center justify-center space-x-2"
+            buttonContent={
+              <>
+                <Mic size={20} />
+                <span className="font-semibold">Log Exercise</span>
+              </>
+            }
+          />
+        </div>
       </div>
       
       <div className="flex flex-nowrap overflow-x-auto mb-6 pb-1 scrollbar-none">
@@ -409,54 +416,151 @@ export function Dashboard() {
         })}
       </div>
       
-      <AnimatedCard className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h3 className="text-lg font-semibold">Today's Workout</h3>
-            <p className="text-sm text-muted-foreground">{selectedDay}</p>
-          </div>
-          {!selectedWorkout && !isLoadingSelectedWorkout && (
-            <Button 
-              size="sm" 
-              className="bg-hashim-600 hover:bg-hashim-700 text-white"
-              onClick={() => setShowAddWorkout(true)}
-            >
-              <Plus size={16} className="mr-1" />
-              Add Workout
-            </Button>
-          )}
-        </div>
-        
+      {/* Enhanced Today's Workout Section */}
+      <div className="mb-6">
         {isLoadingSelectedWorkout || isLoadingSchedules ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hashim-600"></div>
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-3xl p-6 shadow-lg">
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hashim-600"></div>
+            </div>
           </div>
         ) : selectedWorkout ? (
-          <WorkoutCard 
-            workout={selectedWorkout} 
-            onExerciseComplete={handleExerciseComplete}
-          />
+          <div className="bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-3xl p-6 shadow-xl border border-gray-100 dark:border-gray-700 animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Today's Workout</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{selectedDay}</p>
+              </div>
+              {selectedWorkout.is_completed ? (
+                <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 dark:bg-green-900/30 rounded-full">
+                  <CheckCircle2 size={16} className="text-green-600 dark:text-green-400" />
+                  <span className="text-sm font-medium text-green-700 dark:text-green-300">Complete</span>
+                </div>
+              ) : (
+                <Button 
+                  size="sm" 
+                  className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-full px-4 shadow-lg"
+                >
+                  <Play size={14} className="mr-1" />
+                  Start
+                </Button>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">{selectedWorkout.title}</h3>
+              
+              {/* Progress Bar */}
+              <div className="mb-3">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-600 dark:text-gray-400">Progress</span>
+                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                    {workoutProgress.completed}/{workoutProgress.total} exercises
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${workoutProgress.percentage}%` }}
+                  />
+                </div>
+                <div className="text-right text-xs text-purple-600 dark:text-purple-400 font-medium mt-1">
+                  {workoutProgress.percentage}% complete
+                </div>
+              </div>
+            </div>
+
+            {/* Exercise List */}
+            <div className="space-y-3">
+              {selectedWorkout.exercises.slice(0, 3).map((exercise, index) => (
+                <div 
+                  key={exercise.id} 
+                  className={`flex items-center p-3 rounded-xl transition-all duration-200 ${
+                    exercise.completed 
+                      ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+                      : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700'
+                  }`}
+                >
+                  <button
+                    onClick={() => handleExerciseComplete(exercise.id, !exercise.completed)}
+                    className={`w-6 h-6 rounded-full border-2 mr-3 flex items-center justify-center transition-all duration-200 ${
+                      exercise.completed
+                        ? 'bg-green-500 border-green-500'
+                        : 'border-gray-300 dark:border-gray-600 hover:border-green-400'
+                    }`}
+                  >
+                    {exercise.completed && (
+                      <CheckCircle2 size={14} className="text-white" />
+                    )}
+                  </button>
+                  
+                  <div className="flex-1">
+                    <h4 className={`font-medium ${exercise.completed ? 'text-green-700 dark:text-green-300 line-through' : 'text-gray-800 dark:text-gray-200'}`}>
+                      {exercise.name}
+                    </h4>
+                    <p className={`text-sm ${exercise.completed ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                      {exercise.sets} sets • {exercise.reps} reps • {exercise.weight}
+                      {exercise.source === 'voice' && (
+                        <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded-full">
+                          Voice logged
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              
+              {selectedWorkout.exercises.length > 3 && (
+                <div className="text-center">
+                  <Button variant="ghost" size="sm" className="text-gray-600 dark:text-gray-400">
+                    +{selectedWorkout.exercises.length - 3} more exercises
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
-          <div className="text-center p-6">
-            <p className="text-muted-foreground mb-2">No workout scheduled for {selectedDay}</p>
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-3xl p-8 text-center shadow-lg border border-orange-200 dark:border-orange-800">
+            <div className="w-16 h-16 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Dumbbell size={28} className="text-white" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">No workout scheduled</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">Ready to get stronger? Let's add a workout for {selectedDay}</p>
             <Button 
-              variant="outline"
               onClick={() => setShowAddWorkout(true)}
-              className="flex items-center mx-auto"
+              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full px-6 shadow-lg"
             >
               <Plus size={16} className="mr-1" />
               Add a workout
             </Button>
           </div>
         )}
-      </AnimatedCard>
+      </div>
       
-      <MealCaptureCard />
-      
-      <div className="my-6">
-        <VoiceInput 
-          selectedWorkout={selectedWorkout}
-          onWorkoutUpdated={handleWorkoutUpdated}
+      <div className="space-y-4 mb-6">
+        <DailyWorkoutSummaryCard 
+          isCollapsed={cardStates.workoutSummary}
+          onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
+        />
+        
+        <NutritionProgressCard 
+          isCollapsed={cardStates.nutrition}
+          onToggleCollapse={() => toggleCardCollapse('nutrition')}
+        />
+        
+        <TDEEBalanceCard 
+          isCollapsed={cardStates.tdeeBalance}
+          onToggleCollapse={() => toggleCardCollapse('tdeeBalance')}
+        />
+        
+        <HabitStreakCard 
+          isCollapsed={cardStates.habitStreak}
+          onToggleCollapse={() => toggleCardCollapse('habitStreak')}
+        />
+        
+        <AICoachInsightCard 
+          isCollapsed={cardStates.aiInsights}
+          onToggleCollapse={() => toggleCardCollapse('aiInsights')}
         />
       </div>
       

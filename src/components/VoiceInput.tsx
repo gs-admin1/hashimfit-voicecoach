@@ -1,453 +1,328 @@
 
-import { useState, useEffect, useRef } from "react";
-import { Mic, MicOff, Save, Edit, X, Check } from "lucide-react";
-import { AnimatedCard } from "./ui-components";
-import { cn } from "@/lib/utils";
-import { toast } from "@/components/ui/use-toast";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import supabase from "@/lib/supabase";
+import { Card, CardContent } from "@/components/ui/card";
+import { Mic, MicOff, Loader2, Check, X, Edit } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { WorkoutService, WorkoutLog, ExerciseLog } from "@/lib/supabase/services/WorkoutService";
-import { format } from "date-fns";
-
-interface WorkoutData {
-  sets: number;
-  reps: string;
-  exercise: string;
-  weight_lbs?: number;
-  duration_min?: number;
-}
+import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
+import { cn } from "@/lib/utils";
 
 interface VoiceInputProps {
   selectedWorkout?: any;
   onWorkoutUpdated?: () => void;
+  className?: string;
+  buttonClassName?: string;
+  buttonContent?: React.ReactNode;
 }
 
-export function VoiceInput({ selectedWorkout, onWorkoutUpdated }: VoiceInputProps) {
+interface ParsedExercise {
+  sets?: number;
+  reps?: string;
+  exercise?: string;
+  weight_lbs?: number;
+  duration_min?: number;
+}
+
+export function VoiceInput({ 
+  selectedWorkout, 
+  onWorkoutUpdated, 
+  className,
+  buttonClassName,
+  buttonContent 
+}: VoiceInputProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [workoutData, setWorkoutData] = useState<WorkoutData | null>(null);
+  const [parsedExercise, setParsedExercise] = useState<ParsedExercise | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState<WorkoutData | null>(null);
-  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
-  
-  const { userId } = useAuth();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { userId } = useAuth();
 
-  useEffect(() => {
-    checkMicrophonePermission();
-  }, []);
-
-  const checkMicrophonePermission = async () => {
-    try {
-      const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-      setPermissionGranted(result.state === 'granted');
-    } catch (error) {
-      console.log('Permission API not supported');
-    }
-  };
-
-  const requestMicrophoneAccess = async () => {
+  const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setPermissionGranted(true);
-      return stream;
-    } catch (error) {
-      console.error('Microphone access denied:', error);
-      setPermissionGranted(false);
-      toast({
-        title: "Microphone Access Required",
-        description: "Please allow microphone access to log workouts with voice.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const startListening = async () => {
-    try {
-      setIsListening(true);
-      setTranscript("");
-      setWorkoutData(null);
-      setShowConfirmation(false);
-      audioChunksRef.current = [];
-
-      const stream = await requestMicrophoneAccess();
-      streamRef.current = stream;
-
+      
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm'
+        mimeType: 'audio/webm;codecs=opus'
       });
+      
       mediaRecorderRef.current = mediaRecorder;
-
+      audioChunksRef.current = [];
+      
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
-
+      
       mediaRecorder.onstop = async () => {
-        if (audioChunksRef.current.length > 0) {
-          await processAudio();
-        }
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        await processAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
       };
-
+      
       mediaRecorder.start();
-
-      timeoutRef.current = setTimeout(() => {
-        stopListening();
+      setIsListening(true);
+      
+      // Auto-stop after 10 seconds
+      setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          stopRecording();
+        }
       }, 10000);
-
+      
     } catch (error) {
-      console.error('Error starting recording:', error);
-      setIsListening(false);
+      console.error('Error accessing microphone:', error);
+      toast({
+        title: "Microphone Error",
+        description: "Could not access microphone. Please check permissions.",
+        variant: "destructive"
+      });
     }
   };
 
-  const stopListening = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
+  const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-
     setIsListening(false);
   };
 
-  const processAudio = async () => {
-    if (audioChunksRef.current.length === 0) return;
-
+  const processAudio = async (audioBlob: Blob) => {
     setIsProcessing(true);
-
+    
     try {
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      let binary = '';
-      for (let i = 0; i < uint8Array.length; i++) {
-        binary += String.fromCharCode(uint8Array[i]);
-      }
-      const base64Audio = btoa(binary);
-
-      console.log('Sending audio for processing...');
-
-      const { data, error } = await supabase.functions.invoke('voice-workout-parser', {
-        body: { audio: base64Audio }
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        setTranscript(data.transcript);
-        setWorkoutData(data.workoutData);
+      // Convert blob to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Audio = (reader.result as string).split(',')[1];
+        
+        // Send to our edge function for transcription and parsing
+        const response = await fetch('/api/voice-workout-parser', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            audio: base64Audio
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to process audio');
+        }
+        
+        const result = await response.json();
+        
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        
+        setTranscript(result.transcript || "");
+        setParsedExercise(result.parsed_exercise || null);
         setShowConfirmation(true);
         
-        toast({
-          title: "Voice Processed",
-          description: `Detected: ${data.workoutData.exercise}`,
-        });
-      } else {
-        throw new Error(data.error || 'Processing failed');
-      }
-
+      };
+      reader.readAsDataURL(audioBlob);
+      
     } catch (error) {
       console.error('Error processing audio:', error);
       toast({
-        title: "Processing Failed",
+        title: "Processing Error",
         description: "Could not process your voice input. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsProcessing(false);
-      audioChunksRef.current = [];
     }
   };
 
-  const handleSave = async () => {
-    if (!workoutData || !userId) return;
+  const confirmExercise = async () => {
+    if (!parsedExercise || !userId) {
+      toast({
+        title: "Error",
+        description: "Missing exercise data or user authentication.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = new Date();
+      const dateString = today.toISOString().split('T')[0];
+      
+      // Check if there's a scheduled workout for today
+      let workoutSchedule = null;
+      let workoutLogId = null;
+      
+      if (selectedWorkout && selectedWorkout.schedule_id) {
+        workoutSchedule = selectedWorkout;
+        workoutLogId = selectedWorkout.workout_log_id;
+      } else {
+        // Get today's scheduled workouts
+        const schedules = await WorkoutService.getWorkoutSchedule(userId, dateString, dateString);
+        if (schedules.length > 0) {
+          workoutSchedule = schedules[0];
+          workoutLogId = schedules[0].workout_log_id;
+        }
+      }
       
       // Create exercise log entry
-      const exerciseLog: Omit<ExerciseLog, 'workout_log_id'> = {
-        exercise_name: workoutData.exercise,
-        sets_completed: workoutData.sets,
-        reps_completed: workoutData.reps,
-        weight_used: workoutData.weight_lbs ? `${workoutData.weight_lbs} lbs` : workoutData.duration_min ? `${workoutData.duration_min} min` : 'bodyweight',
-        order_index: 0 // Will be updated based on existing exercises
+      const exerciseLogData = {
+        exercise_name: parsedExercise.exercise || "Unknown Exercise",
+        sets_completed: parsedExercise.sets || 1,
+        reps_completed: parsedExercise.reps || "1",
+        weight_used: parsedExercise.weight_lbs ? `${parsedExercise.weight_lbs} lbs` : (parsedExercise.duration_min ? `${parsedExercise.duration_min} min` : 'bodyweight'),
+        order_index: 0
       };
 
-      let workoutLogId: string | null = null;
-
-      // Check if there's already a workout log for today
-      if (selectedWorkout && selectedWorkout.schedule_id) {
-        // Get the workout schedule to check for existing workout log
-        const schedules = await WorkoutService.getWorkoutSchedule(userId, today, today);
-        const todaySchedule = schedules.find(s => s.scheduled_date === today);
+      if (workoutLogId) {
+        // Add to existing workout log
+        await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLogData]);
+      } else if (workoutSchedule) {
+        // Create new workout log and associate with schedule
+        const workoutLog = {
+          user_id: userId,
+          workout_plan_id: workoutSchedule.workout_plan_id,
+          start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(),
+        };
         
-        if (todaySchedule && todaySchedule.workout_log_id) {
-          // Add to existing workout log
-          workoutLogId = todaySchedule.workout_log_id;
-          
-          // Get existing exercise logs to determine order index
-          const existingLogs = await WorkoutService.getExerciseLogs(workoutLogId);
-          exerciseLog.order_index = existingLogs.length;
-          
-          // Add the new exercise log
-          await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLog]);
-        } else if (todaySchedule) {
-          // Create new workout log for existing schedule
-          const workoutLog: WorkoutLog = {
-            user_id: userId,
-            workout_plan_id: todaySchedule.workout_plan_id,
-            start_time: new Date().toISOString(),
-            end_time: new Date().toISOString(),
-          };
-          
-          workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLog]);
-          
-          if (workoutLogId && todaySchedule.id) {
-            await WorkoutService.completeScheduledWorkout(todaySchedule.id, workoutLogId);
-          }
+        const newLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
+        
+        if (newLogId && workoutSchedule.id) {
+          await WorkoutService.completeScheduledWorkout(workoutSchedule.id, newLogId);
         }
       } else {
-        // No scheduled workout, create a standalone workout log
-        const workoutLog: WorkoutLog = {
+        // Create a standalone workout log for today
+        const workoutLog = {
           user_id: userId,
           start_time: new Date().toISOString(),
           end_time: new Date().toISOString(),
         };
         
-        workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLog]);
+        await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
       }
 
-      if (workoutLogId) {
-        setShowConfirmation(false);
-        setWorkoutData(null);
-        setTranscript("");
-        
-        // Call the callback to refresh the UI
-        onWorkoutUpdated?.();
-        
-        toast({
-          title: "Exercise Logged!",
-          description: `${workoutData.exercise} has been added to today's workout.`,
-        });
-      } else {
-        throw new Error('Failed to create workout log');
+      toast({
+        title: "Exercise Logged! 💪",
+        description: `${parsedExercise.exercise} has been added to your workout.`,
+      });
+
+      // Reset state
+      setShowConfirmation(false);
+      setTranscript("");
+      setParsedExercise(null);
+      
+      // Trigger refresh of workout data
+      if (onWorkoutUpdated) {
+        onWorkoutUpdated();
       }
 
     } catch (error) {
-      console.error('Error saving workout:', error);
+      console.error('Error saving exercise:', error);
       toast({
-        title: "Save Failed",
-        description: "Could not save your workout. Please try again.",
-        variant: "destructive",
+        title: "Save Error",
+        description: "Could not save your exercise. Please try again.",
+        variant: "destructive"
       });
     }
   };
 
-  const handleEdit = () => {
-    setEditData({ ...workoutData! });
-    setIsEditing(true);
-  };
-
-  const handleSaveEdit = () => {
-    if (editData) {
-      setWorkoutData(editData);
-      setIsEditing(false);
-      setEditData(null);
-    }
-  };
-
-  const handleDiscard = () => {
+  const discardExercise = () => {
     setShowConfirmation(false);
-    setWorkoutData(null);
     setTranscript("");
-    setIsEditing(false);
-    setEditData(null);
+    setParsedExercise(null);
   };
 
-  const toggleListening = () => {
+  const handleClick = () => {
     if (isListening) {
-      stopListening();
-    } else {
-      startListening();
+      stopRecording();
+    } else if (!isProcessing) {
+      startRecording();
     }
   };
 
-  if (showConfirmation && workoutData) {
+  if (showConfirmation && parsedExercise) {
     return (
-      <AnimatedCard className="relative overflow-hidden">
-        <div className="flex flex-col items-center justify-center py-4">
-          <div className="w-full max-w-sm">
-            <h3 className="font-bold text-lg mb-2 text-center">Confirm Exercise</h3>
-            
+      <Card className={cn("animate-fade-in", className)}>
+        <CardContent className="p-4">
+          <div className="text-center mb-4">
+            <h3 className="font-semibold text-lg mb-2">Confirm Exercise</h3>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-3">
+              <div className="font-medium text-lg">{parsedExercise.exercise}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {parsedExercise.sets} sets × {parsedExercise.reps} reps
+                {parsedExercise.weight_lbs && ` @ ${parsedExercise.weight_lbs} lbs`}
+                {parsedExercise.duration_min && ` for ${parsedExercise.duration_min} minutes`}
+              </div>
+            </div>
             {transcript && (
-              <div className="mb-3 p-2 bg-muted rounded text-sm">
-                <span className="text-muted-foreground">You said: </span>
-                "{transcript}"
-              </div>
-            )}
-
-            {isEditing && editData ? (
-              <div className="space-y-3 mb-4">
-                <Input
-                  placeholder="Exercise name"
-                  value={editData.exercise}
-                  onChange={(e) => setEditData(prev => prev ? { ...prev, exercise: e.target.value } : null)}
-                />
-                <div className="flex space-x-2">
-                  <Input
-                    placeholder="Sets"
-                    type="number"
-                    value={editData.sets}
-                    onChange={(e) => setEditData(prev => prev ? { ...prev, sets: parseInt(e.target.value) || 0 } : null)}
-                  />
-                  <Input
-                    placeholder="Reps"
-                    value={editData.reps}
-                    onChange={(e) => setEditData(prev => prev ? { ...prev, reps: e.target.value } : null)}
-                  />
-                </div>
-                {editData.weight_lbs && (
-                  <Input
-                    placeholder="Weight (lbs)"
-                    type="number"
-                    value={editData.weight_lbs}
-                    onChange={(e) => setEditData(prev => prev ? { ...prev, weight_lbs: parseInt(e.target.value) || undefined } : null)}
-                  />
-                )}
-                {editData.duration_min && (
-                  <Input
-                    placeholder="Duration (min)"
-                    type="number"
-                    value={editData.duration_min}
-                    onChange={(e) => setEditData(prev => prev ? { ...prev, duration_min: parseInt(e.target.value) || undefined } : null)}
-                  />
-                )}
-                <div className="flex space-x-2">
-                  <Button size="sm" onClick={handleSaveEdit} className="flex-1">
-                    <Check size={16} className="mr-1" />
-                    Save
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-hashim-50 dark:bg-hashim-900/20 rounded-lg p-4 mb-4">
-                <div className="font-semibold text-hashim-800 dark:text-hashim-200 capitalize">
-                  {workoutData.exercise}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {workoutData.sets} sets × {workoutData.reps} reps
-                  {workoutData.weight_lbs && ` @ ${workoutData.weight_lbs} lbs`}
-                  {workoutData.duration_min && ` for ${workoutData.duration_min} minutes`}
-                </div>
-              </div>
-            )}
-
-            {!isEditing && (
-              <div className="flex space-x-2">
-                <Button 
-                  size="sm" 
-                  onClick={handleSave}
-                  className="flex-1 bg-hashim-600 hover:bg-hashim-700"
-                >
-                  <Save size={16} className="mr-1" />
-                  Save
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={handleEdit}
-                  className="flex-1"
-                >
-                  <Edit size={16} className="mr-1" />
-                  Edit
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={handleDiscard}
-                  className="flex-1"
-                >
-                  <X size={16} className="mr-1" />
-                  Discard
-                </Button>
-              </div>
+              <div className="text-xs text-gray-500 italic">"{transcript}"</div>
             )}
           </div>
-        </div>
-      </AnimatedCard>
+          
+          <div className="flex space-x-2">
+            <Button 
+              onClick={confirmExercise}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Check size={16} className="mr-1" />
+              Save
+            </Button>
+            <Button 
+              onClick={() => {}}
+              variant="outline"
+              className="flex-1"
+            >
+              <Edit size={16} className="mr-1" />
+              Edit
+            </Button>
+            <Button 
+              onClick={discardExercise}
+              variant="outline"
+              className="flex-1"
+            >
+              <X size={16} className="mr-1" />
+              Discard
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <AnimatedCard className="relative overflow-hidden">
-      <div className="flex flex-col items-center justify-center py-4">
-        <button
-          onClick={toggleListening}
-          disabled={isProcessing}
-          className={cn(
-            "relative rounded-full p-6 transition-all duration-300 mb-4",
-            isListening 
-              ? "bg-red-500 hover:bg-red-600" 
-              : isProcessing
-              ? "bg-gray-400"
-              : "bg-hashim-500 hover:bg-hashim-600"
-          )}
-        >
-          {isProcessing ? (
-            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-white" />
-          ) : isListening ? (
-            <MicOff className="text-white" size={28} />
-          ) : (
-            <Mic className="text-white" size={28} />
-          )}
-          
-          {isListening && (
-            <div className="absolute inset-0 rounded-full animate-ripple bg-red-400 opacity-20"></div>
-          )}
-        </button>
+    <div className={className}>
+      <Button
+        onClick={handleClick}
+        disabled={isProcessing}
+        className={cn(
+          "relative overflow-hidden transition-all duration-200",
+          isListening && "animate-pulse",
+          buttonClassName || "w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl p-4 shadow-lg"
+        )}
+      >
+        {buttonContent || (
+          <>
+            {isProcessing ? (
+              <Loader2 size={20} className="mr-2 animate-spin" />
+            ) : isListening ? (
+              <MicOff size={20} className="mr-2" />
+            ) : (
+              <Mic size={20} className="mr-2" />
+            )}
+            
+            {isProcessing ? "Processing..." : isListening ? "Stop Recording" : "Log Workout"}
+          </>
+        )}
         
-        <div className="text-center">
-          <h3 className="font-bold text-lg mb-1">
-            {isProcessing 
-              ? "Processing..." 
-              : isListening 
-              ? "Listening..." 
-              : "Log your workout"}
-          </h3>
-          <p className="text-muted-foreground text-sm">
-            {isProcessing
-              ? "Converting speech to workout data..."
-              : isListening 
-              ? "Speak your exercise, sets, reps, and weight" 
-              : permissionGranted === false
-              ? "Microphone access required"
-              : "Tap to start voice logging"}
-          </p>
-        </div>
-      </div>
-    </AnimatedCard>
+        {isListening && (
+          <div className="absolute inset-0 bg-red-400 opacity-20 animate-pulse rounded-xl" />
+        )}
+      </Button>
+    </div>
   );
 }
