@@ -129,16 +129,9 @@ export function VoiceInput({
           const base64Audio = (reader.result as string).split(',')[1];
           console.log("📝 Converted to base64, length:", base64Audio.length);
           
-          // Get the current session to include proper authentication
-          const { data: { session } } = await supabase.auth.getSession();
+          console.log("🔑 Calling edge function with proper auth...");
           
-          if (!session) {
-            throw new Error('No active session found. Please log in again.');
-          }
-          
-          console.log("🔑 Got session, calling edge function...");
-          
-          // Use Supabase client to call the edge function with proper authentication
+          // Use Supabase client to call the edge function - this automatically includes auth
           const { data, error } = await supabase.functions.invoke('voice-workout-parser', {
             body: { audio: base64Audio }
           });
