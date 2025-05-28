@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
@@ -28,6 +27,19 @@ export default function WorkoutsPage() {
   const [restDuration, setRestDuration] = useState(60);
   const { isAuthenticated, userId } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Helper function to parse estimated duration
+  const parseEstimatedDuration = (duration: any): number => {
+    if (typeof duration === 'number') return duration;
+    if (typeof duration === 'string') {
+      // Handle time format like "00:45:00" (HH:MM:SS)
+      const parts = duration.split(':');
+      if (parts.length >= 2) {
+        return parseInt(parts[1]) || 45; // Return minutes
+      }
+    }
+    return 45; // Default fallback
+  };
   
   // Query for scheduled workouts for the selected date
   const { data: scheduledWorkouts = [], isLoading: isLoadingScheduled } = useQuery({
@@ -67,8 +79,7 @@ export default function WorkoutsPage() {
             })),
             category: workoutPlan.category,
             isFavorite: false,
-            estimatedDuration: workoutPlan.estimated_duration ? 
-              parseInt(workoutPlan.estimated_duration.split(':')[1]) : 
+            estimatedDuration: parseEstimatedDuration(workoutPlan.estimated_duration) || 
               45 + exercises.length * 3,
             targetMuscles: workoutPlan.target_muscles || ["Full Body"],
             difficulty: workoutPlan.difficulty || 3,
@@ -111,8 +122,7 @@ export default function WorkoutsPage() {
             })),
             category: plan.category,
             isFavorite: false,
-            estimatedDuration: plan.estimated_duration ? 
-              parseInt(plan.estimated_duration.split(':')[1]) : 
+            estimatedDuration: parseEstimatedDuration(plan.estimated_duration) || 
               45 + exercises.length * 3,
             targetMuscles: plan.target_muscles || ["Full Body"],
             difficulty: plan.difficulty || 3,
