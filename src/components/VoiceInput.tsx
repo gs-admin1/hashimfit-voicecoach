@@ -197,22 +197,6 @@ export function VoiceInput({
       const today = new Date();
       const dateString = today.toISOString().split('T')[0];
       
-      // Check if there's a scheduled workout for today
-      let workoutSchedule = null;
-      let workoutLogId = null;
-      
-      if (selectedWorkout && selectedWorkout.schedule_id) {
-        workoutSchedule = selectedWorkout;
-        workoutLogId = selectedWorkout.workout_log_id;
-      } else {
-        // Get today's scheduled workouts
-        const schedules = await WorkoutService.getWorkoutSchedule(userId, dateString, dateString);
-        if (schedules.length > 0) {
-          workoutSchedule = schedules[0];
-          workoutLogId = schedules[0].workout_log_id;
-        }
-      }
-      
       // Create exercise log entry
       const exerciseLogData = {
         exercise_name: parsedExercise.exercise || "Unknown Exercise",
@@ -224,36 +208,81 @@ export function VoiceInput({
 
       console.log("📋 Exercise log data:", exerciseLogData);
 
-      if (workoutLogId) {
-        // Add to existing workout log
-        console.log("➕ Adding to existing workout log:", workoutLogId);
-        await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLogData]);
-      } else if (workoutSchedule) {
-        // Create new workout log and associate with schedule
-        console.log("🆕 Creating new workout log for schedule:", workoutSchedule.id);
-        const workoutLog = {
-          user_id: userId,
-          workout_plan_id: workoutSchedule.workout_plan_id,
-          start_time: new Date().toISOString(),
-          end_time: new Date().toISOString(),
-        };
+      let workoutLogId = null;
+
+      // Check if there's a selected workout with existing log
+      if (selectedWorkout && selectedWorkout.schedule_id) {
+        console.log("📅 Using selected workout schedule:", selectedWorkout.schedule_id);
         
-        const newLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
+        // Get the schedule details to check if it has a workout log
+        const schedules = await WorkoutService.getWorkoutSchedule(userId, dateString, dateString);
+        const todaySchedule = schedules.find(s => s.id === selectedWorkout.schedule_id);
         
-        if (newLogId && workoutSchedule.id) {
-          await WorkoutService.completeScheduledWorkout(workoutSchedule.id, newLogId);
+        if (todaySchedule && todaySchedule.workout_log_id) {
+          // Add to existing workout log
+          console.log("➕ Adding to existing workout log:", todaySchedule.workout_log_id);
+          workoutLogId = todaySchedule.workout_log_id;
+          await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLogData]);
+        } else if (todaySchedule) {
+          // Create new workout log and associate with schedule
+          console.log("🆕 Creating new workout log for schedule:", todaySchedule.id);
+          const workoutLog = {
+            user_id: userId,
+            workout_plan_id: todaySchedule.workout_plan_id,
+            start_time: new Date().toISOString(),
+            end_time: new Date().toISOString(),
+          };
+          
+          workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
+          
+          if (workoutLogId && todaySchedule.id) {
+            await WorkoutService.completeScheduledWorkout(todaySchedule.id, workoutLogId);
+          }
         }
       } else {
-        // Create a standalone workout log for today
-        console.log("🏋️ Creating standalone workout log");
-        const workoutLog = {
-          user_id: userId,
-          start_time: new Date().toISOString(),
-          end_time: new Date().toISOString(),
-        };
+        // Check if there's any scheduled workout for today
+        console.log("🔍 Looking for today's scheduled workouts");
+        const schedules = await WorkoutService.getWorkoutSchedule(userId, dateString, dateString);
         
-        await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
+        if (schedules.length > 0) {
+          const todaySchedule = schedules[0];
+          console.log("📅 Found scheduled workout for today:", todaySchedule.id);
+          
+          if (todaySchedule.workout_log_id) {
+            // Add to existing workout log
+            console.log("➕ Adding to existing workout log:", todaySchedule.workout_log_id);
+            workoutLogId = todaySchedule.workout_log_id;
+            await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLogData]);
+          } else {
+            // Create new workout log and associate with schedule
+            console.log("🆕 Creating new workout log for schedule:", todaySchedule.id);
+            const workoutLog = {
+              user_id: userId,
+              workout_plan_id: todaySchedule.workout_plan_id,
+              start_time: new Date().toISOString(),
+              end_time: new Date().toISOString(),
+            };
+            
+            workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
+            
+            if (workoutLogId && todaySchedule.id) {
+              await WorkoutService.completeScheduledWorkout(todaySchedule.id, workoutLogId);
+            }
+          }
+        } else {
+          // Create a standalone workout log for today
+          console.log("🏋️ Creating standalone workout log");
+          const workoutLog = {
+            user_id: userId,
+            start_time: new Date().toISOString(),
+            end_time: new Date().toISOString(),
+          };
+          
+          workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
+        }
       }
+
+      console.log("✅ Exercise logged successfully with workout log ID:", workoutLogId);
 
       toast({
         title: "Exercise Logged! 💪",
