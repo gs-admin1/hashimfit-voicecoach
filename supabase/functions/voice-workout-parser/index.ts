@@ -14,7 +14,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Voice workout parser called");
     const { audio, transcriptText } = await req.json();
     
     let transcript = transcriptText;
@@ -45,9 +44,7 @@ serve(async (req) => {
       });
       
       if (!transcriptionResponse.ok) {
-        const errorText = await transcriptionResponse.text();
-        console.error("Transcription error:", errorText);
-        throw new Error(`Transcription failed: ${errorText}`);
+        throw new Error(`Transcription failed: ${await transcriptionResponse.text()}`);
       }
       
       const transcriptionResult = await transcriptionResponse.json();
@@ -60,7 +57,7 @@ serve(async (req) => {
     }
     
     // Parse workout data using OpenAI
-    console.log("Parsing workout data for transcript:", transcript);
+    console.log("Parsing workout data...");
     
     const parseResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -76,7 +73,7 @@ serve(async (req) => {
             content: `You are an assistant that parses natural language workout logs into structured data. Extract:
 - number of sets
 - number of reps (can be a range like "8-12" or single number)
-- exercise name (normalize to common names like "push ups", "bench press", "squats", etc.)
+- exercise name (normalize to common names)
 - weight in lbs (if given, convert from kg if needed)
 - duration in minutes (for cardio exercises)
 
@@ -85,8 +82,7 @@ Return output as valid JSON only, like:
 or for cardio:
 { "sets": 1, "reps": "1", "exercise": "running", "duration_min": 20 }
 
-If weight is not mentioned, omit weight_lbs field. Always include sets, reps, and exercise.
-Be flexible with exercise names - "pushups" and "push ups" should both become "push ups".`
+If weight is not mentioned, omit weight_lbs field. Always include sets, reps, and exercise.`
           },
           {
             role: 'user',
@@ -98,9 +94,7 @@ Be flexible with exercise names - "pushups" and "push ups" should both become "p
     });
     
     if (!parseResponse.ok) {
-      const errorText = await parseResponse.text();
-      console.error("Parsing error:", errorText);
-      throw new Error(`Parsing failed: ${errorText}`);
+      throw new Error(`Parsing failed: ${await parseResponse.text()}`);
     }
     
     const parseResult = await parseResponse.json();
@@ -112,15 +106,13 @@ Be flexible with exercise names - "pushups" and "push ups" should both become "p
     let workoutData;
     try {
       workoutData = JSON.parse(parsedContent);
-      console.log("Successfully parsed workout data:", workoutData);
     } catch (e) {
-      console.error("JSON parse error:", e);
       throw new Error(`Failed to parse workout data: ${parsedContent}`);
     }
     
     return new Response(JSON.stringify({
       transcript,
-      parsed_exercise: workoutData,
+      workoutData,
       success: true
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

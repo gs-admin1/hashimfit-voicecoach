@@ -233,7 +233,7 @@ export class AssessmentService {
           description: plan.description,
           category: category,
           difficulty: 3,  // Default difficulty
-          estimated_duration: "60",  // Default duration as string
+          estimated_duration: 60,  // Default duration in minutes
           target_muscles: plan.exercises.map(ex => ex.name.split(' ')[0]),  // Extract muscle groups
           ai_generated: true
         };
@@ -247,23 +247,20 @@ export class AssessmentService {
 
         // Create exercises for the plan - ensure required fields are present
         const exercises: WorkoutExercise[] = plan.exercises.map((ex, index) => {
-          // Ensure all required fields have values and proper types
+          // Ensure all required fields have values
           return {
             workout_plan_id: createdPlan.id!,
             name: ex.name,
             sets: ex.sets ?? 3, // Default to 3 sets if not provided
             reps: ex.reps ?? '10', // Default to 10 reps if not provided
             weight: ex.weight ?? 'bodyweight',
-            rest_time: ex.rest_time ? String(ex.rest_time) : '60', // Convert to string, default to 60 seconds
+            rest_time: ex.rest_time ?? 60, // Default to 60 seconds rest
             notes: ex.notes ?? '',
             order_index: index
           };
         });
 
-        // Create exercises individually since createWorkoutExercises doesn't exist
-        for (const exercise of exercises) {
-          await WorkoutService.createWorkoutExercise(exercise);
-        }
+        await WorkoutService.createWorkoutExercises(exercises);
 
         // Get the day index
         const dayIndex = dayMapping[plan.day] !== undefined ? dayMapping[plan.day] : -1;
@@ -293,7 +290,7 @@ export class AssessmentService {
               user_id: userId,
               workout_plan_id: createdPlan.id,
               scheduled_date: dateStr,
-              duration: "60" // Convert to string
+              duration: 60
             });
             
             console.log(`Workout scheduled with ID: ${scheduleId}`);

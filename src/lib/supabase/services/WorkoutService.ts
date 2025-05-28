@@ -1,14 +1,14 @@
-
-import { supabase } from "@/integrations/supabase/client";
+import supabase from '@/lib/supabase';
+import { addDays, startOfWeek, addMonths, format } from 'date-fns';
 
 export interface WorkoutPlan {
   id?: string;
   user_id: string;
   title: string;
   description?: string;
-  category?: string;
-  difficulty?: number;
-  estimated_duration?: string;
+  category: 'strength' | 'cardio' | 'hiit' | 'recovery' | 'sport_specific' | 'custom';
+  difficulty: number;
+  estimated_duration?: number;
   target_muscles?: string[];
   ai_generated?: boolean;
   created_at?: string;
@@ -22,7 +22,7 @@ export interface WorkoutExercise {
   sets: number;
   reps: string;
   weight?: string;
-  rest_time?: string;
+  rest_time?: number;
   notes?: string;
   order_index: number;
   created_at?: string;
@@ -35,10 +35,10 @@ export interface WorkoutLog {
   workout_plan_id?: string;
   start_time: string;
   end_time?: string;
-  duration?: string;
+  duration?: number;
+  calories_burned?: number;
   rating?: number;
   notes?: string;
-  calories_burned?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -50,7 +50,7 @@ export interface ExerciseLog {
   sets_completed: number;
   reps_completed: string;
   weight_used?: string;
-  rest_time?: string;
+  rest_time?: number;
   notes?: string;
   order_index: number;
   created_at?: string;
@@ -63,7 +63,7 @@ export interface WorkoutSchedule {
   workout_plan_id: string;
   scheduled_date: string;
   scheduled_time?: string;
-  duration?: string;
+  duration?: number;
   is_completed?: boolean;
   completion_date?: string;
   workout_log_id?: string;
@@ -72,171 +72,329 @@ export interface WorkoutSchedule {
   updated_at?: string;
 }
 
-// Helper function to safely convert interval to string
-const formatInterval = (interval: any): string | undefined => {
-  if (!interval) return undefined;
-  if (typeof interval === 'string') return interval;
-  if (typeof interval === 'object' && interval.hours !== undefined) {
-    return `${interval.hours}:${interval.minutes || 0}:${interval.seconds || 0}`;
-  }
-  return String(interval);
-};
-
 export class WorkoutService {
+  // Workout Plans
   static async getWorkoutPlans(userId: string): Promise<WorkoutPlan[]> {
     try {
       const { data, error } = await supabase
         .from('workout_plans')
         .select('*')
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error("Error fetching workout plans:", error);
-        return [];
-      }
-
-      return (data || []).map(plan => ({
-        ...plan,
-        estimated_duration: formatInterval(plan.estimated_duration)
-      }));
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      return data as WorkoutPlan[];
     } catch (error) {
-      console.error("Error in getWorkoutPlans:", error);
+      console.error('Error fetching workout plans:', error);
       return [];
     }
   }
 
-  static async createWorkoutPlan(workoutPlan: Omit<WorkoutPlan, 'id' | 'created_at' | 'updated_at'>): Promise<WorkoutPlan | null> {
-    try {
-      const { data, error } = await supabase
-        .from('workout_plans')
-        .insert(workoutPlan)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error("Error creating workout plan:", error);
-        return null;
-      }
-
-      return data ? {
-        ...data,
-        estimated_duration: formatInterval(data.estimated_duration)
-      } : null;
-    } catch (error) {
-      console.error("Error in createWorkoutPlan:", error);
-      return null;
-    }
-  }
-
-  static async getWorkoutPlanById(workoutPlanId: string): Promise<WorkoutPlan | null> {
+  static async getWorkoutPlanById(planId: string): Promise<WorkoutPlan | null> {
     try {
       const { data, error } = await supabase
         .from('workout_plans')
         .select('*')
-        .eq('id', workoutPlanId)
+        .eq('id', planId)
         .single();
-
-      if (error) {
-        console.error("Error fetching workout plan:", error);
-        return null;
-      }
-
-      return data ? {
-        ...data,
-        estimated_duration: formatInterval(data.estimated_duration)
-      } : null;
+        
+      if (error) throw error;
+      return data as WorkoutPlan;
     } catch (error) {
-      console.error("Error in getWorkoutPlanById:", error);
+      console.error('Error fetching workout plan:', error);
       return null;
     }
   }
 
-  static async getWorkoutExercises(workoutPlanId: string): Promise<WorkoutExercise[]> {
+  static async createWorkoutPlan(plan: WorkoutPlan): Promise<WorkoutPlan | null> {
+    try {
+      const { data, error } = await supabase
+        .from('workout_plans')
+        .insert([plan])
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data as WorkoutPlan;
+    } catch (error) {
+      console.error('Error creating workout plan:', error);
+      return null;
+    }
+  }
+
+  static async updateWorkoutPlan(planId: string, plan: Partial<WorkoutPlan>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('workout_plans')
+        .update(plan)
+        .eq('id', planId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error updating workout plan:', error);
+      return false;
+    }
+  }
+
+  static async deleteWorkoutPlan(planId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('workout_plans')
+        .delete()
+        .eq('id', planId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting workout plan:', error);
+      return false;
+    }
+  }
+
+  // Workout Exercises
+  static async getWorkoutExercises(planId: string): Promise<WorkoutExercise[]> {
     try {
       const { data, error } = await supabase
         .from('workout_exercises')
         .select('*')
-        .eq('workout_plan_id', workoutPlanId)
+        .eq('workout_plan_id', planId)
         .order('order_index', { ascending: true });
-
-      if (error) {
-        console.error("Error fetching workout exercises:", error);
-        return [];
-      }
-
-      return (data || []).map(exercise => ({
-        ...exercise,
-        rest_time: formatInterval(exercise.rest_time)
-      }));
+        
+      if (error) throw error;
+      return data as WorkoutExercise[];
     } catch (error) {
-      console.error("Error in getWorkoutExercises:", error);
+      console.error('Error fetching workout exercises:', error);
       return [];
     }
   }
 
-  static async createWorkoutExercise(workoutExercise: Omit<WorkoutExercise, 'id' | 'created_at' | 'updated_at'>): Promise<WorkoutExercise | null> {
+  static async createWorkoutExercises(exercises: WorkoutExercise[]): Promise<WorkoutExercise[] | null> {
     try {
       const { data, error } = await supabase
         .from('workout_exercises')
-        .insert(workoutExercise)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error("Error creating workout exercise:", error);
-        return null;
-      }
-
-      return data ? {
-        ...data,
-        rest_time: formatInterval(data.rest_time)
-      } : null;
+        .insert(exercises)
+        .select();
+        
+      if (error) throw error;
+      return data as WorkoutExercise[];
     } catch (error) {
-      console.error("Error in createWorkoutExercise:", error);
+      console.error('Error creating workout exercises:', error);
       return null;
     }
   }
-
-  static async updateWorkoutExercise(workoutExerciseId: string, updates: Partial<WorkoutExercise>): Promise<WorkoutExercise | null> {
+  
+  static async updateWorkoutExercise(exerciseId: string, exercise: Partial<WorkoutExercise>): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('workout_exercises')
-        .update(updates)
-        .eq('id', workoutExerciseId)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error("Error updating workout exercise:", error);
-        return null;
-      }
-
-      return data ? {
-        ...data,
-        rest_time: formatInterval(data.rest_time)
-      } : null;
+        .update(exercise)
+        .eq('id', exerciseId);
+        
+      if (error) throw error;
+      return true;
     } catch (error) {
-      console.error("Error in updateWorkoutExercise:", error);
-      return null;
+      console.error('Error updating workout exercise:', error);
+      return false;
     }
   }
-
-  static async deleteWorkoutExercise(workoutExerciseId: string): Promise<boolean> {
+  
+  static async deleteWorkoutExercise(exerciseId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('workout_exercises')
         .delete()
-        .eq('id', workoutExerciseId);
-
-      if (error) {
-        console.error("Error deleting workout exercise:", error);
-        return false;
-      }
-
+        .eq('id', exerciseId);
+        
+      if (error) throw error;
       return true;
     } catch (error) {
-      console.error("Error in deleteWorkoutExercise:", error);
+      console.error('Error deleting workout exercise:', error);
       return false;
+    }
+  }
+
+  // Workout Logs
+  static async logWorkout(log: WorkoutLog, exercises: Omit<ExerciseLog, 'workout_log_id'>[]): Promise<string | null> {
+    try {
+      // Start a transaction
+      // First insert the workout log
+      const { data: workoutData, error: workoutError } = await supabase
+        .from('workout_logs')
+        .insert([log])
+        .select()
+        .single();
+        
+      if (workoutError) throw workoutError;
+      
+      // Then insert the exercise logs
+      const exerciseLogs = exercises.map(ex => ({
+        workout_log_id: workoutData.id,
+        ...ex
+      }));
+      
+      const { error: exerciseError } = await supabase
+        .from('exercise_logs')
+        .insert(exerciseLogs);
+        
+      if (exerciseError) throw exerciseError;
+      
+      return workoutData.id;
+    } catch (error) {
+      console.error('Error logging workout:', error);
+      return null;
+    }
+  }
+
+  static async getWorkoutLogs(userId: string): Promise<WorkoutLog[]> {
+    try {
+      const { data, error } = await supabase
+        .from('workout_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('start_time', { ascending: false });
+        
+      if (error) throw error;
+      return data as WorkoutLog[];
+    } catch (error) {
+      console.error('Error fetching workout logs:', error);
+      return [];
+    }
+  }
+
+  static async getExerciseLogs(workoutLogId: string): Promise<ExerciseLog[]> {
+    try {
+      const { data, error } = await supabase
+        .from('exercise_logs')
+        .select('*')
+        .eq('workout_log_id', workoutLogId)
+        .order('order_index', { ascending: true });
+        
+      if (error) throw error;
+      return data as ExerciseLog[];
+    } catch (error) {
+      console.error('Error fetching exercise logs:', error);
+      return [];
+    }
+  }
+
+  // Workout Schedule
+  static async scheduleWorkout(schedule: WorkoutSchedule): Promise<string | null> {
+    try {
+      // Create recurring schedules for 6 months
+      const scheduledDate = new Date(schedule.scheduled_date);
+      const endDate = addMonths(scheduledDate, 6);
+      
+      // Get the first day of the current week (Sunday)
+      const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 0 }); // 0 = Sunday
+      
+      // Start date should be the earlier of scheduledDate or currentWeekStart
+      const startDate = scheduledDate < currentWeekStart ? scheduledDate : currentWeekStart;
+      
+      // Create an array to store all schedule entries
+      const scheduleEntries: WorkoutSchedule[] = [];
+      let currentDate = new Date(startDate);
+      
+      // Loop through dates to create weekly recurring schedules for 6 months
+      while (currentDate <= endDate) {
+        // For each date, if it's the same day of week as the scheduled day
+        if (currentDate.getDay() === scheduledDate.getDay()) {
+          scheduleEntries.push({
+            ...schedule,
+            scheduled_date: format(currentDate, 'yyyy-MM-dd'),
+          });
+        }
+        
+        // Move to next day
+        currentDate = addDays(currentDate, 1);
+      }
+      
+      // If we have schedules to insert
+      if (scheduleEntries.length > 0) {
+        console.log(`Inserting ${scheduleEntries.length} schedule entries`);
+        
+        // Check for existing schedules first on the original date
+        const { data: existingSchedules, error: checkError } = await supabase
+          .from('workout_schedule')
+          .select('id')
+          .eq('user_id', schedule.user_id)
+          .eq('scheduled_date', schedule.scheduled_date);
+          
+        if (checkError) throw checkError;
+        
+        // If there's an existing schedule for the exact original date
+        if (existingSchedules && existingSchedules.length > 0) {
+          // Update the existing schedule
+          const { data, error } = await supabase
+            .from('workout_schedule')
+            .update({
+              workout_plan_id: schedule.workout_plan_id,
+              is_completed: false,
+              workout_log_id: null,
+              completion_date: null
+            })
+            .eq('id', existingSchedules[0].id)
+            .select();
+            
+          if (error) throw error;
+          
+          // Then insert all the other recurring schedules (skip the first one we just updated)
+          const recurringSchedules = scheduleEntries.filter(
+            entry => entry.scheduled_date !== schedule.scheduled_date
+          );
+          
+          if (recurringSchedules.length > 0) {
+            // Insert each recurring schedule individually to avoid upsert constraints issue
+            let insertedId = null;
+            
+            for (const entry of recurringSchedules) {
+              const { data: insertedData, error: insertError } = await supabase
+                .from('workout_schedule')
+                .insert(entry)
+                .select();
+                
+              if (insertError) {
+                console.error(`Error inserting schedule for ${entry.scheduled_date}:`, insertError);
+                continue; // Skip this one but continue with others
+              }
+              
+              if (!insertedId && insertedData && insertedData.length > 0) {
+                insertedId = insertedData[0].id;
+              }
+            }
+            
+            return data[0].id || insertedId;
+          }
+          
+          return data[0].id;
+        } else {
+          // No existing schedule for the original date, insert each schedule individually
+          let firstInsertedId = null;
+          
+          for (const entry of scheduleEntries) {
+            const { data, error } = await supabase
+              .from('workout_schedule')
+              .insert(entry)
+              .select();
+              
+            if (error) {
+              console.error(`Error inserting schedule for ${entry.scheduled_date}:`, error);
+              continue; // Skip this one but continue with others
+            }
+            
+            if (!firstInsertedId && data && data.length > 0) {
+              firstInsertedId = data[0].id;
+            }
+          }
+          
+          return firstInsertedId;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error scheduling workout:', error);
+      return null;
     }
   }
 
@@ -247,192 +405,135 @@ export class WorkoutService {
         .select('*')
         .eq('user_id', userId)
         .gte('scheduled_date', startDate)
-        .lte('scheduled_date', endDate);
-
-      if (error) {
-        console.error("Error fetching workout schedule:", error);
-        return [];
-      }
-
-      return (data || []).map(schedule => ({
-        ...schedule,
-        duration: formatInterval(schedule.duration)
-      }));
+        .lte('scheduled_date', endDate)
+        .order('scheduled_date', { ascending: true });
+        
+      if (error) throw error;
+      return data as WorkoutSchedule[];
     } catch (error) {
-      console.error("Error in getWorkoutSchedule:", error);
+      console.error('Error fetching workout schedule:', error);
       return [];
-    }
-  }
-
-  static async scheduleWorkout(workoutSchedule: Omit<WorkoutSchedule, 'id' | 'created_at' | 'updated_at' | 'is_completed' | 'completion_date' | 'workout_log_id'>): Promise<WorkoutSchedule | null> {
-    try {
-      const { data, error } = await supabase
-        .from('workout_schedule')
-        .insert(workoutSchedule)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error("Error scheduling workout:", error);
-        return null;
-      }
-
-      return data ? {
-        ...data,
-        duration: formatInterval(data.duration)
-      } : null;
-    } catch (error) {
-      console.error("Error in scheduleWorkout:", error);
-      return null;
-    }
-  }
-
-  static async updateScheduledWorkout(scheduleId: string, updates: Partial<WorkoutSchedule>): Promise<WorkoutSchedule | null> {
-    try {
-      const { data, error } = await supabase
-        .from('workout_schedule')
-        .update(updates)
-        .eq('id', scheduleId)
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error("Error updating scheduled workout:", error);
-        return null;
-      }
-
-      return data ? {
-        ...data,
-        duration: formatInterval(data.duration)
-      } : null;
-    } catch (error) {
-      console.error("Error in updateScheduledWorkout:", error);
-      return null;
-    }
-  }
-
-  static async logWorkout(workoutLog: Omit<WorkoutLog, 'id'>, exerciseLogs: Omit<ExerciseLog, 'workout_log_id'>[] = []): Promise<string | null> {
-    try {
-      console.log("🏋️ Creating workout log:", workoutLog);
-      
-      // Create the workout log
-      const { data: logData, error: logError } = await supabase
-        .from('workout_logs')
-        .insert(workoutLog)
-        .select('id')
-        .single();
-
-      if (logError) {
-        console.error("❌ Error creating workout log:", logError);
-        return null;
-      }
-
-      if (!logData?.id) {
-        console.error("❌ No workout log ID returned");
-        return null;
-      }
-
-      console.log("✅ Workout log created with ID:", logData.id);
-
-      // Add exercise logs if provided
-      if (exerciseLogs.length > 0) {
-        const exerciseLogsWithWorkoutId = exerciseLogs.map(exercise => ({
-          ...exercise,
-          workout_log_id: logData.id
-        }));
-
-        console.log("📝 Adding exercise logs:", exerciseLogsWithWorkoutId);
-
-        const { error: exerciseError } = await supabase
-          .from('exercise_logs')
-          .insert(exerciseLogsWithWorkoutId);
-
-        if (exerciseError) {
-          console.error("❌ Error adding exercise logs:", exerciseError);
-          // Don't return null here, just log the error since the workout log was created successfully
-        } else {
-          console.log("✅ Exercise logs added successfully");
-        }
-      }
-
-      return logData.id;
-    } catch (error) {
-      console.error("❌ Error in logWorkout:", error);
-      return null;
-    }
-  }
-
-  static async addExerciseLogs(workoutLogId: string, exerciseLogs: Omit<ExerciseLog, 'workout_log_id'>[]): Promise<boolean> {
-    try {
-      console.log("➕ Adding exercise logs to workout:", workoutLogId, exerciseLogs);
-      
-      const exerciseLogsWithWorkoutId = exerciseLogs.map(exercise => ({
-        ...exercise,
-        workout_log_id: workoutLogId
-      }));
-
-      const { error } = await supabase
-        .from('exercise_logs')
-        .insert(exerciseLogsWithWorkoutId);
-
-      if (error) {
-        console.error("❌ Error adding exercise logs:", error);
-        return false;
-      }
-
-      console.log("✅ Exercise logs added successfully");
-      return true;
-    } catch (error) {
-      console.error("❌ Error in addExerciseLogs:", error);
-      return false;
     }
   }
 
   static async completeScheduledWorkout(scheduleId: string, workoutLogId: string): Promise<boolean> {
     try {
-      console.log("🎯 Completing scheduled workout:", scheduleId, "with log:", workoutLogId);
-      
       const { error } = await supabase
         .from('workout_schedule')
         .update({
           is_completed: true,
-          workout_log_id: workoutLogId,
-          completion_date: new Date().toISOString()
+          completion_date: new Date().toISOString(),
+          workout_log_id: workoutLogId
         })
         .eq('id', scheduleId);
-
-      if (error) {
-        console.error("❌ Error completing scheduled workout:", error);
-        return false;
-      }
-
-      console.log("✅ Scheduled workout completed successfully");
+        
+      if (error) throw error;
       return true;
     } catch (error) {
-      console.error("❌ Error in completeScheduledWorkout:", error);
+      console.error('Error completing scheduled workout:', error);
       return false;
     }
   }
-
-  static async getExerciseLogs(workoutLogId: string): Promise<ExerciseLog[]> {
+  
+  static async getRecentWorkoutStats(userId: string, days: number = 30): Promise<any> {
     try {
-      const { data, error } = await supabase
-        .from('exercise_logs')
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      
+      const formattedStartDate = startDate.toISOString().split('T')[0];
+      const formattedEndDate = endDate.toISOString().split('T')[0];
+      
+      // Get workout logs in the date range
+      const { data: workoutLogs, error: logsError } = await supabase
+        .from('workout_logs')
         .select('*')
-        .eq('workout_log_id', workoutLogId);
-
-      if (error) {
-        console.error("Error fetching exercise logs:", error);
-        return [];
+        .eq('user_id', userId)
+        .gte('start_time', formattedStartDate)
+        .lte('start_time', formattedEndDate)
+        .order('start_time', { ascending: true });
+        
+      if (logsError) throw logsError;
+      
+      // Get scheduled workouts in the date range
+      const { data: scheduledWorkouts, error: scheduleError } = await supabase
+        .from('workout_schedule')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('scheduled_date', formattedStartDate)
+        .lte('scheduled_date', formattedEndDate);
+        
+      if (scheduleError) throw scheduleError;
+      
+      // Calculate statistics
+      const totalWorkouts = workoutLogs?.length || 0;
+      const completedWorkouts = scheduledWorkouts?.filter(w => w.is_completed)?.length || 0;
+      const scheduledCount = scheduledWorkouts?.length || 0;
+      const completionRate = scheduledCount > 0 ? (completedWorkouts / scheduledCount) * 100 : 0;
+      
+      // Group workouts by category
+      const workoutPlanIds = workoutLogs?.map(log => log.workout_plan_id).filter(id => id) as string[];
+      
+      let categoryBreakdown: Record<string, number> = {};
+      
+      if (workoutPlanIds.length > 0) {
+        const { data: workoutPlans, error: plansError } = await supabase
+          .from('workout_plans')
+          .select('id, category')
+          .in('id', workoutPlanIds);
+          
+        if (plansError) throw plansError;
+        
+        if (workoutPlans) {
+          categoryBreakdown = workoutPlans.reduce((acc, plan) => {
+            const category = plan.category || 'other';
+            acc[category] = (acc[category] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+        }
       }
-
-      return (data || []).map(log => ({
-        ...log,
-        rest_time: formatInterval(log.rest_time)
-      }));
+      
+      return {
+        totalWorkouts,
+        completedWorkouts,
+        scheduledCount,
+        completionRate,
+        categoryBreakdown,
+        logs: workoutLogs,
+        scheduledWorkouts
+      };
     } catch (error) {
-      console.error("Error in getExerciseLogs:", error);
-      return [];
+      console.error('Error getting workout stats:', error);
+      return {
+        totalWorkouts: 0,
+        completedWorkouts: 0,
+        scheduledCount: 0,
+        completionRate: 0,
+        categoryBreakdown: {},
+        logs: [],
+        scheduledWorkouts: []
+      };
+    }
+  }
+
+  // Add new methods for handling exercise unchecking
+
+  static async deleteWorkoutLog(logId: string): Promise<boolean> {
+    try {
+      // First delete all related exercise logs to maintain referential integrity
+      await this.deleteExerciseLogs(logId);
+      
+      // Then delete the workout log
+      const { error } = await supabase
+        .from('workout_logs')
+        .delete()
+        .eq('id', logId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting workout log:', error);
+      return false;
     }
   }
 
@@ -442,34 +543,45 @@ export class WorkoutService {
         .from('exercise_logs')
         .delete()
         .eq('workout_log_id', workoutLogId);
-
-      if (error) {
-        console.error("Error deleting exercise logs:", error);
-        return false;
-      }
-
+        
+      if (error) throw error;
       return true;
     } catch (error) {
-      console.error("Error in deleteExerciseLogs:", error);
+      console.error('Error deleting exercise logs:', error);
       return false;
     }
   }
 
-  static async deleteWorkoutLog(workoutLogId: string): Promise<boolean> {
+  static async addExerciseLogs(workoutLogId: string, exercises: Omit<ExerciseLog, 'workout_log_id'>[]): Promise<boolean> {
     try {
+      const exerciseLogs = exercises.map(ex => ({
+        workout_log_id: workoutLogId,
+        ...ex
+      }));
+      
       const { error } = await supabase
-        .from('workout_logs')
-        .delete()
-        .eq('id', workoutLogId);
-
-      if (error) {
-        console.error("Error deleting workout log:", error);
-        return false;
-      }
-
+        .from('exercise_logs')
+        .insert(exerciseLogs);
+        
+      if (error) throw error;
       return true;
     } catch (error) {
-      console.error("Error in deleteWorkoutLog:", error);
+      console.error('Error adding exercise logs:', error);
+      return false;
+    }
+  }
+
+  static async updateScheduledWorkout(scheduleId: string, updates: Partial<WorkoutSchedule>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('workout_schedule')
+        .update(updates)
+        .eq('id', scheduleId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error updating scheduled workout:', error);
       return false;
     }
   }
