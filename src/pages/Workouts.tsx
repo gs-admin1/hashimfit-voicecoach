@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
@@ -12,10 +13,10 @@ import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 import { ChatFAB } from "@/components/ChatFAB";
 import { Plus, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { WorkoutService, WorkoutPlan } from "@/lib/supabase/services/WorkoutService";
+import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, addDays, startOfDay, endOfDay } from "date-fns";
 
 export default function WorkoutsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -28,16 +29,73 @@ export default function WorkoutsPage() {
   const { isAuthenticated, userId } = useAuth();
   const queryClient = useQueryClient();
   
-  // Query for workouts with stale time to ensure persistence across navigation
-  const { data: workouts = [], isLoading } = useQuery({
-    queryKey: ['workoutPlans', userId],
+  // Query for scheduled workouts for the selected date
+  const { data: scheduledWorkouts = [], isLoading: isLoadingScheduled } = useQuery({
+    queryKey: ['scheduledWorkouts', userId, format(selectedDate, 'yyyy-MM-dd')],
     queryFn: async () => {
       if (!userId) return [];
       
-      console.log("Fetching workout plans for user:", userId);
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      console.log("Fetching scheduled workouts for date:", dateStr);
+      
+      const scheduledWorkouts = await WorkoutService.getWorkoutSchedule(
+        userId, 
+        dateStr, 
+        dateStr
+      );
+      
+      console.log("Found scheduled workouts:", scheduledWorkouts);
+      
+      // Get workout plan details and exercises for each scheduled workout
+      const workoutsWithDetails = await Promise.all(
+        scheduledWorkouts.map(async (schedule) => {
+          const workoutPlan = await WorkoutService.getWorkoutPlanById(schedule.workout_plan_id);
+          if (!workoutPlan) return null;
+          
+          const exercises = await WorkoutService.getWorkoutExercises(schedule.workout_plan_id);
+          
+          return {
+            id: workoutPlan.id,
+            schedule_id: schedule.id,
+            title: workoutPlan.title,
+            exercises: exercises.map(ex => ({
+              id: ex.id,
+              name: ex.name,
+              sets: ex.sets,
+              reps: ex.reps,
+              weight: ex.weight || 'bodyweight'
+            })),
+            category: workoutPlan.category,
+            isFavorite: false,
+            estimatedDuration: workoutPlan.estimated_duration ? 
+              parseInt(workoutPlan.estimated_duration.split(':')[1]) : 
+              45 + exercises.length * 3,
+            targetMuscles: workoutPlan.target_muscles || ["Full Body"],
+            difficulty: workoutPlan.difficulty || 3,
+            aiGenerated: workoutPlan.ai_generated || false,
+            isCompleted: schedule.is_completed,
+            scheduledDate: schedule.scheduled_date,
+            scheduledTime: schedule.scheduled_time,
+            streak: Math.floor(Math.random() * 5) + 1
+          };
+        })
+      );
+      
+      return workoutsWithDetails.filter(workout => workout !== null);
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+
+  // Query for all workout plans (for the add workout modal)
+  const { data: allWorkoutPlans = [] } = useQuery({
+    queryKey: ['allWorkoutPlans', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      
+      console.log("Fetching all workout plans for user:", userId);
       const workoutPlans = await WorkoutService.getWorkoutPlans(userId);
       
-      // Get exercises for each workout plan
       const workoutsWithExercises = await Promise.all(
         workoutPlans.map(async (plan) => {
           const exercises = await WorkoutService.getWorkoutExercises(plan.id!);
@@ -53,8 +111,10 @@ export default function WorkoutsPage() {
             })),
             category: plan.category,
             isFavorite: false,
-            estimatedDuration: 45 + exercises.length * 3,
-            targetMuscles: ["Chest", "Triceps", "Shoulders"],
+            estimatedDuration: plan.estimated_duration ? 
+              parseInt(plan.estimated_duration.split(':')[1]) : 
+              45 + exercises.length * 3,
+            targetMuscles: plan.target_muscles || ["Full Body"],
             difficulty: plan.difficulty || 3,
             aiGenerated: plan.ai_generated || false,
             streak: Math.floor(Math.random() * 5) + 1
@@ -67,133 +127,37 @@ export default function WorkoutsPage() {
     enabled: !!userId,
     staleTime: 1000 * 60 * 5,
   });
-  
-  // Mutation for adding a workout
-  const addWorkoutMutation = useMutation({
-    mutationFn: async (workout: any) => {
+
+  // Mutation for scheduling a workout
+  const scheduleWorkoutMutation = useMutation({
+    mutationFn: async ({ workoutPlanId, scheduledDate }: { workoutPlanId: string, scheduledDate: string }) => {
       if (!userId) throw new Error("User not authenticated");
       
-      console.log("Creating new workout:", workout);
-      // Create workout plan in Supabase
-      const workoutPlan: WorkoutPlan = {
+      console.log("Scheduling workout:", workoutPlanId, "for date:", scheduledDate);
+      
+      const scheduleData = {
         user_id: userId,
-        title: workout.title,
-        category: workout.category || 'strength',
-        difficulty: 3
+        workout_plan_id: workoutPlanId,
+        scheduled_date: scheduledDate,
+        is_completed: false
       };
       
-      const createdPlan = await WorkoutService.createWorkoutPlan(workoutPlan);
-      
-      if (!createdPlan || !createdPlan.id) {
-        throw new Error('Failed to create workout plan');
-      }
-      
-      // Create exercises
-      const exercises = workout.exercises.map((ex: any, index: number) => ({
-        workout_plan_id: createdPlan.id!,
-        name: ex.name,
-        sets: ex.sets,
-        reps: ex.reps,
-        weight: ex.weight,
-        order_index: index
-      }));
-      
-      await WorkoutService.createWorkoutExercises(exercises);
-      
-      return createdPlan.id;
+      const result = await WorkoutService.scheduleWorkout(scheduleData);
+      return result;
     },
     onSuccess: () => {
-      console.log("Successfully added workout");
-      queryClient.invalidateQueries({ queryKey: ['workoutPlans'] });
+      console.log("Successfully scheduled workout");
+      queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts'] });
       toast({
-        title: "Workout Added",
-        description: "Your workout has been added successfully."
+        title: "Workout Scheduled",
+        description: "Your workout has been scheduled successfully."
       });
     },
     onError: (error) => {
-      console.error('Error adding workout:', error);
+      console.error('Error scheduling workout:', error);
       toast({
         title: "Error",
-        description: "Failed to add workout. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Mutation for adding an exercise to an existing workout
-  const addExerciseMutation = useMutation({
-    mutationFn: async ({ workoutId, exercise }: { workoutId: string, exercise: any }) => {
-      if (!userId) throw new Error("User not authenticated");
-      
-      console.log("Adding exercise to workout:", workoutId, exercise);
-      
-      // Get current exercises to determine the next order_index
-      const currentExercises = await WorkoutService.getWorkoutExercises(workoutId);
-      const orderIndex = currentExercises.length;
-      
-      // Create the new exercise
-      const newExercise = {
-        workout_plan_id: workoutId,
-        name: exercise.name,
-        sets: exercise.sets,
-        reps: exercise.reps,
-        weight: exercise.weight,
-        order_index: orderIndex
-      };
-      
-      const result = await WorkoutService.createWorkoutExercises([newExercise]);
-      
-      if (!result) {
-        throw new Error('Failed to add exercise');
-      }
-      
-      return { workoutId, exercise: result[0] };
-    },
-    onSuccess: (data) => {
-      console.log("Successfully added exercise:", data);
-      queryClient.invalidateQueries({ queryKey: ['workoutPlans'] });
-      toast({
-        title: "Exercise Added",
-        description: "Your exercise has been added successfully."
-      });
-    },
-    onError: (error) => {
-      console.error('Error adding exercise:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add exercise. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Mutation for removing an exercise
-  const removeExerciseMutation = useMutation({
-    mutationFn: async (exerciseId: string) => {
-      if (!userId) throw new Error("User not authenticated");
-      
-      console.log("Removing exercise:", exerciseId);
-      const result = await WorkoutService.deleteWorkoutExercise(exerciseId);
-      
-      if (!result) {
-        throw new Error('Failed to remove exercise');
-      }
-      
-      return exerciseId;
-    },
-    onSuccess: () => {
-      console.log("Successfully removed exercise");
-      queryClient.invalidateQueries({ queryKey: ['workoutPlans'] });
-      toast({
-        title: "Exercise Removed",
-        description: "Your exercise has been removed successfully."
-      });
-    },
-    onError: (error) => {
-      console.error('Error removing exercise:', error);
-      toast({
-        title: "Error",
-        description: "Failed to remove exercise. Please try again.",
+        description: "Failed to schedule workout. Please try again.",
         variant: "destructive"
       });
     }
@@ -244,10 +208,9 @@ export default function WorkoutsPage() {
     setShowRestTimer(true);
   };
 
-  const filteredWorkouts = workouts.filter(workout => {
+  const filteredWorkouts = scheduledWorkouts.filter(workout => {
     if (activeFilters.length === 0) return true;
     
-    // Apply filters based on workout properties
     return activeFilters.some(filter => {
       switch (filter) {
         case 'ai-generated':
@@ -389,7 +352,7 @@ export default function WorkoutsPage() {
         <div className="max-w-lg mx-auto space-y-6">
           <SectionTitle 
             title={`Workouts for ${format(selectedDate, "MMM d")}`}
-            subtitle="Your personalized training plan"
+            subtitle="Your scheduled training for today"
           />
           
           <WorkoutFilters
@@ -397,7 +360,7 @@ export default function WorkoutsPage() {
             onFiltersChange={setActiveFilters}
           />
           
-          {isLoading ? (
+          {isLoadingScheduled ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
             </div>
@@ -406,7 +369,7 @@ export default function WorkoutsPage() {
               {filteredWorkouts.length > 0 ? (
                 filteredWorkouts.map((workout, index) => (
                   <WorkoutCardImproved
-                    key={workout.id || index}
+                    key={`${workout.schedule_id}-${workout.id}` || index}
                     workout={workout}
                     onStart={startWorkoutSession}
                     onEdit={() => {}}
@@ -415,14 +378,22 @@ export default function WorkoutsPage() {
               ) : (
                 <AnimatedCard className="text-center py-8">
                   <p className="text-muted-foreground mb-4">
-                    No workouts found for the selected filters
+                    {activeFilters.length > 0 
+                      ? "No workouts found for the selected filters"
+                      : `No workouts scheduled for ${format(selectedDate, "MMM d")}`
+                    }
                   </p>
                   <Button 
                     variant="outline" 
-                    onClick={() => setActiveFilters([])}
+                    onClick={() => activeFilters.length > 0 ? setActiveFilters([]) : setShowAddWorkout(true)}
                     className="flex items-center mx-auto"
                   >
-                    Clear Filters
+                    {activeFilters.length > 0 ? "Clear Filters" : (
+                      <>
+                        <Plus size={16} className="mr-1" />
+                        Schedule a workout
+                      </>
+                    )}
                   </Button>
                 </AnimatedCard>
               )}
@@ -434,8 +405,16 @@ export default function WorkoutsPage() {
       <AddWorkoutModal 
         isOpen={showAddWorkout} 
         onClose={() => setShowAddWorkout(false)}
-        onAddWorkout={() => {}}
-        selectedDay=""
+        onAddWorkout={(workout) => {
+          const dateStr = format(selectedDate, 'yyyy-MM-dd');
+          scheduleWorkoutMutation.mutate({ 
+            workoutPlanId: workout.id, 
+            scheduledDate: dateStr 
+          });
+          setShowAddWorkout(false);
+        }}
+        selectedDay={format(selectedDate, 'yyyy-MM-dd')}
+        availableWorkouts={allWorkoutPlans}
       />
       
       <NavigationBar />
