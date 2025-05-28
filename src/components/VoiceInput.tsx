@@ -1,8 +1,7 @@
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mic, MicOff, Loader2, Check, X, Edit } from "lucide-react";
+import { Mic, MicOff, Loader2, Check, X, Edit, Volume2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
@@ -33,16 +32,22 @@ export function VoiceInput({
 }: VoiceInputProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [parsedExercise, setParsedExercise] = useState<ParsedExercise | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { userId } = useAuth();
 
   const startRecording = async () => {
     try {
       console.log("Starting voice recording...");
+      setIsComplete(false);
+      setRecordingTime(0);
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       const mediaRecorder = new MediaRecorder(stream, {
@@ -63,13 +68,23 @@ export function VoiceInput({
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         await processAudio(audioBlob);
         stream.getTracks().forEach(track => track.stop());
+        
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
       };
       
       mediaRecorder.start();
       setIsListening(true);
       
+      // Start recording timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
       toast({
-        title: "Recording...",
+        title: "🎤 Recording...",
         description: "Speak your exercise details now. Tap again to stop.",
       });
       
@@ -114,6 +129,7 @@ export function VoiceInput({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({
             audio: base64Audio
@@ -137,10 +153,11 @@ export function VoiceInput({
         
         setTranscript(result.transcript || "");
         setParsedExercise(result.parsed_exercise || null);
+        setIsComplete(true);
         setShowConfirmation(true);
         
         toast({
-          title: "Audio Processed!",
+          title: "✅ Audio Processed!",
           description: `Detected: ${result.parsed_exercise?.exercise || "Unknown exercise"}`,
         });
         
@@ -241,6 +258,8 @@ export function VoiceInput({
       setShowConfirmation(false);
       setTranscript("");
       setParsedExercise(null);
+      setIsComplete(false);
+      setRecordingTime(0);
       
       // Trigger refresh of workout data
       if (onWorkoutUpdated) {
@@ -261,32 +280,48 @@ export function VoiceInput({
     setShowConfirmation(false);
     setTranscript("");
     setParsedExercise(null);
+    setIsComplete(false);
+    setRecordingTime(0);
   };
 
   const handleClick = () => {
     if (isListening) {
       stopRecording();
-    } else if (!isProcessing) {
+    } else if (!isProcessing && !showConfirmation) {
       startRecording();
     }
   };
 
+  // Show confirmation dialog with results
   if (showConfirmation && parsedExercise) {
     return (
-      <Card className={cn("animate-fade-in", className)}>
+      <Card className={cn("animate-fade-in border-green-200 bg-green-50 dark:bg-green-900/20", className)}>
         <CardContent className="p-4">
           <div className="text-center mb-4">
-            <h3 className="font-semibold text-lg mb-2">Confirm Exercise</h3>
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-3">
-              <div className="font-medium text-lg">{parsedExercise.exercise}</div>
+            <div className="flex items-center justify-center mb-2">
+              <Check className="text-green-600 mr-2" size={20} />
+              <h3 className="font-semibold text-lg">Confirm Exercise</h3>
+            </div>
+            
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-3 mb-3 border border-green-200">
+              <div className="font-medium text-lg text-green-700 dark:text-green-300">
+                {parsedExercise.exercise}
+              </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 {parsedExercise.sets} sets × {parsedExercise.reps} reps
                 {parsedExercise.weight_lbs && ` @ ${parsedExercise.weight_lbs} lbs`}
                 {parsedExercise.duration_min && ` for ${parsedExercise.duration_min} minutes`}
               </div>
             </div>
+            
             {transcript && (
-              <div className="text-xs text-gray-500 italic">"{transcript}"</div>
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-2 mb-3">
+                <div className="text-xs text-gray-500 mb-1 flex items-center justify-center">
+                  <Volume2 size={12} className="mr-1" />
+                  Transcript
+                </div>
+                <div className="text-sm italic">"{transcript}"</div>
+              </div>
             )}
           </div>
           
@@ -320,6 +355,53 @@ export function VoiceInput({
     );
   }
 
+  // Show processing state
+  if (isProcessing) {
+    return (
+      <div className={className}>
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+          <CardContent className="p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <Loader2 size={20} className="mr-2 animate-spin text-blue-600" />
+              <span className="font-medium">Processing Audio...</span>
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Converting speech to exercise data
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show recording state
+  if (isListening) {
+    return (
+      <div className={className}>
+        <Card className="border-red-200 bg-red-50 dark:bg-red-900/20 animate-pulse">
+          <CardContent className="p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse"></div>
+              <span className="font-medium text-red-700 dark:text-red-300">Recording...</span>
+              <span className="ml-2 text-sm">({recordingTime}s)</span>
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Speak your exercise details clearly
+            </div>
+            <Button
+              onClick={stopRecording}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <MicOff size={16} className="mr-1" />
+              Stop Recording
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Default state - ready to record
   return (
     <div className={className}>
       <Button
@@ -327,26 +409,14 @@ export function VoiceInput({
         disabled={isProcessing}
         className={cn(
           "relative overflow-hidden transition-all duration-200",
-          isListening && "animate-pulse",
           buttonClassName || "w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl p-4 shadow-lg"
         )}
       >
         {buttonContent || (
           <>
-            {isProcessing ? (
-              <Loader2 size={20} className="mr-2 animate-spin" />
-            ) : isListening ? (
-              <MicOff size={20} className="mr-2" />
-            ) : (
-              <Mic size={20} className="mr-2" />
-            )}
-            
-            {isProcessing ? "Processing..." : isListening ? "Stop Recording" : "Log Workout"}
+            <Mic size={20} className="mr-2" />
+            Log Exercise
           </>
-        )}
-        
-        {isListening && (
-          <div className="absolute inset-0 bg-red-400 opacity-20 animate-pulse rounded-xl" />
         )}
       </Button>
     </div>
