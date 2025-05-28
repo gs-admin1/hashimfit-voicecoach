@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 
 export function MealCaptureCard() {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -16,6 +17,7 @@ export function MealCaptureCard() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [mealType, setMealType] = useState<string>("breakfast");
+  const [mealDescription, setMealDescription] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +104,7 @@ export function MealCaptureCard() {
     setSelectedFile(null);
     setImagePreview(null);
     setAnalysisResult(null);
+    setMealDescription("");
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -153,11 +156,53 @@ export function MealCaptureCard() {
         description: "Detecting food items, estimating portions, and calculating nutrition...",
       });
       
+      // Create custom prompt based on meal description
+      let userPrompt = `Please analyze this ${mealType} image and identify all the food items you can see. Estimate realistic portion sizes and provide a comprehensive nutrition breakdown for each item. Consider this a typical adult meal portion.`;
+      
+      if (mealDescription.trim()) {
+        userPrompt = `This meal was described by the user as: "${mealDescription.trim()}". Please use this description along with the photo to identify and break down the ingredients. Analyze this ${mealType} image and provide a comprehensive nutrition breakdown for each food item you can identify. Estimate realistic portion sizes based on both the visual cues in the image and the user's description.`;
+      }
+      
+      userPrompt += `
+
+Output structured JSON in this format:
+{
+  "meal_title": "A descriptive title for this meal",
+  "food_items": [
+    { 
+      "name": "Food 1", 
+      "portion": "Portion size with weight", 
+      "calories": number, 
+      "protein_g": number, 
+      "carbs_g": number, 
+      "fat_g": number 
+    },
+    { 
+      "name": "Food 2", 
+      "portion": "Portion size with weight", 
+      "calories": number, 
+      "protein_g": number, 
+      "carbs_g": number, 
+      "fat_g": number 
+    }
+  ],
+  "total": {
+    "calories": number,
+    "protein_g": number,
+    "carbs_g": number,
+    "fat_g": number
+  }
+}
+
+Return only the JSON in your response. No explanations or extra formatting.`;
+      
       // Step 2: Call Supabase Edge Function to process the image
       console.log("Calling analyze-meal-photo function with data:", {
         imageUrl,
         userId,
         mealType,
+        userPrompt,
+        mealDescription: mealDescription.trim() || null
       });
       
       const { data, error } = await supabase.functions.invoke('analyze-meal-photo', {
@@ -165,6 +210,8 @@ export function MealCaptureCard() {
           imageUrl,
           userId,
           mealType,
+          userPrompt,
+          mealDescription: mealDescription.trim() || null
         },
       });
       
@@ -206,6 +253,7 @@ export function MealCaptureCard() {
     setImagePreview(null);
     setAnalysisResult(null);
     setMealType("breakfast");
+    setMealDescription("");
   };
 
   return (
@@ -287,6 +335,20 @@ export function MealCaptureCard() {
                       <SelectItem value="snack">Snack</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">What did you eat?</label>
+                  <Textarea
+                    placeholder="Describe your meal to help improve accuracy (e.g., 'Chicken caesar salad with parmesan and croutons')"
+                    value={mealDescription}
+                    onChange={(e) => setMealDescription(e.target.value)}
+                    disabled={isProcessing}
+                    className="min-h-[80px]"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Optional: This helps our AI better identify ingredients and estimate portions
+                  </p>
                 </div>
                 
                 <Button 

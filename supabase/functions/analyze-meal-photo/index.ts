@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { imageUrl, userId, mealType, userPrompt } = await req.json();
+    const { imageUrl, userId, mealType, userPrompt, mealDescription } = await req.json();
 
     if (!imageUrl || !userId || !mealType) {
       return new Response(
@@ -29,7 +29,8 @@ serve(async (req) => {
 
     console.log(`Processing meal photo for user ${userId}, meal type: ${mealType}`);
     console.log(`Image URL: ${imageUrl}`);
-    console.log(`User prompt: ${userPrompt || 'Using default prompt'}`);
+    console.log(`User description: ${mealDescription || 'No description provided'}`);
+    console.log(`Using custom prompt: ${userPrompt ? 'Yes' : 'No'}`);
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
@@ -84,8 +85,8 @@ serve(async (req) => {
     
     console.log("Successfully analyzed nutritional content");
     
-    // Store the nutrition data in the database
-    return await storeMealData(supabase, nutritionData, imageUrl, userId, mealType);
+    // Store the nutrition data in the database with meal description
+    return await storeMealData(supabase, nutritionData, imageUrl, userId, mealType, mealDescription);
     
   } catch (error) {
     console.error("Error in analyze-meal-photo function:", error);
@@ -220,8 +221,8 @@ Return only the JSON in your response. No explanations or extra formatting.`;
   return nutritionData;
 }
 
-// Function to store the meal data in the database with new food_items column
-async function storeMealData(supabase: any, nutritionData: any, imageUrl: string, userId: string, mealType: string) {
+// Function to store the meal data in the database with meal description
+async function storeMealData(supabase: any, nutritionData: any, imageUrl: string, userId: string, mealType: string, mealDescription?: string) {
   console.log("Storing meal data in the database...");
   
   // Get current nutrition log for the day or create a new one
@@ -312,9 +313,9 @@ async function storeMealData(supabase: any, nutritionData: any, imageUrl: string
     throw new Error(`Failed to manage nutrition log: ${error.message}`);
   }
 
-  // Create meal log entry with food_items JSONB data
+  // Create meal log entry with food_items JSONB data and meal description
   try {
-    console.log("Creating meal log entry with food_items data");
+    console.log("Creating meal log entry with food_items data and meal description");
     
     // Ensure values are integers for database columns
     const calories = Math.round(nutritionData.total.calories);
@@ -325,6 +326,7 @@ async function storeMealData(supabase: any, nutritionData: any, imageUrl: string
     console.log(`Creating meal log with values: calories=${calories}, protein=${protein}g, carbs=${carbs}g, fat=${fat}g`);
     console.log(`Meal title: ${nutritionData.meal_title}`);
     console.log(`Food items count: ${nutritionData.food_items?.length || 0}`);
+    console.log(`Meal description: ${mealDescription || 'No description provided'}`);
     
     const { data: mealLog, error: mealError } = await supabase
       .from('meal_logs')
@@ -339,6 +341,7 @@ async function storeMealData(supabase: any, nutritionData: any, imageUrl: string
         consumed_at: new Date().toISOString(),
         meal_image_url: imageUrl,
         food_items: nutritionData.food_items || [], // Store the detailed food items array
+        meal_description: mealDescription || null, // Store user-provided description
         notes: `AI-analyzed from image: ${nutritionData.food_items?.map((item: any) => `${item.name} (${item.portion})`).join(", ") || "No items detected"}`,
       })
       .select()
