@@ -7,20 +7,33 @@ import { MealCaptureCard } from "@/components/MealCaptureCard";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { DayTab } from "@/components/DayTab";
-import { AnimatedCard, StatsCard, VoiceWidget, IconButton } from "@/components/ui-components";
-import { Plus, Activity, Dumbbell, Weight, Calendar, ChartBar, Utensils, User, Zap } from "lucide-react";
+import { AnimatedCard, VoiceWidget, IconButton } from "@/components/ui-components";
+import { Plus, User, Settings } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { WorkoutService, WorkoutSchedule, WorkoutLog, ExerciseLog } from "@/lib/supabase/services/WorkoutService";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+// Import new modular dashboard components
+import { DailyWorkoutSummaryCard } from "@/components/dashboard/DailyWorkoutSummaryCard";
+import { NutritionProgressCard } from "@/components/dashboard/NutritionProgressCard";
+import { TDEEBalanceCard } from "@/components/dashboard/TDEEBalanceCard";
+import { HabitStreakCard } from "@/components/dashboard/HabitStreakCard";
+import { AICoachInsightCard } from "@/components/dashboard/AICoachInsightCard";
+
 export function Dashboard() {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState(format(new Date(), 'EEEE'));
   const [showAddWorkout, setShowAddWorkout] = useState(false);
+  const [cardStates, setCardStates] = useState({
+    workoutSummary: false,
+    nutrition: false,
+    tdeeBalance: false,
+    habitStreak: false,
+    aiInsights: false
+  });
+  
   const { isAuthenticated, userId } = useAuth();
   const { user } = useUser();
   const queryClient = useQueryClient();
@@ -48,7 +61,7 @@ export function Dashboard() {
       return await AssessmentService.getWeeklyWorkouts(userId);
     },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   // Query for workout schedules
@@ -64,7 +77,7 @@ export function Dashboard() {
       );
     },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   // Query for the selected day workout details
@@ -93,7 +106,6 @@ export function Dashboard() {
       console.log(`Found workout plan: ${workoutPlan.title}`);
       const exercises = await WorkoutService.getWorkoutExercises(workoutPlan.id!);
       
-      // Get completion status if the workout is completed
       let completedExercises: Record<string, boolean> = {};
       if (scheduledWorkout.is_completed && scheduledWorkout.workout_log_id) {
         const exerciseLogs = await WorkoutService.getExerciseLogs(scheduledWorkout.workout_log_id);
@@ -119,7 +131,7 @@ export function Dashboard() {
       };
     },
     enabled: !!userId && !!workoutSchedules,
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   // Mutation to schedule a workout
@@ -176,13 +188,11 @@ export function Dashboard() {
     }) => {
       if (!userId) throw new Error("User not authenticated");
       
-      // Get the workout schedule
       const schedule = workoutSchedules?.find(s => s.id === scheduleId);
       if (!schedule) throw new Error("Workout schedule not found");
       
       console.log(`Updating exercise completion for ${exerciseName} to ${completed}`);
       
-      // Get all exercises that should be considered completed after this action
       const updatedCompletedExercises = allExercises
         .filter(ex => ex.id === exerciseId ? completed : !!ex.completed)
         .map((ex, index) => ({
@@ -193,10 +203,8 @@ export function Dashboard() {
           order_index: index
         } as Omit<ExerciseLog, 'workout_log_id'>));
       
-      // If we already have a workout log
       if (schedule.workout_log_id) {
         if (updatedCompletedExercises.length === 0) {
-          // If no exercises are completed anymore, remove the workout log entirely
           await WorkoutService.deleteWorkoutLog(schedule.workout_log_id);
           await WorkoutService.updateScheduledWorkout(scheduleId, {
             is_completed: false,
@@ -205,14 +213,12 @@ export function Dashboard() {
           });
           return scheduleId;
         } else {
-          // Update the existing exercise logs
           await WorkoutService.deleteExerciseLogs(schedule.workout_log_id);
           await WorkoutService.addExerciseLogs(
             schedule.workout_log_id, 
             updatedCompletedExercises
           );
           
-          // Check if we need to update completion status
           const isStillCompleted = updatedCompletedExercises.length > 0;
           if (isStillCompleted !== schedule.is_completed) {
             await WorkoutService.updateScheduledWorkout(scheduleId, {
@@ -223,8 +229,6 @@ export function Dashboard() {
           return scheduleId;
         }
       } else if (updatedCompletedExercises.length > 0) {
-        // No workout log exists yet and we're checking exercises
-        // Create a new workout log
         const log: WorkoutLog = {
           user_id: userId,
           workout_plan_id: schedule.workout_plan_id,
@@ -232,10 +236,8 @@ export function Dashboard() {
           end_time: new Date().toISOString(),
         };
         
-        // Log the workout and exercises
         const logId = await WorkoutService.logWorkout(log, updatedCompletedExercises);
         
-        // Update the schedule with the workout log id
         if (logId) {
           console.log(`Created workout log ${logId} and updating schedule ${scheduleId}`);
           await WorkoutService.completeScheduledWorkout(scheduleId, logId);
@@ -303,17 +305,60 @@ export function Dashboard() {
     });
   };
 
+  const toggleCardCollapse = (cardKey: keyof typeof cardStates) => {
+    setCardStates(prev => ({
+      ...prev,
+      [cardKey]: !prev[cardKey]
+    }));
+  };
+
   return (
     <div className="max-w-lg mx-auto pb-20">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
-        <IconButton 
-          icon={User}
-          variant="outline"
-          onClick={() => setShowStatsModal(true)}
+        <div className="flex items-center space-x-2">
+          <IconButton 
+            icon={Settings}
+            variant="outline"
+            onClick={() => {}}
+          />
+          <IconButton 
+            icon={User}
+            variant="outline"
+            onClick={() => setShowStatsModal(true)}
+          />
+        </div>
+      </div>
+      
+      {/* New Modular Dashboard Cards */}
+      <div className="space-y-4 mb-6">
+        <DailyWorkoutSummaryCard 
+          isCollapsed={cardStates.workoutSummary}
+          onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
+        />
+        
+        <NutritionProgressCard 
+          isCollapsed={cardStates.nutrition}
+          onToggleCollapse={() => toggleCardCollapse('nutrition')}
+        />
+        
+        <TDEEBalanceCard 
+          isCollapsed={cardStates.tdeeBalance}
+          onToggleCollapse={() => toggleCardCollapse('tdeeBalance')}
+        />
+        
+        <HabitStreakCard 
+          isCollapsed={cardStates.habitStreak}
+          onToggleCollapse={() => toggleCardCollapse('habitStreak')}
+        />
+        
+        <AICoachInsightCard 
+          isCollapsed={cardStates.aiInsights}
+          onToggleCollapse={() => toggleCardCollapse('aiInsights')}
         />
       </div>
       
+      {/* Day Selector */}
       <div className="flex flex-nowrap overflow-x-auto mb-6 pb-1 scrollbar-none">
         {weekDates.map((date, index) => {
           const dayName = format(date, 'EEEE');
@@ -338,6 +383,7 @@ export function Dashboard() {
         })}
       </div>
       
+      {/* Workout Section */}
       <AnimatedCard className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -378,165 +424,6 @@ export function Dashboard() {
             </Button>
           </div>
         )}
-      </AnimatedCard>
-      
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <StatsCard
-          title="Weight"
-          value={user ? `${user.weight}kg` : "75kg"}
-          icon={Weight}
-          trend="down"
-          trendValue="-2kg"
-        />
-        <StatsCard
-          title="Active Days"
-          value="5/7"
-          icon={Activity}
-          trend="up"
-          trendValue="+1"
-        />
-      </div>
-      
-      <AnimatedCard className="mb-6" delay={100}>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Streaks</h3>
-          <div className="text-sm text-muted-foreground">5 days</div>
-        </div>
-        <div className="flex space-x-1">
-          {Array.from({ length: 7 }, (_, i) => (
-            <div 
-              key={i}
-              className={`h-2 flex-1 rounded-full ${i < 5 ? 'bg-hashim-600' : 'bg-gray-200 dark:bg-gray-700'}`}
-            ></div>
-          ))}
-        </div>
-      </AnimatedCard>
-      
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <AnimatedCard delay={150} className="overflow-hidden">
-          <div className="flex flex-col h-full">
-            <h3 className="font-semibold mb-2 flex items-center">
-              <Utensils className="mr-2 text-hashim-600" size={16} /> 
-              Nutrition
-            </h3>
-            <div className="space-y-2 flex-1">
-              <div>
-                <div className="flex justify-between text-sm">
-                  <span>Protein</span>
-                  <span>80g / 140g</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '57%' }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm">
-                  <span>Carbs</span>
-                  <span>120g / 200g</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '60%' }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm">
-                  <span>Fat</span>
-                  <span>45g / 70g</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                  <div className="bg-amber-500 h-2 rounded-full" style={{ width: '64%' }}></div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 text-center">
-              <Button variant="ghost" size="sm" className="text-xs h-7">
-                View Details
-              </Button>
-            </div>
-          </div>
-        </AnimatedCard>
-        
-        <AnimatedCard delay={200} className="overflow-hidden">
-          <div className="flex flex-col h-full">
-            <h3 className="font-semibold mb-2 flex items-center">
-              <ChartBar className="mr-2 text-hashim-600" size={16} /> 
-              Progress
-            </h3>
-            <div className="space-y-2 flex-1">
-              <div>
-                <div className="flex justify-between text-sm">
-                  <span>Weight</span>
-                  <span className="text-green-500">-2kg</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                  <div className="bg-hashim-600 h-2 rounded-full" style={{ width: '40%' }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm">
-                  <span>Strength</span>
-                  <span className="text-green-500">+15%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                  <div className="bg-hashim-600 h-2 rounded-full" style={{ width: '60%' }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm">
-                  <span>Endurance</span>
-                  <span className="text-green-500">+8%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                  <div className="bg-hashim-600 h-2 rounded-full" style={{ width: '30%' }}></div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 text-center">
-              <Button variant="ghost" size="sm" className="text-xs h-7">
-                View Details
-              </Button>
-            </div>
-          </div>
-        </AnimatedCard>
-      </div>
-      
-      <AnimatedCard className="mb-6" delay={250}>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold flex items-center">
-            <Zap className="mr-2 text-hashim-600" size={18} />
-            Quick Actions
-          </h3>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <Button 
-            variant="outline"
-            className="flex flex-col items-center justify-center h-24"
-          >
-            <Dumbbell className="mb-2 text-hashim-600" size={24} />
-            <span>Log a Workout</span>
-          </Button>
-          <Button 
-            variant="outline"
-            className="flex flex-col items-center justify-center h-24"
-          >
-            <Utensils className="mb-2 text-hashim-600" size={24} />
-            <span>Log Nutrition</span>
-          </Button>
-          <Button 
-            variant="outline"
-            className="flex flex-col items-center justify-center h-24"
-          >
-            <Weight className="mb-2 text-hashim-600" size={24} />
-            <span>Log Weight</span>
-          </Button>
-          <Button 
-            variant="outline"
-            className="flex flex-col items-center justify-center h-24"
-          >
-            <Calendar className="mb-2 text-hashim-600" size={24} />
-            <span>Plan Week</span>
-          </Button>
-        </div>
       </AnimatedCard>
       
       <MealCaptureCard />
