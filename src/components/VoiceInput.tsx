@@ -208,8 +208,8 @@ export function VoiceInput({
 
       console.log("📋 Exercise log data:", exerciseLogData);
 
-      let workoutLogId = null;
-      let scheduleToUpdate = null;
+      let workoutLogId: string | null = null;
+      let success = false;
 
       // Check if there's a selected workout with existing log
       if (selectedWorkout && selectedWorkout.schedule_id) {
@@ -217,7 +217,7 @@ export function VoiceInput({
         
         // Get the schedule details to check if it has a workout log
         const schedules = await WorkoutService.getWorkoutSchedule(userId, dateString, dateString);
-        scheduleToUpdate = schedules.find(s => s.id === selectedWorkout.schedule_id);
+        const scheduleToUpdate = schedules.find(s => s.id === selectedWorkout.schedule_id);
         
         if (scheduleToUpdate) {
           console.log("📋 Found schedule to update:", scheduleToUpdate);
@@ -225,11 +225,8 @@ export function VoiceInput({
           if (scheduleToUpdate.workout_log_id) {
             // Add to existing workout log
             console.log("➕ Adding to existing workout log:", scheduleToUpdate.workout_log_id);
+            success = await WorkoutService.addExerciseLogs(scheduleToUpdate.workout_log_id, [exerciseLogData]);
             workoutLogId = scheduleToUpdate.workout_log_id;
-            const success = await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLogData]);
-            if (!success) {
-              throw new Error("Failed to add exercise to existing workout log");
-            }
           } else {
             // Create new workout log and associate with schedule
             console.log("🆕 Creating new workout log for schedule:", scheduleToUpdate.id);
@@ -243,12 +240,8 @@ export function VoiceInput({
             workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
             
             if (workoutLogId) {
-              const success = await WorkoutService.completeScheduledWorkout(scheduleToUpdate.id, workoutLogId);
-              if (!success) {
-                console.warn("⚠️ Created workout log but failed to update schedule");
-              }
-            } else {
-              throw new Error("Failed to create workout log");
+              success = await WorkoutService.completeScheduledWorkout(scheduleToUpdate.id, workoutLogId);
+              console.log("✅ Created workout log and updated schedule, success:", success);
             }
           }
         }
@@ -258,17 +251,14 @@ export function VoiceInput({
         const schedules = await WorkoutService.getWorkoutSchedule(userId, dateString, dateString);
         
         if (schedules.length > 0) {
-          scheduleToUpdate = schedules[0];
+          const scheduleToUpdate = schedules[0];
           console.log("📅 Found scheduled workout for today:", scheduleToUpdate.id);
           
           if (scheduleToUpdate.workout_log_id) {
             // Add to existing workout log
             console.log("➕ Adding to existing workout log:", scheduleToUpdate.workout_log_id);
+            success = await WorkoutService.addExerciseLogs(scheduleToUpdate.workout_log_id, [exerciseLogData]);
             workoutLogId = scheduleToUpdate.workout_log_id;
-            const success = await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLogData]);
-            if (!success) {
-              throw new Error("Failed to add exercise to existing workout log");
-            }
           } else {
             // Create new workout log and associate with schedule
             console.log("🆕 Creating new workout log for schedule:", scheduleToUpdate.id);
@@ -282,12 +272,8 @@ export function VoiceInput({
             workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
             
             if (workoutLogId) {
-              const success = await WorkoutService.completeScheduledWorkout(scheduleToUpdate.id, workoutLogId);
-              if (!success) {
-                console.warn("⚠️ Created workout log but failed to update schedule");
-              }
-            } else {
-              throw new Error("Failed to create workout log");
+              success = await WorkoutService.completeScheduledWorkout(scheduleToUpdate.id, workoutLogId);
+              console.log("✅ Created workout log and updated schedule, success:", success);
             }
           }
         } else {
@@ -300,14 +286,11 @@ export function VoiceInput({
           };
           
           workoutLogId = await WorkoutService.logWorkout(workoutLog, [exerciseLogData]);
-          
-          if (!workoutLogId) {
-            throw new Error("Failed to create standalone workout log");
-          }
+          success = !!workoutLogId;
         }
       }
 
-      if (!workoutLogId) {
+      if (!workoutLogId || !success) {
         throw new Error("Failed to create or update workout log");
       }
 
