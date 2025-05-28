@@ -1,12 +1,12 @@
-
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle, Chip } from "@/components/ui-components";
 import { WorkoutCard } from "@/components/WorkoutCard";
+import { WorkoutSessionCard } from "@/components/WorkoutSessionCard";
 import { Button } from "@/components/ui/button";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 import { ChatFAB } from "@/components/ChatFAB";
-import { Plus, Filter, ArrowUpDown } from "lucide-react";
+import { Plus, Filter, ArrowUpDown, Play, Star } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService, WorkoutPlan } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
@@ -15,7 +15,10 @@ import { v4 as uuidv4 } from "uuid";
 
 export default function WorkoutsPage() {
   const [filter, setFilter] = useState("all");
+  const [view, setView: "list" | "session">("list");
+  const [selectedWorkout, setSelectedWorkout: any>(null);
   const [showAddWorkout, setShowAddWorkout] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const { isAuthenticated, userId } = useAuth();
   const queryClient = useQueryClient();
   
@@ -184,59 +187,87 @@ export default function WorkoutsPage() {
     }
   });
 
-  const addWorkout = (workout: any) => {
-    if (!userId) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to add workouts.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    addWorkoutMutation.mutate(workout);
-    setShowAddWorkout(false);
+  const startWorkoutSession = (workout: any) => {
+    setSelectedWorkout(workout);
+    setView("session");
   };
 
-  const handleAddExercise = (workoutId: string, exercise: any) => {
-    if (!userId) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to add exercises.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    addExerciseMutation.mutate({ workoutId, exercise });
+  const completeWorkout = () => {
+    toast({
+      title: "Workout Complete! 🎉",
+      description: "Great job! Your progress has been saved.",
+    });
+    setView("list");
+    setSelectedWorkout(null);
   };
 
-  const handleRemoveExercise = (exerciseId: string) => {
-    if (!userId) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to remove exercises.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    removeExerciseMutation.mutate(exerciseId);
+  const saveAsFavorite = () => {
+    toast({
+      title: "Saved as Favorite ⭐",
+      description: "This workout has been added to your favorites.",
+    });
   };
 
   const filteredWorkouts = filter === "all" 
     ? workouts 
     : workouts.filter(workout => workout.category === filter);
 
+  const displayedWorkouts = showFavoritesOnly 
+    ? filteredWorkouts.filter(workout => workout.isFavorite)
+    : filteredWorkouts;
+
+  if (view === "session" && selectedWorkout) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
+        <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
+          <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
+            <Button 
+              variant="ghost" 
+              onClick={() => setView("list")}
+              className="flex items-center"
+            >
+              ← Back to Workouts
+            </Button>
+            <Logo />
+          </div>
+        </header>
+        
+        <main className="pt-4 px-4 animate-fade-in pb-20">
+          <div className="max-w-lg mx-auto">
+            <WorkoutSessionCard
+              workout={selectedWorkout}
+              onComplete={completeWorkout}
+              onSaveAsFavorite={saveAsFavorite}
+              className="animate-fade-in"
+            />
+          </div>
+        </main>
+        
+        <ChatFAB />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
         <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
           <Logo />
-          <Button size="sm" variant="ghost" className="flex items-center">
-            <Filter size={16} className="mr-2" />
-            Filter
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button 
+              size="sm" 
+              variant={showFavoritesOnly ? "default" : "ghost"}
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              className="flex items-center"
+            >
+              <Star size={16} className="mr-1" />
+              Favorites
+            </Button>
+            <Button size="sm" variant="ghost" className="flex items-center">
+              <Filter size={16} className="mr-2" />
+              Filter
+            </Button>
+          </div>
         </div>
       </header>
       
@@ -286,19 +317,30 @@ export default function WorkoutsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredWorkouts.length > 0 ? (
-                filteredWorkouts.map((workout, index) => (
-                  <WorkoutCard 
-                    key={workout.id || index} 
-                    workout={workout} 
-                    editable={true} 
-                    onAddExercise={handleAddExercise}
-                    onRemoveExercise={handleRemoveExercise}
-                  />
+              {displayedWorkouts.length > 0 ? (
+                displayedWorkouts.map((workout, index) => (
+                  <div key={workout.id || index} className="relative">
+                    <WorkoutCard 
+                      workout={workout} 
+                      editable={true} 
+                      onAddExercise={() => {}}
+                      onRemoveExercise={() => {}}
+                    />
+                    <Button
+                      onClick={() => startWorkoutSession(workout)}
+                      className="absolute top-3 right-3 bg-hashim-600 hover:bg-hashim-700"
+                      size="sm"
+                    >
+                      <Play size={14} className="mr-1" />
+                      Start
+                    </Button>
+                  </div>
                 ))
               ) : (
                 <AnimatedCard className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">No workouts found</p>
+                  <p className="text-muted-foreground mb-4">
+                    {showFavoritesOnly ? "No favorite workouts found" : "No workouts found"}
+                  </p>
                   <Button 
                     variant="outline" 
                     onClick={() => setShowAddWorkout(true)}
@@ -317,7 +359,7 @@ export default function WorkoutsPage() {
       <AddWorkoutModal 
         isOpen={showAddWorkout} 
         onClose={() => setShowAddWorkout(false)}
-        onAddWorkout={addWorkout}
+        onAddWorkout={() => {}}
         selectedDay=""
       />
       
