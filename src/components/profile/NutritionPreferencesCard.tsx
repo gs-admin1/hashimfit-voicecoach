@@ -86,7 +86,7 @@ export function NutritionPreferencesCard({ user, updateUser }: NutritionPreferen
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Diet Type</label>
-                <Select value={formData.diet} onValueChange={(value) => setFormData(prev => ({ ...prev, diet: value }))}>
+                <Select value={formData.diet} onValueChange={(value) => setFormData(prev => ({ ...prev, diet: value as Diet }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

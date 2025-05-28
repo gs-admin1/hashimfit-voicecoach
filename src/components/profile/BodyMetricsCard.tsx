@@ -132,7 +132,7 @@ export function BodyMetricsCard({ user, updateUser }: BodyMetricsCardProps) {
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={formData.gender}
-                    onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value as "male" | "female" | "other" }))}
                   >
                     <option value="male">Male</option>
                     <option value="female">Female</option>

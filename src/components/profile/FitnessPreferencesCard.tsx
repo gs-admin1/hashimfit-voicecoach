@@ -93,7 +93,7 @@ export function FitnessPreferencesCard({ user, updateUser }: FitnessPreferencesC
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Fitness Goal</label>
-                <Select value={formData.fitnessGoal} onValueChange={(value) => setFormData(prev => ({ ...prev, fitnessGoal: value }))}>
+                <Select value={formData.fitnessGoal} onValueChange={(value) => setFormData(prev => ({ ...prev, fitnessGoal: value as FitnessGoal }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -126,7 +126,7 @@ export function FitnessPreferencesCard({ user, updateUser }: FitnessPreferencesC
               
               <div>
                 <label className="text-sm font-medium">Available Equipment</label>
-                <Select value={formData.equipment} onValueChange={(value) => setFormData(prev => ({ ...prev, equipment: value }))}>
+                <Select value={formData.equipment} onValueChange={(value) => setFormData(prev => ({ ...prev, equipment: value as Equipment }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
