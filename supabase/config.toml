@@ -29,3 +29,7 @@ api_url = "http://localhost"
 # JWT verification is enabled for this function
 [functions.analyze-meal-photo]
 verify_jwt = true
+
+# JWT verification is enabled for this function
+[functions.voice-workout-parser]
+verify_jwt = true

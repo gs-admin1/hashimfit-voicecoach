@@ -6,9 +6,10 @@ import { UserStatsModal } from "@/components/UserStatsModal";
 import { MealCaptureCard } from "@/components/MealCaptureCard";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
+import { VoiceInput } from "@/components/VoiceInput";
 import { Button } from "@/components/ui/button";
 import { DayTab } from "@/components/DayTab";
-import { AnimatedCard, VoiceWidget, IconButton } from "@/components/ui-components";
+import { AnimatedCard, IconButton } from "@/components/ui-components";
 import { Plus, User, Settings } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { WorkoutService, WorkoutSchedule, WorkoutLog, ExerciseLog } from "@/lib/supabase/services/WorkoutService";
@@ -312,6 +313,52 @@ export function Dashboard() {
     }));
   };
 
+  const handleVoiceWorkoutLogged = async (workoutData: any) => {
+    if (!selectedWorkout || !selectedWorkout.schedule_id) {
+      toast({
+        title: "No Active Workout",
+        description: "Please add a workout to your schedule first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Create a mock exercise to add to the current workout
+      const exerciseLog = {
+        exercise_name: workoutData.exercise,
+        sets_completed: workoutData.sets,
+        reps_completed: workoutData.reps,
+        weight_used: workoutData.weight_lbs ? `${workoutData.weight_lbs} lbs` : 'bodyweight',
+        order_index: selectedWorkout.exercises.length
+      };
+
+      // Add to the workout using the existing mutation
+      await completeExerciseMutation.mutateAsync({
+        scheduleId: selectedWorkout.schedule_id,
+        exerciseId: `voice-${Date.now()}`, // Temporary ID for voice exercises
+        exerciseName: workoutData.exercise,
+        completed: true,
+        allExercises: [...selectedWorkout.exercises, {
+          id: `voice-${Date.now()}`,
+          name: workoutData.exercise,
+          sets: workoutData.sets,
+          reps: workoutData.reps,
+          weight: workoutData.weight_lbs ? `${workoutData.weight_lbs} lbs` : 'bodyweight',
+          completed: true
+        }]
+      });
+
+    } catch (error) {
+      console.error("Error logging voice workout:", error);
+      toast({
+        title: "Error",
+        description: "Failed to log your workout. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="max-w-lg mx-auto pb-20">
       <div className="flex justify-between items-center mb-6">
@@ -429,7 +476,7 @@ export function Dashboard() {
       <MealCaptureCard />
       
       <div className="my-6">
-        <VoiceWidget />
+        <VoiceInput onWorkoutLogged={handleVoiceWorkoutLogged} />
       </div>
       
       <AddWorkoutModal 
