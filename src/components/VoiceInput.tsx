@@ -5,6 +5,7 @@ import { Mic, MicOff, Loader2, Check, X, Edit, Volume2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 interface VoiceInputProps {
@@ -44,7 +45,7 @@ export function VoiceInput({
 
   const startRecording = async () => {
     try {
-      console.log("Starting voice recording...");
+      console.log("🎤 Starting voice recording...");
       setIsComplete(false);
       setRecordingTime(0);
       
@@ -60,12 +61,14 @@ export function VoiceInput({
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          console.log("📦 Audio chunk received, size:", event.data.size);
         }
       };
       
       mediaRecorder.onstop = async () => {
-        console.log("Recording stopped, processing audio...");
+        console.log("🛑 Recording stopped, processing audio...");
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log("🔊 Final audio blob size:", audioBlob.size);
         await processAudio(audioBlob);
         stream.getTracks().forEach(track => track.stop());
         
@@ -96,7 +99,7 @@ export function VoiceInput({
       }, 10000);
       
     } catch (error) {
-      console.error('Error accessing microphone:', error);
+      console.error('❌ Error accessing microphone:', error);
       toast({
         title: "Microphone Error",
         description: "Could not access microphone. Please check permissions.",
@@ -107,6 +110,7 @@ export function VoiceInput({
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      console.log("⏹️ Stopping recording...");
       mediaRecorderRef.current.stop();
     }
     setIsListening(false);
@@ -116,59 +120,68 @@ export function VoiceInput({
     setIsProcessing(true);
     
     try {
-      console.log("Processing audio blob of size:", audioBlob.size);
+      console.log("🔄 Processing audio blob of size:", audioBlob.size);
       
       // Convert blob to base64
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64Audio = (reader.result as string).split(',')[1];
-        console.log("Converted to base64, length:", base64Audio.length);
-        
-        // Send to our edge function for transcription and parsing
-        const response = await fetch('https://haxiwqgajhanpapvicbm.functions.supabase.co/voice-workout-parser', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            audio: base64Audio
-          })
-        });
-        
-        console.log("Response status:", response.status);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Response error:", errorText);
-          throw new Error('Failed to process audio');
+        try {
+          const base64Audio = (reader.result as string).split(',')[1];
+          console.log("📝 Converted to base64, length:", base64Audio.length);
+          
+          // Get the current session to include proper authentication
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (!session) {
+            throw new Error('No active session found. Please log in again.');
+          }
+          
+          console.log("🔑 Got session, calling edge function...");
+          
+          // Use Supabase client to call the edge function with proper authentication
+          const { data, error } = await supabase.functions.invoke('voice-workout-parser', {
+            body: { audio: base64Audio }
+          });
+          
+          if (error) {
+            console.error("❌ Edge function error:", error);
+            throw new Error(error.message || 'Failed to process audio');
+          }
+          
+          console.log("✅ Processing result:", data);
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          
+          setTranscript(data.transcript || "");
+          setParsedExercise(data.parsed_exercise || null);
+          setIsComplete(true);
+          setShowConfirmation(true);
+          
+          toast({
+            title: "✅ Audio Processed!",
+            description: `Detected: ${data.parsed_exercise?.exercise || "Unknown exercise"}`,
+          });
+          
+        } catch (error) {
+          console.error('❌ Error in reader.onloadend:', error);
+          throw error;
         }
-        
-        const result = await response.json();
-        console.log("Processing result:", result);
-        
-        if (result.error) {
-          throw new Error(result.error);
-        }
-        
-        setTranscript(result.transcript || "");
-        setParsedExercise(result.parsed_exercise || null);
-        setIsComplete(true);
-        setShowConfirmation(true);
-        
-        toast({
-          title: "✅ Audio Processed!",
-          description: `Detected: ${result.parsed_exercise?.exercise || "Unknown exercise"}`,
-        });
-        
       };
+      
+      reader.onerror = () => {
+        console.error('❌ FileReader error');
+        throw new Error('Failed to read audio file');
+      };
+      
       reader.readAsDataURL(audioBlob);
       
     } catch (error) {
-      console.error('Error processing audio:', error);
+      console.error('❌ Error processing audio:', error);
       toast({
         title: "Processing Error",
-        description: "Could not process your voice input. Please try again.",
+        description: error.message || "Could not process your voice input. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -187,7 +200,7 @@ export function VoiceInput({
     }
 
     try {
-      console.log("Confirming exercise:", parsedExercise);
+      console.log("💾 Confirming exercise:", parsedExercise);
       const today = new Date();
       const dateString = today.toISOString().split('T')[0];
       
@@ -216,15 +229,15 @@ export function VoiceInput({
         order_index: 0
       };
 
-      console.log("Exercise log data:", exerciseLogData);
+      console.log("📋 Exercise log data:", exerciseLogData);
 
       if (workoutLogId) {
         // Add to existing workout log
-        console.log("Adding to existing workout log:", workoutLogId);
+        console.log("➕ Adding to existing workout log:", workoutLogId);
         await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLogData]);
       } else if (workoutSchedule) {
         // Create new workout log and associate with schedule
-        console.log("Creating new workout log for schedule:", workoutSchedule.id);
+        console.log("🆕 Creating new workout log for schedule:", workoutSchedule.id);
         const workoutLog = {
           user_id: userId,
           workout_plan_id: workoutSchedule.workout_plan_id,
@@ -239,7 +252,7 @@ export function VoiceInput({
         }
       } else {
         // Create a standalone workout log for today
-        console.log("Creating standalone workout log");
+        console.log("🏋️ Creating standalone workout log");
         const workoutLog = {
           user_id: userId,
           start_time: new Date().toISOString(),
@@ -267,7 +280,7 @@ export function VoiceInput({
       }
 
     } catch (error) {
-      console.error('Error saving exercise:', error);
+      console.error('❌ Error saving exercise:', error);
       toast({
         title: "Save Error",
         description: "Could not save your exercise. Please try again.",
@@ -277,6 +290,7 @@ export function VoiceInput({
   };
 
   const discardExercise = () => {
+    console.log("🗑️ Discarding exercise");
     setShowConfirmation(false);
     setTranscript("");
     setParsedExercise(null);
