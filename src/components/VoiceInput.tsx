@@ -42,6 +42,7 @@ export function VoiceInput({
 
   const startRecording = async () => {
     try {
+      console.log("Starting voice recording...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       const mediaRecorder = new MediaRecorder(stream, {
@@ -58,6 +59,7 @@ export function VoiceInput({
       };
       
       mediaRecorder.onstop = async () => {
+        console.log("Recording stopped, processing audio...");
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         await processAudio(audioBlob);
         stream.getTracks().forEach(track => track.stop());
@@ -65,6 +67,11 @@ export function VoiceInput({
       
       mediaRecorder.start();
       setIsListening(true);
+      
+      toast({
+        title: "Recording...",
+        description: "Speak your exercise details now. Tap again to stop.",
+      });
       
       // Auto-stop after 10 seconds
       setTimeout(() => {
@@ -94,13 +101,16 @@ export function VoiceInput({
     setIsProcessing(true);
     
     try {
+      console.log("Processing audio blob of size:", audioBlob.size);
+      
       // Convert blob to base64
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64Audio = (reader.result as string).split(',')[1];
+        console.log("Converted to base64, length:", base64Audio.length);
         
         // Send to our edge function for transcription and parsing
-        const response = await fetch('/api/voice-workout-parser', {
+        const response = await fetch('https://haxiwqgajhanpapvicbm.functions.supabase.co/voice-workout-parser', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -110,11 +120,16 @@ export function VoiceInput({
           })
         });
         
+        console.log("Response status:", response.status);
+        
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Response error:", errorText);
           throw new Error('Failed to process audio');
         }
         
         const result = await response.json();
+        console.log("Processing result:", result);
         
         if (result.error) {
           throw new Error(result.error);
@@ -123,6 +138,11 @@ export function VoiceInput({
         setTranscript(result.transcript || "");
         setParsedExercise(result.parsed_exercise || null);
         setShowConfirmation(true);
+        
+        toast({
+          title: "Audio Processed!",
+          description: `Detected: ${result.parsed_exercise?.exercise || "Unknown exercise"}`,
+        });
         
       };
       reader.readAsDataURL(audioBlob);
@@ -150,6 +170,7 @@ export function VoiceInput({
     }
 
     try {
+      console.log("Confirming exercise:", parsedExercise);
       const today = new Date();
       const dateString = today.toISOString().split('T')[0];
       
@@ -178,11 +199,15 @@ export function VoiceInput({
         order_index: 0
       };
 
+      console.log("Exercise log data:", exerciseLogData);
+
       if (workoutLogId) {
         // Add to existing workout log
+        console.log("Adding to existing workout log:", workoutLogId);
         await WorkoutService.addExerciseLogs(workoutLogId, [exerciseLogData]);
       } else if (workoutSchedule) {
         // Create new workout log and associate with schedule
+        console.log("Creating new workout log for schedule:", workoutSchedule.id);
         const workoutLog = {
           user_id: userId,
           workout_plan_id: workoutSchedule.workout_plan_id,
@@ -197,6 +222,7 @@ export function VoiceInput({
         }
       } else {
         // Create a standalone workout log for today
+        console.log("Creating standalone workout log");
         const workoutLog = {
           user_id: userId,
           start_time: new Date().toISOString(),
