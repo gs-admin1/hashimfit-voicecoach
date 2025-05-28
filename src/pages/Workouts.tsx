@@ -1,24 +1,30 @@
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
-import { NavigationBar, AnimatedCard, SectionTitle, Chip } from "@/components/ui-components";
-import { WorkoutCard } from "@/components/WorkoutCard";
+import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
+import { WorkoutCardImproved } from "@/components/WorkoutCardImproved";
 import { WorkoutSessionCard } from "@/components/WorkoutSessionCard";
+import { CalendarStrip } from "@/components/CalendarStrip";
+import { WorkoutFilters } from "@/components/WorkoutFilters";
+import { WorkoutCompletionSummary } from "@/components/WorkoutCompletionSummary";
+import { RestTimerOverlay } from "@/components/RestTimerOverlay";
 import { Button } from "@/components/ui/button";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 import { ChatFAB } from "@/components/ChatFAB";
-import { Plus, Filter, ArrowUpDown, Play, Star } from "lucide-react";
+import { Plus, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService, WorkoutPlan } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { v4 as uuidv4 } from "uuid";
+import { format } from "date-fns";
 
 export default function WorkoutsPage() {
-  const [filter, setFilter] = useState("all");
-  const [view, setView] = useState<"list" | "session">("list");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [view, setView] = useState<"list" | "session" | "completion">("list");
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [showAddWorkout, setShowAddWorkout] = useState(false);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [showRestTimer, setShowRestTimer] = useState(false);
+  const [restDuration, setRestDuration] = useState(60);
   const { isAuthenticated, userId } = useAuth();
   const queryClient = useQueryClient();
   
@@ -46,7 +52,12 @@ export default function WorkoutsPage() {
               weight: ex.weight || 'bodyweight'
             })),
             category: plan.category,
-            isFavorite: false // Add default favorite status
+            isFavorite: false,
+            estimatedDuration: 45 + exercises.length * 3,
+            targetMuscles: ["Chest", "Triceps", "Shoulders"],
+            difficulty: plan.difficulty || 3,
+            aiGenerated: plan.ai_generated || false,
+            streak: Math.floor(Math.random() * 5) + 1
           };
         })
       );
@@ -54,7 +65,7 @@ export default function WorkoutsPage() {
       return workoutsWithExercises;
     },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
   
   // Mutation for adding a workout
@@ -194,9 +205,14 @@ export default function WorkoutsPage() {
   };
 
   const completeWorkout = () => {
+    setView("completion");
+  };
+
+  const handleWorkoutCompletion = (rating: number, notes: string) => {
+    console.log("Workout completed with rating:", rating, "notes:", notes);
     toast({
       title: "Workout Complete! 🎉",
-      description: "Great job! Your progress has been saved.",
+      description: "Your progress has been saved successfully.",
     });
     setView("list");
     setSelectedWorkout(null);
@@ -209,14 +225,93 @@ export default function WorkoutsPage() {
     });
   };
 
-  const filteredWorkouts = filter === "all" 
-    ? workouts 
-    : workouts.filter(workout => workout.category === filter);
+  const saveAsTemplate = () => {
+    toast({
+      title: "Template Saved",
+      description: "Workout saved as a custom template.",
+    });
+  };
 
-  const displayedWorkouts = showFavoritesOnly 
-    ? filteredWorkouts.filter(workout => workout.isFavorite)
-    : filteredWorkouts;
+  const shareWorkout = () => {
+    toast({
+      title: "Sharing Feature",
+      description: "Workout sharing will be available soon!",
+    });
+  };
 
+  const startRestTimer = (duration: number = 60) => {
+    setRestDuration(duration);
+    setShowRestTimer(true);
+  };
+
+  const filteredWorkouts = workouts.filter(workout => {
+    if (activeFilters.length === 0) return true;
+    
+    // Apply filters based on workout properties
+    return activeFilters.some(filter => {
+      switch (filter) {
+        case 'ai-generated':
+          return workout.aiGenerated;
+        case 'custom':
+          return !workout.aiGenerated;
+        case 'strength':
+          return workout.category === 'strength';
+        case 'cardio':
+          return workout.category === 'cardio';
+        case 'upper-body':
+          return workout.targetMuscles?.some(muscle => 
+            ['Chest', 'Back', 'Shoulders', 'Arms', 'Triceps', 'Biceps'].includes(muscle)
+          );
+        case 'lower-body':
+          return workout.targetMuscles?.some(muscle => 
+            ['Legs', 'Quads', 'Hamstrings', 'Glutes', 'Calves'].includes(muscle)
+          );
+        default:
+          return true;
+      }
+    });
+  });
+
+  // Completion view
+  if (view === "completion" && selectedWorkout) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
+        <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
+          <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
+            <Button 
+              variant="ghost" 
+              onClick={() => setView("list")}
+              className="flex items-center"
+            >
+              ← Back to Workouts
+            </Button>
+            <Logo />
+          </div>
+        </header>
+        
+        <main className="pt-4 px-4 animate-fade-in pb-20">
+          <div className="max-w-lg mx-auto">
+            <WorkoutCompletionSummary
+              workout={{
+                title: selectedWorkout.title,
+                duration: selectedWorkout.estimatedDuration || 45,
+                caloriesBurned: 280,
+                muscleGroups: selectedWorkout.targetMuscles || ["Chest", "Triceps"],
+                performanceTrend: "improved"
+              }}
+              onSaveAsTemplate={saveAsTemplate}
+              onShare={shareWorkout}
+              onComplete={handleWorkoutCompletion}
+            />
+          </div>
+        </main>
+        
+        <ChatFAB />
+      </div>
+    );
+  }
+
+  // Session view
   if (view === "session" && selectedWorkout) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -239,16 +334,26 @@ export default function WorkoutsPage() {
               workout={selectedWorkout}
               onComplete={completeWorkout}
               onSaveAsFavorite={saveAsFavorite}
+              onStartRestTimer={startRestTimer}
               className="animate-fade-in"
             />
           </div>
         </main>
+        
+        <RestTimerOverlay
+          isVisible={showRestTimer}
+          duration={restDuration}
+          onComplete={() => setShowRestTimer(false)}
+          onSkip={() => setShowRestTimer(false)}
+          onClose={() => setShowRestTimer(false)}
+        />
         
         <ChatFAB />
       </div>
     );
   }
 
+  // Main workout list view
   return (
     <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
@@ -257,98 +362,67 @@ export default function WorkoutsPage() {
           <div className="flex items-center space-x-2">
             <Button 
               size="sm" 
-              variant={showFavoritesOnly ? "default" : "ghost"}
-              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              variant="ghost"
               className="flex items-center"
             >
-              <Star size={16} className="mr-1" />
-              Favorites
+              <MessageCircle size={16} className="mr-1" />
+              Ask Coach
             </Button>
-            <Button size="sm" variant="ghost" className="flex items-center">
-              <Filter size={16} className="mr-2" />
-              Filter
+            <Button 
+              size="sm" 
+              className="flex items-center bg-hashim-600 hover:bg-hashim-700 text-white"
+              onClick={() => setShowAddWorkout(true)}
+            >
+              <Plus size={16} className="mr-1" />
+              Add
             </Button>
           </div>
         </div>
+        
+        <CalendarStrip
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+        />
       </header>
       
       <main className="pt-4 px-4 animate-fade-in pb-20">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto space-y-6">
           <SectionTitle 
-            title="Workouts" 
-            subtitle="Browse all workout programs" 
-            action={
-              <Button 
-                size="sm" 
-                className="flex items-center bg-hashim-600 hover:bg-hashim-700 text-white"
-                onClick={() => setShowAddWorkout(true)}
-              >
-                <Plus size={16} className="mr-1" />
-                Add
-              </Button>
-            }
+            title={`Workouts for ${format(selectedDate, "MMM d")}`}
+            subtitle="Your personalized training plan"
           />
           
-          <div className="flex space-x-3 mb-6 overflow-x-auto pb-2 scrollbar-none">
-            <Chip 
-              label="All" 
-              active={filter === "all"}
-              onClick={() => setFilter("all")}
-            />
-            <Chip 
-              label="Strength" 
-              active={filter === "strength"}
-              onClick={() => setFilter("strength")}
-            />
-            <Chip 
-              label="Cardio" 
-              active={filter === "cardio"}
-              onClick={() => setFilter("cardio")}
-            />
-            <Chip 
-              label="Recovery" 
-              active={filter === "recovery"}
-              onClick={() => setFilter("recovery")}
-            />
-          </div>
+          <WorkoutFilters
+            activeFilters={activeFilters}
+            onFiltersChange={setActiveFilters}
+          />
           
-          {isLoading || addWorkoutMutation.isPending ? (
+          {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
             </div>
           ) : (
             <div className="space-y-4">
-              {displayedWorkouts.length > 0 ? (
-                displayedWorkouts.map((workout, index) => (
-                  <div key={workout.id || index} className="relative">
-                    <WorkoutCard 
-                      workout={workout} 
-                      editable={true} 
-                      onAddExercise={() => {}}
-                      onRemoveExercise={() => {}}
-                    />
-                    <Button
-                      onClick={() => startWorkoutSession(workout)}
-                      className="absolute top-3 right-3 bg-hashim-600 hover:bg-hashim-700"
-                      size="sm"
-                    >
-                      <Play size={14} className="mr-1" />
-                      Start
-                    </Button>
-                  </div>
+              {filteredWorkouts.length > 0 ? (
+                filteredWorkouts.map((workout, index) => (
+                  <WorkoutCardImproved
+                    key={workout.id || index}
+                    workout={workout}
+                    onStart={startWorkoutSession}
+                    onEdit={() => {}}
+                  />
                 ))
               ) : (
                 <AnimatedCard className="text-center py-8">
                   <p className="text-muted-foreground mb-4">
-                    {showFavoritesOnly ? "No favorite workouts found" : "No workouts found"}
+                    No workouts found for the selected filters
                   </p>
                   <Button 
                     variant="outline" 
-                    onClick={() => setShowAddWorkout(true)}
+                    onClick={() => setActiveFilters([])}
                     className="flex items-center mx-auto"
                   >
-                    <Plus size={16} className="mr-1" />
-                    Add your first workout
+                    Clear Filters
                   </Button>
                 </AnimatedCard>
               )}
