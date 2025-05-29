@@ -31,11 +31,13 @@ import {
   Undo2,
   RotateCcw,
   Users,
-  ArrowLeftRight
+  ArrowLeftRight,
+  BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 interface Exercise {
   id: string;
@@ -63,6 +65,7 @@ interface Workout {
   isFavorite?: boolean;
   isCompleted?: boolean;
   schedule_id?: string;
+  workout_log_id?: string;
 }
 
 interface WorkoutCardProps {
@@ -82,6 +85,7 @@ export function WorkoutCard({
   onReplaceWorkout,
   onUpdateWorkout
 }: WorkoutCardProps) {
+  const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
   const [showFullExercises, setShowFullExercises] = useState(false);
   const [editingExercises, setEditingExercises] = useState<Exercise[]>(workout.exercises);
@@ -101,6 +105,15 @@ export function WorkoutCard({
   const completedExercises = workout.exercises.filter(ex => ex.completed).length;
   const totalExercises = workout.exercises.length;
   const progress = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
+
+  // Handle view results navigation
+  const handleViewResults = () => {
+    if (workout.workout_log_id) {
+      navigate(`/workout-results/${workout.workout_log_id}`);
+    } else {
+      console.error('No workout log ID available for this completed workout');
+    }
+  };
 
   // Get difficulty info with Apple-inspired colors
   const getDifficultyInfo = (difficulty?: number) => {
@@ -795,10 +808,10 @@ export function WorkoutCard({
                   <Button 
                     variant="outline" 
                     size="lg"
-                    onClick={() => onStart?.(workout)}
+                    onClick={handleViewResults}
                     className="w-full text-green-600 border-green-200 hover:bg-green-50 h-12 rounded-2xl font-semibold"
                   >
-                    <TrendingUp size={18} className="mr-2" />
+                    <BarChart3 size={18} className="mr-2" />
                     View Results
                   </Button>
                 ) : (
