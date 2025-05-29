@@ -244,12 +244,19 @@ export default function WorkoutsPage() {
       console.log("Successfully updated workout exercises");
       
       if (result.type === 'update_template') {
-        // Invalidate all workout-related queries since the template changed
+        // For template updates, invalidate ALL workout-related queries to ensure
+        // that future occurrences of this workout show the updated exercises
+        console.log("Invalidating all workout queries for template update");
         queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts'] });
         queryClient.invalidateQueries({ queryKey: ['allWorkoutPlans'] });
-        // Also invalidate any cached workout plan data
         queryClient.invalidateQueries({ queryKey: ['workoutPlan'] });
         queryClient.invalidateQueries({ queryKey: ['workoutExercises'] });
+        queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
+        queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
+        
+        // Also remove all cached workout plan data to force fresh fetches
+        queryClient.removeQueries({ queryKey: ['workoutPlan'] });
+        queryClient.removeQueries({ queryKey: ['workoutExercises'] });
       } else {
         // Only invalidate current date queries for copy creation
         queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts', userId, format(selectedDate, 'yyyy-MM-dd')] });

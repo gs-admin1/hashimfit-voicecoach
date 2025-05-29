@@ -366,14 +366,19 @@ export function Dashboard() {
         const success = await WorkoutService.updateWorkoutPlanWithExercises(updatedWorkout.id, updatedWorkout.exercises);
         if (!success) throw new Error("Failed to update workout plan");
         
-        // Invalidate all workout-related queries since the template changed
+        // For template updates, invalidate ALL workout-related queries to ensure
+        // that future occurrences of this workout show the updated exercises
+        console.log("Invalidating all workout queries for template update");
         queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
         queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
         queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
-        // Also invalidate any cached workout plan data
         queryClient.invalidateQueries({ queryKey: ['workoutPlan'] });
         queryClient.invalidateQueries({ queryKey: ['workoutExercises'] });
         queryClient.invalidateQueries({ queryKey: ['allWorkoutPlans'] });
+        
+        // Also remove all cached workout plan data to force fresh fetches
+        queryClient.removeQueries({ queryKey: ['workoutPlan'] });
+        queryClient.removeQueries({ queryKey: ['workoutExercises'] });
         
         console.log("Updated workout plan template for all future workouts");
       } else {
