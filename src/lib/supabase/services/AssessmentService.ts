@@ -1,3 +1,4 @@
+
 import supabase from '@/lib/supabase';
 import { PlanGenerationService, type AssessmentData } from './PlanGenerationService';
 
@@ -68,7 +69,11 @@ export class AssessmentService {
       // Fetch the workout schedules for the week
       const { data: workoutSchedules, error } = await supabase
         .from('workout_schedule')
-        .select('scheduled_date, workout_plan_id, workout_plans(title)')
+        .select(`
+          scheduled_date, 
+          workout_plan_id, 
+          workout_plans!inner(title)
+        `)
         .eq('user_id', userId)
         .gte('scheduled_date', startDateString)
         .lte('scheduled_date', endDateString);
@@ -81,9 +86,9 @@ export class AssessmentService {
       // Transform the data into the desired format
       const weeklyWorkouts: {[key: string]: WeeklyWorkout[]} = {};
       
-      workoutSchedules.forEach(schedule => {
+      workoutSchedules?.forEach(schedule => {
         const day = new Date(schedule.scheduled_date).toLocaleDateString('en-US', { weekday: 'long' });
-        const workout_title = (schedule.workout_plans as {title: string}).title;
+        const workout_title = schedule.workout_plans?.title || 'Unknown Workout';
         
         if (!weeklyWorkouts[day]) {
           weeklyWorkouts[day] = [];
