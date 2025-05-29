@@ -2,15 +2,14 @@ import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { useUser } from "@/context/UserContext";
-import { UserStatsModal } from "@/components/UserStatsModal";
 import { MealCaptureCard } from "@/components/MealCaptureCard";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 import { VoiceInput } from "@/components/VoiceInput";
 import { Button } from "@/components/ui/button";
 import { DayTab } from "@/components/DayTab";
-import { AnimatedCard, IconButton } from "@/components/ui-components";
-import { Plus, User, Settings } from "lucide-react";
+import { AnimatedCard } from "@/components/ui-components";
+import { Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { WorkoutService, WorkoutSchedule, WorkoutLog, ExerciseLog } from "@/lib/supabase/services/WorkoutService";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
@@ -24,7 +23,6 @@ import { HabitStreakCard } from "@/components/dashboard/HabitStreakCard";
 import { AICoachInsightCard } from "@/components/dashboard/AICoachInsightCard";
 
 export function Dashboard() {
-  const [showStatsModal, setShowStatsModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState(format(new Date(), 'EEEE'));
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [cardStates, setCardStates] = useState({
@@ -342,23 +340,7 @@ export function Dashboard() {
 
   return (
     <div className="max-w-lg mx-auto pb-20">
-      {/* Profile/gear icons moved to top right corner */}
-      <div className="flex justify-end items-center mb-4 pt-2">
-        <div className="flex items-center space-x-2">
-          <IconButton 
-            icon={Settings}
-            variant="outline"
-            onClick={() => {}}
-          />
-          <IconButton 
-            icon={User}
-            variant="outline"
-            onClick={() => setShowStatsModal(true)}
-          />
-        </div>
-      </div>
-      
-      {/* Snap a Snack and Log your workout buttons moved up - directly under logo */}
+      {/* Snap a Snack and Log your workout buttons - minimal spacing from logo */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="h-16">
           <MealCaptureCard />
@@ -469,11 +451,6 @@ export function Dashboard() {
         onClose={() => setShowAddWorkout(false)}
         onAddWorkout={handleWorkoutSelected}
         selectedDay={selectedDay}
-      />
-      
-      <UserStatsModal 
-        isOpen={showStatsModal}
-        onClose={() => setShowStatsModal(false)}
       />
     </div>
   );
