@@ -212,39 +212,78 @@ export default function WorkoutsPage() {
     }
   });
 
-  // Mutation for updating workout exercises
+  const handleWorkoutUpdate = (updatedWorkout: any, saveType: 'today' | 'all_future' = 'today') => {
+    console.log(`Updating workout with save type: ${saveType}`, updatedWorkout);
+    
+    // Prepare exercise data properly
+    const exerciseData = updatedWorkout.exercises.map((ex: any, index: number) => ({
+      name: ex.name,
+      sets: ex.sets,
+      reps: ex.reps,
+      weight: ex.weight || 'bodyweight',
+      rest_time: ex.rest_seconds || 60,
+      order_index: index,
+      notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
+    }));
+
+    if (saveType === 'all_future') {
+      // Update all future workouts using the new service method
+      updateWorkoutMutation.mutate({
+        workoutPlanId: updatedWorkout.id,
+        exercises: exerciseData,
+        saveType: 'all_future'
+      });
+    } else {
+      // Update just for today
+      updateWorkoutMutation.mutate({
+        workoutPlanId: updatedWorkout.id,
+        exercises: exerciseData,
+        saveType: 'today'
+      });
+    }
+  };
+
+  // Update the mutation to handle the new save type
   const updateWorkoutMutation = useMutation({
-    mutationFn: async ({ workoutPlanId, exercises }: { workoutPlanId: string, exercises: any[] }) => {
+    mutationFn: async ({ 
+      workoutPlanId, 
+      exercises, 
+      saveType = 'today' 
+    }: { 
+      workoutPlanId: string, 
+      exercises: any[], 
+      saveType?: 'today' | 'all_future' 
+    }) => {
       if (!userId) throw new Error("User not authenticated");
       
-      console.log("Updating workout exercises:", workoutPlanId, exercises);
+      console.log("Updating workout exercises:", workoutPlanId, exercises, "Save type:", saveType);
       
-      // First, delete all existing exercises for this workout plan
-      const existingExercises = await WorkoutService.getWorkoutExercises(workoutPlanId);
-      await Promise.all(
-        existingExercises.map(ex => WorkoutService.deleteWorkoutExercise(ex.id!))
-      );
-      
-      // Then create new exercises with updated data
-      const exerciseData = exercises.map((ex, index) => ({
-        workout_plan_id: workoutPlanId,
-        name: ex.name,
-        sets: ex.sets,
-        reps: ex.reps,
-        weight: ex.weight || 'bodyweight',
-        rest_time: ex.rest_seconds || 60, // Convert to number
-        order_index: index,
-        notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
-      }));
-      
-      return await WorkoutService.createWorkoutExercises(exerciseData);
+      if (saveType === 'all_future') {
+        // Update the original workout plan (affects all future workouts)
+        return await WorkoutService.updateAllFutureWorkoutsOfType(
+          userId,
+          workoutPlanId,
+          exercises
+        );
+      } else {
+        // Create a one-off workout plan for this specific date
+        const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+        return await WorkoutService.createOneOffWorkoutSchedule(
+          userId,
+          workoutPlanId,
+          selectedDateStr,
+          exercises
+        );
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
       console.log("Successfully updated workout exercises");
       queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts'] });
       toast({
         title: "Workout Updated",
-        description: "Your workout changes have been saved successfully."
+        description: variables.saveType === 'all_future'
+          ? "Your changes have been applied to all future workouts of this type."
+          : "Your changes have been saved for today only."
       });
     },
     onError: (error) => {
@@ -327,13 +366,6 @@ export default function WorkoutsPage() {
       }
     });
   });
-
-  const handleWorkoutUpdate = (updatedWorkout: any) => {
-    updateWorkoutMutation.mutate({
-      workoutPlanId: updatedWorkout.id,
-      exercises: updatedWorkout.exercises
-    });
-  };
 
   // Completion view
   if (view === "completion" && selectedWorkout) {
