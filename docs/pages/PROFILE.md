@@ -20,10 +20,10 @@ The Profile page serves as the comprehensive user account management interface, 
 - `BodyMetricsCard` - Physical measurements and stats
 - `FitnessPreferencesCard` - Workout and goal preferences
 - `NutritionPreferencesCard` - Diet and nutrition settings
-- `PersonalJourneyCard` - Fitness journey timeline
+- `PersonalJourneyCard` - Fitness journey timeline (data-driven)
 - `AppSettingsCard` - Application configuration
-- `AICoachSuggestionsCard` - Personalized AI recommendations
-- `UserStatsModal` - Detailed user statistics
+- `AICoachSuggestionsCard` - Personalized AI recommendations (data-driven)
+- `UserStatsModal` - Detailed user statistics (data-driven)
 
 **Layout Patterns:**
 - Card-based information organization
@@ -120,7 +120,7 @@ The Profile page serves as the comprehensive user account management interface, 
 - Error handling with user-friendly messages
 
 **State Management:**
-- React Query for profile data management
+- TanStack Query for profile data management
 - Local state for form handling
 - Optimistic updates for immediate feedback
 - Synchronization with global user context
@@ -136,3 +136,10 @@ The Profile page serves as the comprehensive user account management interface, 
 - Image optimization for profile photos
 - Efficient data fetching strategies
 - Minimal re-renders on preference changes
+
+**Data-Driven Components:**
+- All profile components now use prop-based data
+- Empty states for components without data
+- Loading states during data operations
+- Error handling for failed requests
+- No mock data in production code

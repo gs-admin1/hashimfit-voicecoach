@@ -20,6 +20,13 @@ This documentation directory contains comprehensive technical specifications for
 - **[Chat Assistant](./pages/CHAT_ASSISTANT.md)** - AI-powered fitness coaching interface
 - **[Meal Logging](./pages/MEAL_LOGGING.md)** - Photo-based nutrition tracking with AI analysis
 
+### Development Documentation
+- **[Architecture](./ARCHITECTURE.md)** - System architecture and component design
+- **[System Design](./SYSTEM_DESIGN.md)** - Technical implementation details
+- **[User Flows](./USER_FLOWS.md)** - User interaction patterns and workflows
+- **[Contributing](./CONTRIBUTING.md)** - Development guidelines and contribution process
+- **[Troubleshooting](./TROUBLESHOOTING.md)** - Common issues and solutions
+
 ## Technology Stack
 
 ### Frontend
@@ -27,7 +34,7 @@ This documentation directory contains comprehensive technical specifications for
 - **TypeScript** - Type-safe JavaScript development
 - **Tailwind CSS** - Utility-first CSS framework
 - **shadcn/ui** - Accessible component library
-- **React Query** - Server state management
+- **TanStack Query** - Server state management
 - **React Router** - Client-side routing
 
 ### Backend & Database
@@ -91,7 +98,7 @@ This documentation directory contains comprehensive technical specifications for
 - Type-safe interfaces for all data structures
 
 ### Performance Optimization
-- React Query for efficient data fetching and caching
+- TanStack Query for efficient data fetching and caching
 - Optimistic UI updates for immediate user feedback
 - Image optimization and lazy loading
 - Debounced API calls for real-time features

@@ -17,11 +17,11 @@ The Dashboard serves as the main hub of the HashimFit app, providing users with 
 **Major Components:**
 - `MealCaptureCard` - Photo-based meal logging
 - `VoiceInput` - Voice-activated workout logging
-- `DailyWorkoutSummaryCard` - Today's workout progress
-- `NutritionProgressCard` - Daily macro tracking
-- `TDEEBalanceCard` - Calorie balance insights
-- `HabitStreakCard` - Habit tracking streaks
-- `AICoachInsightCard` - AI-generated fitness insights
+- `DailyWorkoutSummaryCard` - Today's workout progress (data-driven)
+- `NutritionProgressCard` - Daily macro tracking (data-driven)
+- `TDEEBalanceCard` - Calorie balance insights (data-driven)
+- `HabitStreakCard` - Habit tracking streaks (data-driven)
+- `AICoachInsightCard` - AI-generated fitness insights (data-driven)
 - `DayTab` - Weekly calendar navigation
 - `WorkoutCard` - Detailed workout display
 - `AddWorkoutModal` - Workout scheduling interface
@@ -92,7 +92,7 @@ The Dashboard serves as the main hub of the HashimFit app, providing users with 
 ## 6. Live Sync / Real-Time Updates
 
 **Real-Time Features:**
-- Workout progress updates via React Query invalidation
+- Workout progress updates via TanStack Query invalidation
 - Voice logging results appear immediately
 - Exercise completion syncs across sessions
 - Workout scheduling updates calendar view
@@ -127,7 +127,7 @@ The Dashboard serves as the main hub of the HashimFit app, providing users with 
 ## Technical Implementation Notes
 
 **State Management:**
-- React Query for server state management
+- TanStack Query for server state management
 - Local state for UI interactions and form data
 - Optimistic updates for immediate user feedback
 
@@ -140,3 +140,9 @@ The Dashboard serves as the main hub of the HashimFit app, providing users with 
 - Comprehensive try-catch blocks
 - User-friendly error messages via toast system
 - Graceful fallbacks for failed operations
+
+**Data-Driven Design:**
+- All dashboard cards now use prop-based data
+- Empty states displayed when no data is available
+- Loading states for improved user experience
+- No mock data used in production components
