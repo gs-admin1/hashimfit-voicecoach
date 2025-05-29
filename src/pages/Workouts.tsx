@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
@@ -39,6 +38,20 @@ export default function WorkoutsPage() {
       }
     }
     return 45; // Default fallback
+  };
+  
+  // Helper function to convert string superset IDs to UUIDs or null
+  const convertSupersetId = (supersetId: string | null | undefined): string | null => {
+    if (!supersetId) return null;
+    
+    // If it's already a UUID format, return it
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(supersetId)) {
+      return supersetId;
+    }
+    
+    // If it's a string-based ID, convert it to null (we'll let the database handle grouping differently)
+    return null;
   };
   
   // Query for scheduled workouts for the selected date WITH voice-logged exercises
@@ -299,7 +312,7 @@ export default function WorkoutsPage() {
         notes: "Workout completed"
       };
       
-      // Prepare exercise logs
+      // Prepare exercise logs with proper superset ID handling
       const exerciseLogs = exercises.map((ex, index) => ({
         exercise_name: ex.name,
         sets_completed: ex.sets,
@@ -307,11 +320,13 @@ export default function WorkoutsPage() {
         weight_used: ex.weight,
         rest_time: ex.rest_seconds || 60,
         order_index: index,
-        superset_group_id: ex.superset_group_id || null,
+        superset_group_id: convertSupersetId(ex.superset_group_id), // Convert to proper UUID or null
         rest_seconds: ex.rest_seconds || 60,
         position_in_workout: index,
         notes: ""
       }));
+      
+      console.log("Exercise logs prepared:", exerciseLogs);
       
       // Log the workout
       const workoutLogId = await WorkoutService.logWorkout(workoutLog, exerciseLogs);
