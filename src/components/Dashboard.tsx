@@ -358,13 +358,17 @@ export function Dashboard() {
         </div>
       </div>
       
-      {/* Moved MealCaptureCard and VoiceInput to the top */}
-      <div className="space-y-4 mb-6">
-        <MealCaptureCard />
-        <VoiceInput 
-          selectedWorkout={selectedWorkout}
-          onWorkoutUpdated={handleWorkoutUpdated}
-        />
+      {/* Compact MealCaptureCard and VoiceInput side by side */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="h-16">
+          <MealCaptureCard />
+        </div>
+        <div className="h-16">
+          <VoiceInput 
+            selectedWorkout={selectedWorkout}
+            onWorkoutUpdated={handleWorkoutUpdated}
+          />
+        </div>
       </div>
       
       <div className="space-y-4 mb-6">
