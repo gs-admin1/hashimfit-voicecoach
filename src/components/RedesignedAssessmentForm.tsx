@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -5,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { useAuth } from "@/hooks/useAuth";
 import { Form } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
-import { PlanGenerationService } from "@/lib/supabase/services/PlanGenerationService";
+import { PlanGenerationService, AssessmentData } from "@/lib/supabase/services/PlanGenerationService";
 import { AssessmentStep } from "./assessment/AssessmentStep";
 import { BasicInfoStep } from "./assessment/steps/BasicInfoStep";
 import { FitnessGoalsStep } from "./assessment/steps/FitnessGoalsStep";
@@ -109,15 +110,29 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
     setSubmitting(true);
     
     try {
-      const data = form.getValues();
+      const formData = form.getValues();
       
       // Ensure all required fields are present before submission
-      if (!data.age || !data.gender || !data.height || !data.weight || 
-          !data.fitnessGoal || !data.workoutFrequency || !data.diet || !data.equipment) {
+      if (!formData.age || !formData.gender || !formData.height || !formData.weight || 
+          !formData.fitnessGoal || !formData.workoutFrequency || !formData.diet || !formData.equipment) {
         throw new Error("Please complete all required fields");
       }
       
-      console.log('Submitting assessment data:', data);
+      // Cast to AssessmentData after validation
+      const assessmentData: AssessmentData = {
+        age: formData.age,
+        gender: formData.gender,
+        height: formData.height,
+        weight: formData.weight,
+        fitnessGoal: formData.fitnessGoal,
+        workoutFrequency: formData.workoutFrequency,
+        diet: formData.diet,
+        equipment: formData.equipment,
+        sportsPlayed: formData.sportsPlayed || [],
+        allergies: formData.allergies || [],
+      };
+      
+      console.log('Submitting assessment data:', assessmentData);
       
       // Trigger plan generation immediately and show loading screen
       onComplete();
@@ -125,7 +140,7 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
       // Generate the plan in the background - this will take some time
       setTimeout(async () => {
         try {
-          await PlanGenerationService.generateFitnessPlan(data);
+          await PlanGenerationService.generateFitnessPlan(assessmentData);
           console.log('Plan generation completed successfully');
         } catch (error) {
           console.error('Error generating fitness plan:', error);
