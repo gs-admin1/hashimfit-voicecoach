@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 
@@ -21,6 +20,9 @@ serve(async (req) => {
 
     console.log('Auth header present:', authHeader ? 'Yes' : 'No')
 
+    // Extract the JWT token from the authorization header
+    const token = authHeader.replace('Bearer ', '')
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -30,11 +32,14 @@ serve(async (req) => {
             Authorization: authHeader,
           },
         },
+        auth: {
+          persistSession: false,
+        },
       }
     )
 
-    // Get the user with better error handling
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    // Set the session using the extracted token
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
     
     if (userError) {
       console.error('Error getting user:', userError)
