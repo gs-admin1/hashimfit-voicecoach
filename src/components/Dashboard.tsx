@@ -319,17 +319,76 @@ export function Dashboard() {
     setShowAddWorkout(false);
   };
 
-  const handleExerciseComplete = (exerciseId: string, completed: boolean) => {
+  const handleStartWorkout = (workout: any) => {
+    console.log("Starting workout:", workout);
+    // Navigate to workout session or handle start logic
+    toast({
+      title: "Starting Workout",
+      description: `Starting ${workout.title}...`
+    });
+  };
+
+  const handleEditWorkout = (workout: any) => {
+    console.log("Editing workout:", workout);
+    // Handle edit logic if needed
+  };
+
+  const handleAskCoach = () => {
+    console.log("Opening AI coach");
+    // Handle AI coach interaction
+    toast({
+      title: "AI Coach",
+      description: "AI coach feature will be available soon!"
+    });
+  };
+
+  const handleReplaceWorkout = () => {
+    console.log("Replacing workout");
+    setShowAddWorkout(true);
+  };
+
+  const handleUpdateWorkout = async (updatedWorkout: any) => {
     if (!selectedWorkout || !selectedWorkout.schedule_id) return;
     
-    console.log(`Toggling exercise ${exerciseId} completion to: ${completed}`);
-    completeExerciseMutation.mutate({
-      scheduleId: selectedWorkout.schedule_id,
-      exerciseId,
-      exerciseName: selectedWorkout.exercises.find(ex => ex.id === exerciseId)?.name || "",
-      completed,
-      allExercises: selectedWorkout.exercises
-    });
+    try {
+      console.log("Updating workout:", updatedWorkout);
+      
+      // Update the workout plan exercises
+      const existingExercises = await WorkoutService.getWorkoutExercises(updatedWorkout.id);
+      await Promise.all(
+        existingExercises.map(ex => WorkoutService.deleteWorkoutExercise(ex.id!))
+      );
+      
+      const exerciseData = updatedWorkout.exercises.map((ex: any, index: number) => ({
+        workout_plan_id: updatedWorkout.id,
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight || 'bodyweight',
+        rest_time: ex.rest_seconds || 60,
+        order_index: index,
+        notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
+      }));
+      
+      await WorkoutService.createWorkoutExercises(exerciseData);
+      
+      // Refresh queries
+      queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
+      queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
+      
+      toast({
+        title: "Workout Updated",
+        description: "Your workout has been updated successfully."
+      });
+    } catch (error) {
+      console.error("Error updating workout:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update workout. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const toggleCardCollapse = (cardKey: keyof typeof cardStates) => {
@@ -430,7 +489,11 @@ export function Dashboard() {
         ) : selectedWorkout ? (
           <WorkoutCard 
             workout={selectedWorkout} 
-            onExerciseComplete={handleExerciseComplete}
+            onStart={handleStartWorkout}
+            onEdit={handleEditWorkout}
+            onAskCoach={handleAskCoach}
+            onReplaceWorkout={handleReplaceWorkout}
+            onUpdateWorkout={handleUpdateWorkout}
           />
         ) : (
           <div className="text-center p-6">
