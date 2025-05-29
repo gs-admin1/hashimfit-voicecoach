@@ -1,12 +1,13 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AssessmentForm } from "@/components/AssessmentForm";
+import { RedesignedAssessmentForm } from "@/components/RedesignedAssessmentForm";
 import { Logo } from "@/components/Logo";
 import { AnimatedCard } from "@/components/ui-components";
-import { Dumbbell, MessageSquare, AlertCircle } from "lucide-react";
+import { Dumbbell, MessageSquare, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { motion } from "framer-motion";
 
 export default function Assessment() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function Assessment() {
       setTimeout(() => {
         console.log("Navigating to dashboard");
         navigate("/dashboard");
-      }, 2000);
+      }, 3000);
     } catch (error) {
       console.error("Error handling assessment completion:", error);
       setError("There was an error processing your assessment. Please try again.");
@@ -49,50 +50,92 @@ export default function Assessment() {
     }
   };
 
+  if (showSuccess) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-hashim-50 to-white dark:from-gray-900 dark:to-gray-800">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-center max-w-md mx-auto px-4"
+        >
+          <AnimatedCard className="text-center py-8 px-6 flex flex-col items-center">
+            <motion.div 
+              className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            >
+              <Dumbbell className="text-green-600" size={32} />
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <h2 className="text-2xl font-bold mb-3">🎉 Assessment Complete!</h2>
+              <p className="text-muted-foreground mb-6">
+                Your personalized fitness plan is being crafted by our AI trainer...
+              </p>
+              
+              <div className="flex items-center justify-center mb-6">
+                <Loader2 className="animate-spin text-hashim-500 mr-2" size={20} />
+                <span className="text-sm text-hashim-600">Building your custom plan</span>
+              </div>
+            </motion.div>
+            
+            <motion.div 
+              className="flex items-center text-sm bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <MessageSquare className="text-blue-500 mr-2 flex-shrink-0" size={16} />
+              <p className="text-left">
+                <strong>What's next?</strong><br />
+                You'll get a personalized workout schedule, nutrition plan, and can chat with your AI fitness assistant!
+              </p>
+            </motion.div>
+          </AnimatedCard>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-hashim-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <div className="text-center mb-8 animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-b from-hashim-50 to-white dark:from-gray-900 dark:to-gray-800">
+      {/* Header */}
+      <div className="text-center pt-8 pb-4 px-4">
         <Logo size="lg" />
-        <p className="text-muted-foreground mt-2">
-          Your Personal AI Fitness Trainer
-        </p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <h1 className="text-2xl font-bold mt-4 mb-2">Welcome to HashimFit!</h1>
+          <p className="text-muted-foreground">
+            Let's create your personalized fitness journey
+          </p>
+        </motion.div>
       </div>
       
-      {showSuccess ? (
-        <AnimatedCard className="text-center py-8 px-6 max-w-md flex flex-col items-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4 animate-scale-in">
-            <Dumbbell className="text-green-600" size={24} />
-          </div>
-          <h2 className="text-2xl font-bold mb-2">Assessment Complete!</h2>
-          <p className="text-muted-foreground mb-4">
-            Your personalized fitness plan is ready. Redirecting to dashboard...
-          </p>
-          <div className="flex items-center text-sm bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg mt-2">
-            <MessageSquare className="text-blue-500 mr-2" size={16} />
-            <p>You can now chat with your AI fitness assistant about your plan!</p>
-          </div>
-        </AnimatedCard>
-      ) : (
-        <div className="w-full max-w-xl animate-slide-in">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Fitness Assessment</h1>
-            <p className="text-muted-foreground">
-              Let's get to know you better to create your personalized fitness plan
-            </p>
-          </div>
-          
-          {error && (
-            <div className="mb-6 bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
-              <div className="flex items-center">
-                <AlertCircle className="text-red-500 mr-2" size={18} />
-                <p className="text-red-600 dark:text-red-400">{error}</p>
-              </div>
+      {error && (
+        <motion.div 
+          className="mx-4 mb-4"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+            <div className="flex items-center">
+              <AlertCircle className="text-red-500 mr-2" size={18} />
+              <p className="text-red-600 dark:text-red-400">{error}</p>
             </div>
-          )}
-          
-          <AssessmentForm onComplete={handleComplete} isProcessing={isProcessing} />
-        </div>
+          </div>
+        </motion.div>
       )}
+      
+      <RedesignedAssessmentForm onComplete={handleComplete} isProcessing={isProcessing} />
     </div>
   );
 }
