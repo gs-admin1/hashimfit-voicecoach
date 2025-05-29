@@ -111,7 +111,7 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
 
 2. **Workout Plan Generation**
    * Create a **4-week schedule** (at minimum) with:
-     * Day, week, title, difficulty, duration, and description
+     * Day, week, workout_title, difficulty, duration, and description
      * Exercises with sets, reps, weight, rest, and notes
    * Prioritize:
      * **Progressive overload**
@@ -181,6 +181,7 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
 * Avoid vague ranges like "varies" — prefer exact or goal-aligned quantities
 * Use \`"bodyweight"\` if no weight is needed for an exercise
 * \`difficulty\` must be a NUMBER from 1-5 (1=beginner, 5=expert)
+* \`workout_title\` must be a descriptive string that will become the workout plan title
 
 ---
 
@@ -252,7 +253,7 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
       
       if (!workoutsByWeekAndDay[key]) {
         workoutsByWeekAndDay[key] = {
-          title: scheduleItem.workout_title,
+          title: scheduleItem.workout_title, // FIX: Map workout_title to title
           description: scheduleItem.description || `Week ${scheduleItem.week} - ${scheduleItem.workout_title}`,
           category: scheduleItem.category || 'strength',
           difficulty: parseInt(scheduleItem.difficulty) || 3, // Ensure it's a number
@@ -277,7 +278,7 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
         .from('workout_plans')
         .insert({
           user_id: user.id,
-          title: workout.title,
+          title: workout.title, // Now properly mapped from workout_title
           description: workout.description,
           category: workout.category,
           difficulty: workout.difficulty,
