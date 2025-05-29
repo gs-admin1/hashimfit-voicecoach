@@ -130,7 +130,11 @@ serve(async (req) => {
     const threadId = threadData.id
     console.log('Created thread:', threadId)
 
-    // Add message to thread with raw assessment data
+    // Add message to thread with raw assessment data and explicit JSON instruction
+    const messageContent = `${JSON.stringify(rawAssessmentData)}
+
+CRITICAL: Respond with ONLY valid JSON in the exact format specified in your instructions. No markdown, no explanations, no text formatting - just pure JSON that can be parsed directly.`
+
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
       headers: {
@@ -140,7 +144,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         role: 'user',
-        content: JSON.stringify(rawAssessmentData)
+        content: messageContent
       }),
     })
 
@@ -152,7 +156,7 @@ serve(async (req) => {
 
     console.log('Added message to thread')
 
-    // Run the assistant
+    // Run the assistant with additional parameters to enforce JSON
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
       method: 'POST',
       headers: {
@@ -161,7 +165,8 @@ serve(async (req) => {
         'OpenAI-Beta': 'assistants=v2',
       },
       body: JSON.stringify({
-        assistant_id: assistantId
+        assistant_id: assistantId,
+        additional_instructions: "You must respond with ONLY valid JSON. No markdown formatting, no explanations, no additional text. Just pure JSON that can be parsed directly by JSON.parse()."
       }),
     })
 
@@ -238,12 +243,22 @@ serve(async (req) => {
 
     let planData
     try {
-      // Clean up the JSON content to handle potential formatting issues
+      // Enhanced JSON cleaning to handle various response formats
       let cleanedContent = rawContent.trim()
       
       // Remove any markdown code block indicators if present
       cleanedContent = cleanedContent.replace(/^```json\s*/, '').replace(/\s*```$/, '')
       cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```$/, '')
+      
+      // Remove any leading/trailing text that isn't JSON
+      const jsonStartIndex = cleanedContent.indexOf('{')
+      const jsonEndIndex = cleanedContent.lastIndexOf('}')
+      
+      if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
+        cleanedContent = cleanedContent.substring(jsonStartIndex, jsonEndIndex + 1)
+      }
+      
+      console.log('Cleaned content for parsing:', cleanedContent.substring(0, 200) + '...')
       
       // Try to parse the cleaned JSON
       planData = JSON.parse(cleanedContent)
@@ -251,7 +266,20 @@ serve(async (req) => {
     } catch (parseError) {
       console.error('JSON parse error:', parseError)
       console.error('Failed to parse content:', rawContent)
-      throw new Error(`Failed to parse Assistant response as JSON: ${parseError.message}`)
+      
+      // If parsing fails, try to extract JSON using a more aggressive approach
+      try {
+        const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          planData = JSON.parse(jsonMatch[0]);
+          console.log('Successfully parsed plan data using regex extraction:', planData);
+        } else {
+          throw new Error('No valid JSON found in response');
+        }
+      } catch (secondParseError) {
+        console.error('Second parse attempt failed:', secondParseError);
+        throw new Error(`Failed to parse Assistant response as JSON: ${parseError.message}. Raw response: ${rawContent.substring(0, 500)}...`);
+      }
     }
 
     // Validate the required structure
