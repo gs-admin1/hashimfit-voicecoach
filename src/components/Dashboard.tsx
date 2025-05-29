@@ -342,8 +342,8 @@ export function Dashboard() {
 
   return (
     <div className="max-w-lg mx-auto pb-20">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
+      {/* Header moved higher and to the right */}
+      <div className="flex justify-end items-center mb-3 pt-2">
         <div className="flex items-center space-x-2">
           <IconButton 
             icon={Settings}
@@ -357,8 +357,13 @@ export function Dashboard() {
           />
         </div>
       </div>
+
+      {/* Welcome text moved to left side, more compact */}
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
+      </div>
       
-      {/* Compact MealCaptureCard and VoiceInput side by side */}
+      {/* Compact MealCaptureCard and VoiceInput moved up */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="h-16">
           <MealCaptureCard />
