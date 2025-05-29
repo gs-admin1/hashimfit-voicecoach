@@ -15,8 +15,11 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error('Missing Authorization header')
       throw new Error('Missing Authorization header')
     }
+
+    console.log('Auth header present:', authHeader ? 'Yes' : 'No')
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -30,16 +33,27 @@ serve(async (req) => {
       }
     )
 
-    const { data: { user } } = await supabaseClient.auth.getUser()
-    if (!user) {
-      throw new Error('No user found')
+    // Get the user with better error handling
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    
+    if (userError) {
+      console.error('Error getting user:', userError)
+      throw new Error(`Authentication failed: ${userError.message}`)
     }
+    
+    if (!user) {
+      console.error('No user found in token')
+      throw new Error('No authenticated user found')
+    }
+
+    console.log('User authenticated successfully:', user.id)
 
     const assessmentData = await req.json()
     console.log('Received assessment data:', assessmentData)
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openaiApiKey) {
+      console.error('Missing OpenAI API Key')
       throw new Error('Missing OpenAI API Key')
     }
 
@@ -121,6 +135,7 @@ Return ONLY a valid JSON object with this exact structure:
     })
 
     if (!openAIResponse.ok) {
+      console.error('OpenAI API error:', openAIResponse.statusText)
       throw new Error(`OpenAI API error: ${openAIResponse.statusText}`)
     }
 
@@ -283,6 +298,8 @@ Return ONLY a valid JSON object with this exact structure:
       console.error('Error storing assessment data:', assessmentError)
       throw assessmentError
     }
+
+    console.log('Assessment completed successfully for user:', user.id)
 
     return new Response(
       JSON.stringify({
