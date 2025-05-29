@@ -71,7 +71,7 @@ interface WorkoutCardProps {
   onEdit?: (workout: Workout) => void;
   onAskCoach?: () => void;
   onReplaceWorkout?: () => void;
-  onUpdateWorkout?: (workout: Workout) => void;
+  onUpdateWorkout?: (workout: Workout, applyToAll?: boolean) => void;
 }
 
 export function WorkoutCard({ 
@@ -259,18 +259,18 @@ export function WorkoutCard({
   };
 
   const saveChanges = (applyToAll: boolean = false) => {
+    console.log(`Saving workout changes. Apply to all: ${applyToAll}`);
+    console.log("Edited exercises:", editingExercises);
+    
     const updatedWorkout = {
       ...workout,
       exercises: editingExercises
     };
     
-    onUpdateWorkout?.(updatedWorkout);
+    onUpdateWorkout?.(updatedWorkout, applyToAll);
     setHasUnsavedChanges(false);
     setIsEditMode(false);
     setShowSaveOptions(false);
-    
-    // Here you would implement the logic to save to just this workout or all workouts of the same type
-    console.log(applyToAll ? 'Saving to all workouts of this type' : 'Saving to this workout only');
   };
 
   const enterEditMode = () => {

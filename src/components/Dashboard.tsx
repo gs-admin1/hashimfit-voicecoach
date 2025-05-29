@@ -347,30 +347,28 @@ export function Dashboard() {
     setShowAddWorkout(true);
   };
 
-  const handleUpdateWorkout = async (updatedWorkout: any) => {
+  const handleUpdateWorkout = async (updatedWorkout: any, applyToAll: boolean = false) => {
     if (!selectedWorkout || !selectedWorkout.schedule_id) return;
     
     try {
       console.log("Updating workout:", updatedWorkout);
+      console.log("Apply to all:", applyToAll);
       
-      // Update the workout plan exercises
-      const existingExercises = await WorkoutService.getWorkoutExercises(updatedWorkout.id);
-      await Promise.all(
-        existingExercises.map(ex => WorkoutService.deleteWorkoutExercise(ex.id!))
-      );
-      
-      const exerciseData = updatedWorkout.exercises.map((ex: any, index: number) => ({
-        workout_plan_id: updatedWorkout.id,
-        name: ex.name,
-        sets: ex.sets,
-        reps: ex.reps,
-        weight: ex.weight || 'bodyweight',
-        rest_time: ex.rest_seconds || 60,
-        order_index: index,
-        notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
-      }));
-      
-      await WorkoutService.createWorkoutExercises(exerciseData);
+      if (applyToAll) {
+        // Update the workout plan template - this affects all future workouts
+        await WorkoutService.updateWorkoutPlanWithExercises(updatedWorkout.id, updatedWorkout.exercises);
+        console.log("Updated workout plan template for all future workouts");
+      } else {
+        // Create a copy of the workout plan for this specific instance
+        const newPlan = await WorkoutService.createWorkoutPlanCopy(updatedWorkout.id, updatedWorkout.exercises);
+        if (newPlan) {
+          // Update the schedule to use the new plan
+          await WorkoutService.updateScheduledWorkout(selectedWorkout.schedule_id, {
+            workout_plan_id: newPlan.id
+          });
+          console.log("Created workout plan copy for today only");
+        }
+      }
       
       // Refresh queries
       queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
@@ -379,7 +377,9 @@ export function Dashboard() {
       
       toast({
         title: "Workout Updated",
-        description: "Your workout has been updated successfully."
+        description: applyToAll 
+          ? "Your workout has been updated for all future sessions."
+          : "Your workout has been updated for today only."
       });
     } catch (error) {
       console.error("Error updating workout:", error);

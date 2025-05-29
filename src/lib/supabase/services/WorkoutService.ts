@@ -653,4 +653,102 @@ export class WorkoutService {
       return false;
     }
   }
+
+  // New methods for handling workout plan updates
+  static async updateWorkoutPlanWithExercises(planId: string, exercises: any[]): Promise<boolean> {
+    try {
+      console.log(`Updating workout plan ${planId} with ${exercises.length} exercises`);
+      
+      // First, delete existing exercises
+      const { error: deleteError } = await supabase
+        .from('workout_exercises')
+        .delete()
+        .eq('workout_plan_id', planId);
+        
+      if (deleteError) throw deleteError;
+      
+      // Then create new exercises with proper superset handling
+      const exerciseData = exercises.map((ex: any, index: number) => ({
+        workout_plan_id: planId,
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight || 'bodyweight',
+        rest_time: ex.rest_seconds || 60,
+        order_index: index,
+        notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('workout_exercises')
+        .insert(exerciseData);
+        
+      if (insertError) throw insertError;
+      
+      console.log(`Successfully updated workout plan ${planId}`);
+      return true;
+    } catch (error) {
+      console.error('Error updating workout plan with exercises:', error);
+      return false;
+    }
+  }
+
+  static async createWorkoutPlanCopy(originalPlanId: string, exercises: any[]): Promise<WorkoutPlan | null> {
+    try {
+      console.log(`Creating copy of workout plan ${originalPlanId}`);
+      
+      // Get the original plan
+      const { data: originalPlan, error: fetchError } = await supabase
+        .from('workout_plans')
+        .select('*')
+        .eq('id', originalPlanId)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      // Create a new plan
+      const newPlan: WorkoutPlan = {
+        user_id: originalPlan.user_id,
+        title: `${originalPlan.title} (Custom)`,
+        description: originalPlan.description,
+        category: originalPlan.category,
+        difficulty: originalPlan.difficulty,
+        estimated_duration: originalPlan.estimated_duration,
+        target_muscles: originalPlan.target_muscles,
+        ai_generated: false
+      };
+      
+      const { data: createdPlan, error: createError } = await supabase
+        .from('workout_plans')
+        .insert([newPlan])
+        .select()
+        .single();
+        
+      if (createError) throw createError;
+      
+      // Add exercises to the new plan
+      const exerciseData = exercises.map((ex: any, index: number) => ({
+        workout_plan_id: createdPlan.id,
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight || 'bodyweight',
+        rest_time: ex.rest_seconds || 60,
+        order_index: index,
+        notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
+      }));
+      
+      const { error: exerciseError } = await supabase
+        .from('workout_exercises')
+        .insert(exerciseData);
+        
+      if (exerciseError) throw exerciseError;
+      
+      console.log(`Successfully created workout plan copy: ${createdPlan.id}`);
+      return createdPlan as WorkoutPlan;
+    } catch (error) {
+      console.error('Error creating workout plan copy:', error);
+      return null;
+    }
+  }
 }
