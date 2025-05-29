@@ -1,4 +1,5 @@
 
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RedesignedAssessmentForm } from "@/components/RedesignedAssessmentForm";
@@ -8,15 +9,16 @@ import { AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
+import { PlanGenerationService, AssessmentData } from "@/lib/supabase/services/PlanGenerationService";
 
 export default function Assessment() {
   const navigate = useNavigate();
   const { userId } = useAuth();
   const [showPlanGeneration, setShowPlanGeneration] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [assessmentData, setAssessmentData] = useState<AssessmentData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleComplete = async () => {
+  const handleComplete = async (data: AssessmentData) => {
     try {
       if (!userId) {
         toast({
@@ -27,11 +29,11 @@ export default function Assessment() {
         return;
       }
       
-      setIsProcessing(true);
       setError(null);
       console.log("Assessment completed, showing plan generation screen");
       
-      // Immediately show the plan generation screen
+      // Store assessment data and show the plan generation screen
+      setAssessmentData(data);
       setShowPlanGeneration(true);
       
     } catch (error) {
@@ -42,19 +44,47 @@ export default function Assessment() {
         description: "There was an error processing your assessment",
         variant: "destructive",
       });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
-  const handlePlanGenerationComplete = () => {
+  const handlePlanGenerationComplete = async (): Promise<boolean> => {
+    if (!assessmentData) {
+      console.error("No assessment data available");
+      return false;
+    }
+
+    try {
+      console.log("Starting plan generation with assessment data:", assessmentData);
+      
+      // Call the edge function to generate the plan
+      await PlanGenerationService.generateFitnessPlan(assessmentData);
+      
+      console.log("Plan generation completed successfully");
+      return true;
+    } catch (error) {
+      console.error("Error generating fitness plan:", error);
+      toast({
+        title: "Error",
+        description: "There was an error generating your fitness plan. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const handleNavigateToDashboard = () => {
     console.log("Plan generation completed, navigating to dashboard");
     // Replace current history entry so back button doesn't return here
     navigate("/dashboard", { replace: true });
   };
 
   if (showPlanGeneration) {
-    return <PlanGenerationScreen onComplete={handlePlanGenerationComplete} />;
+    return (
+      <PlanGenerationScreen 
+        onComplete={handleNavigateToDashboard}
+        onPlanGeneration={handlePlanGenerationComplete}
+      />
+    );
   }
 
   return (
@@ -89,7 +119,8 @@ export default function Assessment() {
         </motion.div>
       )}
       
-      <RedesignedAssessmentForm onComplete={handleComplete} isProcessing={isProcessing} />
+      <RedesignedAssessmentForm onComplete={handleComplete} />
     </div>
   );
 }
+
