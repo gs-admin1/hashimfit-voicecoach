@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -385,7 +384,21 @@ export function EnhancedWorkoutSessionCard({
       if (error) throw error;
       
       if (data.updatedExercises) {
-        setExercises(data.updatedExercises);
+        // Ensure each updated exercise has originalData by preserving it from current state
+        const updatedExercisesWithOriginalData = data.updatedExercises.map((updatedEx: any) => {
+          const currentEx = exercises.find(ex => ex.id === updatedEx.id);
+          return {
+            ...updatedEx,
+            originalData: currentEx?.originalData || {
+              sets: updatedEx.sets,
+              reps: updatedEx.reps,
+              weight: updatedEx.weight,
+              rest_seconds: updatedEx.rest_seconds || 60
+            }
+          };
+        });
+        
+        setExercises(updatedExercisesWithOriginalData);
         queryClient.invalidateQueries({ queryKey: ['workout-session', workout.workout_log_id] });
         toast({
           title: "✅ Plan updated by AI Coach",
