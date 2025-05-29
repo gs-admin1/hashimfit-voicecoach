@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { WorkoutService, WorkoutSchedule, WorkoutLog, ExerciseLog } from "@/lib/supabase/services/WorkoutService";
 import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 // Import new modular dashboard components
 import { DailyWorkoutSummaryCard } from "@/components/dashboard/DailyWorkoutSummaryCard";
@@ -36,6 +37,7 @@ export function Dashboard() {
   const { isAuthenticated, userId } = useAuth();
   const { user } = useUser();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   
   const today = new Date();
   const dateString = format(today, 'yyyy-MM-dd');
@@ -328,10 +330,38 @@ export function Dashboard() {
 
   const handleStartWorkout = (workout: any) => {
     console.log("Starting workout:", workout);
-    // Navigate to workout session or handle start logic
+    navigate('/workouts');
     toast({
       title: "Starting Workout",
-      description: `Starting ${workout.title}...`
+      description: `Navigate to workouts page to start ${workout.title}...`
+    });
+  };
+
+  const handleContinueWorkout = (workout: any) => {
+    console.log("Continuing workout:", workout);
+    navigate('/workouts');
+    toast({
+      title: "Continue Workout",
+      description: `Navigate to workouts page to continue ${workout.title}...`
+    });
+  };
+
+  const handleCompleteExercise = (exerciseId: string, exerciseName: string, completed: boolean) => {
+    if (!selectedWorkout || !selectedWorkout.schedule_id) {
+      toast({
+        title: "Error",
+        description: "No workout selected.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    completeExerciseMutation.mutate({
+      scheduleId: selectedWorkout.schedule_id,
+      exerciseId,
+      exerciseName,
+      completed,
+      allExercises: selectedWorkout.exercises
     });
   };
 
@@ -439,6 +469,11 @@ export function Dashboard() {
         <DailyWorkoutSummaryCard 
           isCollapsed={cardStates.workoutSummary}
           onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
+          workoutData={selectedWorkout}
+          onContinueWorkout={handleContinueWorkout}
+          onStartWorkout={handleStartWorkout}
+          onCompleteExercise={handleCompleteExercise}
+          isLoading={isLoadingSelectedWorkout}
         />
         
         <NutritionProgressCard 

@@ -3,25 +3,56 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ChevronDown, ChevronUp, Dumbbell, Clock, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { 
+  ChevronDown, 
+  ChevronUp, 
+  Dumbbell, 
+  Clock, 
+  CheckCircle, 
+  Target,
+  TrendingUp,
+  BarChart3,
+  Play
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
+
+interface Exercise {
+  id: string;
+  name: string;
+  sets: number;
+  reps: string;
+  weight: string;
+  completed: boolean;
+  source: 'planned' | 'voice';
+  rest_seconds?: number;
+  superset_group_id?: string | null;
+  position_in_workout?: number;
+}
 
 interface WorkoutData {
+  schedule_id?: string;
+  id?: string;
   title: string;
-  progress: number;
-  completedExercises: number;
-  totalExercises: number;
-  timeSpent: string;
-  isCompleted: boolean;
+  exercises: Exercise[];
+  difficulty?: number;
+  estimated_duration?: number;
+  target_muscles?: string[];
+  is_completed: boolean;
+  workout_log_id?: string;
 }
 
 interface DailyWorkoutSummaryCardProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   className?: string;
-  workoutData?: WorkoutData;
-  onContinueWorkout?: () => void;
-  onViewSummary?: () => void;
+  workoutData?: WorkoutData | null;
+  onContinueWorkout?: (workout: WorkoutData) => void;
+  onStartWorkout?: (workout: WorkoutData) => void;
+  onCompleteExercise?: (exerciseId: string, exerciseName: string, completed: boolean) => void;
+  isLoading?: boolean;
 }
 
 export function DailyWorkoutSummaryCard({ 
@@ -30,8 +61,11 @@ export function DailyWorkoutSummaryCard({
   className,
   workoutData,
   onContinueWorkout,
-  onViewSummary
+  onStartWorkout,
+  onCompleteExercise,
+  isLoading = false
 }: DailyWorkoutSummaryCardProps) {
+  const navigate = useNavigate();
   const [localCollapsed, setLocalCollapsed] = useState(isCollapsed);
   
   const handleToggle = () => {
@@ -43,6 +77,67 @@ export function DailyWorkoutSummaryCard({
   };
   
   const collapsed = onToggleCollapse ? isCollapsed : localCollapsed;
+
+  // Get difficulty info with Apple-inspired colors
+  const getDifficultyInfo = (difficulty?: number) => {
+    if (!difficulty) return { label: 'Beginner', color: 'bg-green-100 text-green-800', emoji: '🟢' };
+    
+    if (difficulty <= 3) return { label: 'Beginner', color: 'bg-green-100 text-green-800', emoji: '🟢' };
+    if (difficulty <= 6) return { label: 'Intermediate', color: 'bg-yellow-100 text-yellow-800', emoji: '🟡' };
+    if (difficulty <= 8) return { label: 'Advanced', color: 'bg-orange-100 text-orange-800', emoji: '🟠' };
+    return { label: 'Expert', color: 'bg-red-100 text-red-800', emoji: '🔴' };
+  };
+
+  // Handle view results navigation
+  const handleViewResults = () => {
+    if (workoutData?.workout_log_id) {
+      navigate(`/workout-results/${workoutData.workout_log_id}`);
+    } else {
+      console.error('No workout log ID available for this completed workout');
+      toast({
+        title: "Error",
+        description: "Unable to view results. Workout log not found.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle exercise completion toggle
+  const handleExerciseToggle = (exercise: Exercise) => {
+    if (onCompleteExercise && workoutData) {
+      onCompleteExercise(exercise.id, exercise.name, !exercise.completed);
+    }
+  };
+
+  // Calculate progress
+  const completedExercises = workoutData?.exercises.filter(ex => ex.completed).length || 0;
+  const totalExercises = workoutData?.exercises.length || 0;
+  const progress = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
+  const hasStarted = completedExercises > 0;
+
+  if (isLoading) {
+    return (
+      <Card className={cn("transition-all duration-300", className)}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-hashim-100 rounded-lg">
+                <Dumbbell className="h-4 w-4 text-hashim-600" />
+              </div>
+              <CardTitle className="text-lg">Today's Workout</CardTitle>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse space-y-3">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-2 bg-gray-200 rounded"></div>
+            <div className="h-8 bg-gray-200 rounded"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!workoutData) {
     return (
@@ -67,6 +162,8 @@ export function DailyWorkoutSummaryCard({
     );
   }
 
+  const difficultyInfo = getDifficultyInfo(workoutData.difficulty);
+
   return (
     <Card className={cn("transition-all duration-300", className)}>
       <CardHeader className="pb-3">
@@ -90,36 +187,139 @@ export function DailyWorkoutSummaryCard({
       
       {!collapsed && (
         <CardContent className="space-y-4">
+          {/* Workout Header */}
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-base">{workoutData.title}</h3>
-            {workoutData.isCompleted && (
-              <div className="flex items-center space-x-1 text-green-600">
-                <CheckCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">Complete</span>
+            <div>
+              <h3 className="font-semibold text-base">{workoutData.title}</h3>
+              <div className="flex items-center space-x-2 mt-1">
+                <Badge className={cn("text-xs", difficultyInfo.color)}>
+                  {difficultyInfo.emoji} {difficultyInfo.label}
+                </Badge>
+                {workoutData.is_completed && (
+                  <div className="flex items-center space-x-1 text-green-600">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">Complete</span>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
-          
+
+          {/* Progress Section */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Progress</span>
-              <span>{workoutData.completedExercises}/{workoutData.totalExercises} exercises</span>
+              <span>{completedExercises}/{totalExercises} exercises</span>
             </div>
-            <Progress value={workoutData.progress} className="h-2" />
+            <Progress value={progress} className="h-2" />
           </div>
-          
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center space-x-1 text-muted-foreground">
+
+          {/* Workout Stats */}
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center space-x-1">
               <Clock className="h-4 w-4" />
-              <span className="text-sm">{workoutData.timeSpent}</span>
+              <span>{workoutData.estimated_duration || 45} min</span>
             </div>
-            <Button 
-              size="sm" 
-              className="bg-hashim-600 hover:bg-hashim-700"
-              onClick={workoutData.isCompleted ? onViewSummary : onContinueWorkout}
-            >
-              {workoutData.isCompleted ? "View Summary" : "Continue Workout"}
-            </Button>
+            <div className="flex items-center space-x-1">
+              <Target className="h-4 w-4" />
+              <span>{totalExercises} exercises</span>
+            </div>
+          </div>
+
+          {/* Target Muscles */}
+          {workoutData.target_muscles && workoutData.target_muscles.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {workoutData.target_muscles.slice(0, 3).map((muscle, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {muscle}
+                </Badge>
+              ))}
+              {workoutData.target_muscles.length > 3 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{workoutData.target_muscles.length - 3} more
+                </Badge>
+              )}
+            </div>
+          )}
+
+          {/* Exercise List (if workout has started) */}
+          {hasStarted && !workoutData.is_completed && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Exercises</h4>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {workoutData.exercises.slice(0, 4).map((exercise) => (
+                  <div 
+                    key={exercise.id}
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleExerciseToggle(exercise)}
+                        className={cn(
+                          "w-4 h-4 rounded border-2 flex items-center justify-center transition-colors",
+                          exercise.completed 
+                            ? "bg-green-500 border-green-500" 
+                            : "border-gray-300 hover:border-green-400"
+                        )}
+                      >
+                        {exercise.completed && (
+                          <CheckCircle className="w-3 h-3 text-white" />
+                        )}
+                      </button>
+                      <span className={cn(
+                        "text-sm",
+                        exercise.completed && "line-through text-muted-foreground"
+                      )}>
+                        {exercise.name}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {exercise.sets} × {exercise.reps}
+                    </span>
+                  </div>
+                ))}
+                {workoutData.exercises.length > 4 && (
+                  <div className="text-center">
+                    <span className="text-xs text-muted-foreground">
+                      +{workoutData.exercises.length - 4} more exercises
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Action Button */}
+          <div className="pt-2">
+            {workoutData.is_completed ? (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleViewResults}
+                className="w-full text-green-600 border-green-200 hover:bg-green-50"
+              >
+                <BarChart3 size={16} className="mr-2" />
+                View Results
+              </Button>
+            ) : hasStarted ? (
+              <Button 
+                size="sm" 
+                onClick={() => onContinueWorkout?.(workoutData)}
+                className="w-full bg-hashim-600 hover:bg-hashim-700"
+              >
+                <TrendingUp size={16} className="mr-2" />
+                Continue Workout
+              </Button>
+            ) : (
+              <Button 
+                size="sm" 
+                onClick={() => onStartWorkout?.(workoutData)}
+                className="w-full bg-hashim-600 hover:bg-hashim-700"
+              >
+                <Play size={16} className="mr-2" />
+                Start Workout
+              </Button>
+            )}
           </div>
         </CardContent>
       )}
