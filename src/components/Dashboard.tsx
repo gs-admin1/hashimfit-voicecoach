@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -453,8 +452,8 @@ export function Dashboard() {
 
   return (
     <div className="max-w-lg mx-auto pb-20">
-      {/* Snap a Snack and Log your workout buttons - minimal spacing from logo */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      {/* Snap a Snack and Log your workout buttons - positioned with relative z-index */}
+      <div className="grid grid-cols-2 gap-3 mb-6 relative z-10">
         <div className="h-16">
           <MealCaptureCard />
         </div>
@@ -466,8 +465,8 @@ export function Dashboard() {
         </div>
       </div>
       
-      {/* Move DailyWorkoutSummaryCard here - right after the snap/log buttons */}
-      <div className="mb-6">
+      {/* DailyWorkoutSummaryCard positioned clearly underneath with proper z-index */}
+      <div className="mb-6 relative z-0">
         <DailyWorkoutSummaryCard 
           isCollapsed={cardStates.workoutSummary}
           onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
@@ -479,6 +478,7 @@ export function Dashboard() {
         />
       </div>
       
+      {/* Other dashboard cards */}
       <div className="space-y-4 mb-6">
         <NutritionProgressCard 
           isCollapsed={cardStates.nutrition}
@@ -501,6 +501,7 @@ export function Dashboard() {
         />
       </div>
       
+      {/* Day tabs */}
       <div className="flex flex-nowrap overflow-x-auto mb-6 pb-1 scrollbar-none">
         {weekDates.map((date, index) => {
           const dayName = format(date, 'EEEE');
@@ -525,6 +526,7 @@ export function Dashboard() {
         })}
       </div>
       
+      {/* Legacy workout card section */}
       <AnimatedCard className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <div>
