@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -147,6 +146,23 @@ export function Dashboard() {
           superset_group_id: log.superset_group_id || null,
           position_in_workout: allExerciseLogs.findIndex(l => l.id === log.id)
         }));
+
+      // Helper function to safely parse estimated duration
+      const parseEstimatedDuration = (duration: any): number => {
+        if (!duration) return 45;
+        if (typeof duration === 'number') return duration;
+        if (typeof duration === 'string') {
+          // Handle time format like "00:45:00" or "45:00"
+          const parts = duration.split(':');
+          if (parts.length >= 2) {
+            return parseInt(parts[1]) || 45;
+          }
+          // Handle plain number string
+          const parsed = parseInt(duration);
+          return isNaN(parsed) ? 45 : parsed;
+        }
+        return 45;
+      };
       
       return {
         schedule_id: scheduledWorkout.id,
@@ -155,10 +171,7 @@ export function Dashboard() {
         exercises: [...plannedExercises, ...voiceLoggedExercises],
         category: workoutPlan.category || 'strength',
         isFavorite: false,
-        estimatedDuration: workoutPlan.estimated_duration ? 
-          (typeof workoutPlan.estimated_duration === 'string' ? 
-            parseInt(workoutPlan.estimated_duration.split(':')[1]) || 45 : 
-            workoutPlan.estimated_duration) : 45,
+        estimatedDuration: parseEstimatedDuration(workoutPlan.estimated_duration),
         targetMuscles: workoutPlan.target_muscles || ['Full Body'],
         difficulty: workoutPlan.difficulty || 3,
         aiGenerated: workoutPlan.ai_generated || false,
