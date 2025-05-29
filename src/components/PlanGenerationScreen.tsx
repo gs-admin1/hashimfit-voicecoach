@@ -1,5 +1,4 @@
 
-
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
@@ -9,41 +8,21 @@ import { Logo } from "@/components/Logo";
 
 interface PlanGenerationScreenProps {
   onComplete: () => void;
-  onPlanGeneration: () => Promise<boolean>;
 }
 
 const GENERATION_STEPS = [
   { id: 1, text: "📋 Saving your assessment", duration: 1000 },
-  { id: 2, text: "🤖 Talking to your AI coach", duration: 2000 },
-  { id: 3, text: "💪 Generating your 4-week workout plan", duration: 3000 },
-  { id: 4, text: "🍽️ Building your personalized nutrition plan", duration: 2000 },
-  { id: 5, text: "📊 Finalizing your recommendations", duration: 1500 },
-  { id: 6, text: "✅ Syncing your dashboard", duration: 500 },
+  { id: 2, text: "🤖 Talking to your AI coach", duration: 3000 },
+  { id: 3, text: "💪 Generating your 4-week workout plan", duration: 4000 },
+  { id: 4, text: "🍽️ Building your personalized nutrition plan", duration: 3000 },
+  { id: 5, text: "📊 Finalizing your recommendations", duration: 2000 },
+  { id: 6, text: "✅ Syncing your dashboard", duration: 1000 },
 ];
 
-export function PlanGenerationScreen({ onComplete, onPlanGeneration }: PlanGenerationScreenProps) {
+export function PlanGenerationScreen({ onComplete }: PlanGenerationScreenProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [progress, setProgress] = useState(0);
-  const [planGenerationStarted, setPlanGenerationStarted] = useState(false);
-  const [planGenerationCompleted, setPlanGenerationCompleted] = useState(false);
-  const [startTime] = useState(Date.now());
-
-  // Start plan generation when component mounts
-  useEffect(() => {
-    if (!planGenerationStarted) {
-      setPlanGenerationStarted(true);
-      console.log("Starting plan generation...");
-      
-      onPlanGeneration().then((success) => {
-        setPlanGenerationCompleted(true);
-        console.log("Plan generation completed:", success);
-      }).catch((error) => {
-        console.error("Plan generation failed:", error);
-        setPlanGenerationCompleted(true); // Continue with UI flow even if generation fails
-      });
-    }
-  }, [onPlanGeneration, planGenerationStarted]);
 
   useEffect(() => {
     if (currentStep < GENERATION_STEPS.length) {
@@ -53,8 +32,10 @@ export function PlanGenerationScreen({ onComplete, onPlanGeneration }: PlanGener
         setProgress(((currentStep + 1) / GENERATION_STEPS.length) * 100);
         
         if (currentStep + 1 === GENERATION_STEPS.length) {
-          // All UI steps complete, check if we should wait for plan generation or minimum time
-          checkCompletionRequirements();
+          // All steps complete, wait a moment then redirect
+          setTimeout(() => {
+            onComplete();
+          }, 1000);
         } else {
           setCurrentStep(prev => prev + 1);
         }
@@ -62,33 +43,7 @@ export function PlanGenerationScreen({ onComplete, onPlanGeneration }: PlanGener
 
       return () => clearTimeout(timer);
     }
-  }, [currentStep]);
-
-  const checkCompletionRequirements = () => {
-    const elapsedTime = Date.now() - startTime;
-    const minimumTime = 10000; // 10 seconds
-    
-    const waitForPlanGeneration = !planGenerationCompleted;
-    const waitForMinimumTime = elapsedTime < minimumTime;
-    
-    if (waitForPlanGeneration || waitForMinimumTime) {
-      const remainingTime = Math.max(
-        waitForMinimumTime ? minimumTime - elapsedTime : 0,
-        waitForPlanGeneration ? 1000 : 0 // Check again in 1 second if waiting for plan generation
-      );
-      
-      console.log(`Waiting ${remainingTime}ms - Plan completed: ${planGenerationCompleted}, Elapsed: ${elapsedTime}ms`);
-      
-      setTimeout(() => {
-        checkCompletionRequirements();
-      }, remainingTime);
-    } else {
-      // Both conditions met, proceed to dashboard
-      setTimeout(() => {
-        onComplete();
-      }, 1000);
-    }
-  };
+  }, [currentStep, onComplete]);
 
   const isStepCompleted = (stepId: number) => completedSteps.includes(stepId);
   const isStepActive = (stepId: number) => currentStep + 1 === stepId && !isStepCompleted(stepId);
@@ -212,4 +167,3 @@ export function PlanGenerationScreen({ onComplete, onPlanGeneration }: PlanGener
     </div>
   );
 }
-
