@@ -55,6 +55,16 @@ interface Exercise {
   };
 }
 
+// Define the extended exercise type with required originalData for internal state
+interface ExerciseWithOriginalData extends Exercise {
+  originalData: {
+    sets: number;
+    reps: string;
+    weight: string;
+    rest_seconds: number;
+  };
+}
+
 interface WorkoutSessionCardProps {
   workout: {
     id: string;
@@ -79,15 +89,17 @@ export function EnhancedWorkoutSessionCard({
   const [currentExercise, setCurrentExercise] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [exercises, setExercises] = useState(workout.exercises.map(ex => ({
-    ...ex,
-    originalData: {
-      sets: ex.sets,
-      reps: ex.reps,
-      weight: ex.weight,
-      rest_seconds: ex.rest_seconds || 60
-    }
-  })));
+  const [exercises, setExercises] = useState<ExerciseWithOriginalData[]>(
+    workout.exercises.map(ex => ({
+      ...ex,
+      originalData: ex.originalData || {
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight,
+        rest_seconds: ex.rest_seconds || 60
+      }
+    }))
+  );
   const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
   const [editingExercise, setEditingExercise] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -166,10 +178,11 @@ export function EnhancedWorkoutSessionCard({
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
     
-    // Update positions with animation
-    const updatedItems = items.map((item, index) => ({
+    // Update positions with animation - ensure originalData is preserved
+    const updatedItems: ExerciseWithOriginalData[] = items.map((item, index) => ({
       ...item,
-      position_in_workout: index
+      position_in_workout: index,
+      originalData: item.originalData // This is guaranteed to exist due to our state type
     }));
     
     setExercises(updatedItems);
@@ -187,7 +200,17 @@ export function EnhancedWorkoutSessionCard({
           description: "Failed to save exercise order",
           variant: "destructive"
         });
-        setExercises(workout.exercises); // Revert on error
+        // Revert to original with proper typing
+        const revertedExercises: ExerciseWithOriginalData[] = workout.exercises.map(ex => ({
+          ...ex,
+          originalData: ex.originalData || {
+            sets: ex.sets,
+            reps: ex.reps,
+            weight: ex.weight,
+            rest_seconds: ex.rest_seconds || 60
+          }
+        }));
+        setExercises(revertedExercises);
       } else {
         queryClient.invalidateQueries({ queryKey: ['workout-session', workout.workout_log_id] });
       }
@@ -385,7 +408,7 @@ export function EnhancedWorkoutSessionCard({
       
       if (data.updatedExercises) {
         // Ensure each updated exercise has originalData by preserving it from current state
-        const updatedExercisesWithOriginalData = data.updatedExercises.map((updatedEx: any) => {
+        const updatedExercisesWithOriginalData: ExerciseWithOriginalData[] = data.updatedExercises.map((updatedEx: any) => {
           const currentEx = exercises.find(ex => ex.id === updatedEx.id);
           return {
             ...updatedEx,
@@ -438,7 +461,7 @@ export function EnhancedWorkoutSessionCard({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const hasChanges = (exercise: Exercise) => {
+  const hasChanges = (exercise: ExerciseWithOriginalData) => {
     if (!exercise.originalData) return false;
     return (
       exercise.sets !== exercise.originalData.sets ||
