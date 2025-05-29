@@ -258,10 +258,10 @@ Return only the JSON in your response. No explanations or extra formatting.`;
 
   return (
     <>
-      <AnimatedCard className="relative overflow-hidden">
-        <div className="flex flex-col items-center justify-center py-4">
+      <AnimatedCard className="relative overflow-hidden bg-white/80 backdrop-blur-md border border-gray-200/60 shadow-sm">
+        <div className="flex flex-col items-center justify-center p-3">
           {imagePreview ? (
-            <div className="relative w-full max-w-xs mx-auto mb-4">
+            <div className="relative w-full max-w-[120px] mx-auto mb-3">
               <img 
                 src={imagePreview} 
                 alt="Meal preview" 
@@ -269,30 +269,28 @@ Return only the JSON in your response. No explanations or extra formatting.`;
               />
               <button
                 onClick={handleRemoveImage}
-                className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
+                className="absolute -top-1 -right-1 bg-gray-900/80 text-white p-1 rounded-full hover:bg-gray-900 transition-colors"
               >
-                <X size={18} />
+                <X size={12} />
               </button>
             </div>
           ) : (
-            <div className="flex flex-row gap-3 mb-4">
+            <div className="flex flex-row gap-2 mb-3">
               <button
                 onClick={openCamera}
                 className={cn(
-                  "relative rounded-full p-6 transition-all duration-300",
-                  isCapturing 
-                    ? "bg-hashim-600" 
-                    : "bg-hashim-500 hover:bg-hashim-600"
+                  "relative rounded-full p-3 transition-all duration-200 bg-gradient-to-b from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 shadow-sm border border-gray-300/40 active:scale-95",
+                  isCapturing && "bg-gradient-to-b from-hashim-500 to-hashim-600"
                 )}
               >
-                <Camera className="text-white" size={28} />
+                <Camera className={cn("text-gray-700", isCapturing && "text-white")} size={18} />
               </button>
               
               <button
                 onClick={handleSelectFile}
-                className="relative rounded-full p-6 transition-all duration-300 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                className="relative rounded-full p-3 transition-all duration-200 bg-gradient-to-b from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 shadow-sm border border-gray-300/40 active:scale-95"
               >
-                <Upload className="text-gray-700 dark:text-gray-200" size={28} />
+                <Upload className="text-gray-700" size={18} />
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -305,28 +303,27 @@ Return only the JSON in your response. No explanations or extra formatting.`;
           )}
           
           <div className="text-center">
-            <h3 className="font-bold text-lg mb-1">
-              {imagePreview ? (analysisResult ? "Meal Analyzed" : "Ready to Analyze") : "Snap a Snack"}
+            <h3 className="font-semibold text-sm mb-1 text-gray-900">
+              {imagePreview ? (analysisResult ? "Analyzed" : "Ready") : "Snap Meal"}
             </h3>
-            <p className="text-muted-foreground text-sm mb-4">
+            <p className="text-gray-600 text-xs leading-tight">
               {analysisResult 
-                ? `Complete nutritional breakdown available`
+                ? `Nutrition tracked`
                 : imagePreview 
-                  ? "We'll detect food items, estimate portions, and calculate nutrition" 
-                  : "Take a photo of your meal for nutritional info"}
+                  ? "Tap to analyze" 
+                  : "Quick nutrition tracking"}
             </p>
             
             {imagePreview && !analysisResult && (
-              <div className="space-y-4 w-full max-w-xs mx-auto">
+              <div className="space-y-3 w-full max-w-[140px] mx-auto mt-3">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Meal Type:</label>
                   <Select
                     value={mealType}
                     onValueChange={setMealType}
                     disabled={isProcessing}
                   >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select meal type" />
+                    <SelectTrigger className="w-full h-8 text-xs">
+                      <SelectValue placeholder="Meal type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="breakfast">Breakfast</SelectItem>
@@ -338,50 +335,46 @@ Return only the JSON in your response. No explanations or extra formatting.`;
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">What did you eat?</label>
                   <Textarea
-                    placeholder="Describe your meal to help improve accuracy (e.g., 'Chicken caesar salad with parmesan and croutons')"
+                    placeholder="Describe your meal (optional)"
                     value={mealDescription}
                     onChange={(e) => setMealDescription(e.target.value)}
                     disabled={isProcessing}
-                    className="min-h-[80px]"
+                    className="min-h-[60px] text-xs"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Optional: This helps our AI better identify ingredients and estimate portions
-                  </p>
                 </div>
                 
                 <Button 
-                  className="w-full" 
+                  className="w-full h-8 text-xs bg-gradient-to-b from-hashim-500 to-hashim-600 hover:from-hashim-600 hover:to-hashim-700 shadow-sm" 
                   onClick={processMealImage}
                   disabled={isProcessing}
                 >
-                  {isProcessing ? "Processing..." : "Analyze Meal"}
+                  {isProcessing ? "Analyzing..." : "Analyze"}
                 </Button>
               </div>
             )}
             
             {analysisResult && (
-              <div className="space-y-6 w-full max-w-lg mx-auto">
+              <div className="space-y-4 w-full max-w-lg mx-auto mt-3">
                 {/* Total Macros Summary */}
                 <Card className="bg-gradient-to-r from-hashim-50 to-orange-50 border-hashim-200">
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold text-hashim-800 mb-3 text-center">Total Meal Macros</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white/70 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-hashim-600">{analysisResult.total.calories}</div>
+                  <CardContent className="p-3">
+                    <h4 className="font-semibold text-hashim-800 mb-2 text-center text-sm">Total Macros</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-white/70 rounded-lg p-2 text-center">
+                        <div className="text-lg font-bold text-hashim-600">{analysisResult.total.calories}</div>
                         <div className="text-xs text-gray-600">Calories</div>
                       </div>
-                      <div className="bg-white/70 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-blue-600">{analysisResult.total.protein_g}g</div>
+                      <div className="bg-white/70 rounded-lg p-2 text-center">
+                        <div className="text-lg font-bold text-blue-600">{analysisResult.total.protein_g}g</div>
                         <div className="text-xs text-gray-600">Protein</div>
                       </div>
-                      <div className="bg-white/70 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-green-600">{analysisResult.total.carbs_g}g</div>
+                      <div className="bg-white/70 rounded-lg p-2 text-center">
+                        <div className="text-lg font-bold text-green-600">{analysisResult.total.carbs_g}g</div>
                         <div className="text-xs text-gray-600">Carbs</div>
                       </div>
-                      <div className="bg-white/70 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-yellow-600">{analysisResult.total.fat_g}g</div>
+                      <div className="bg-white/70 rounded-lg p-2 text-center">
+                        <div className="text-lg font-bold text-yellow-600">{analysisResult.total.fat_g}g</div>
                         <div className="text-xs text-gray-600">Fat</div>
                       </div>
                     </div>
@@ -390,33 +383,33 @@ Return only the JSON in your response. No explanations or extra formatting.`;
 
                 {/* Detected Foods */}
                 <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold text-blue-800 mb-4 text-center">Detected Foods</h4>
-                    <div className="space-y-3">
+                  <CardContent className="p-3">
+                    <h4 className="font-semibold text-blue-800 mb-3 text-center text-sm">Detected Foods</h4>
+                    <div className="space-y-2">
                       {analysisResult.food_items.map((item: any, index: number) => (
-                        <div key={index} className="bg-white/80 rounded-lg p-3 border border-blue-100">
-                          <div className="flex justify-between items-start mb-2">
+                        <div key={index} className="bg-white/80 rounded-lg p-2 border border-blue-100">
+                          <div className="flex justify-between items-start mb-1">
                             <div>
-                              <h5 className="font-medium text-gray-800">{item.name}</h5>
-                              <p className="text-sm text-gray-600">{item.portion}</p>
+                              <h5 className="font-medium text-gray-800 text-sm">{item.name}</h5>
+                              <p className="text-xs text-gray-600">{item.portion}</p>
                             </div>
                             <div className="text-right">
-                              <span className="text-lg font-bold text-hashim-600">{item.calories}</span>
-                              <span className="text-sm text-gray-500 ml-1">cal</span>
+                              <span className="text-sm font-bold text-hashim-600">{item.calories}</span>
+                              <span className="text-xs text-gray-500 ml-1">cal</span>
                             </div>
                           </div>
-                          <div className="grid grid-cols-3 gap-2 text-center">
-                            <div className="bg-blue-50 rounded px-2 py-1">
-                              <div className="text-sm font-semibold text-blue-700">{item.protein_g}g</div>
-                              <div className="text-xs text-blue-600">Protein</div>
+                          <div className="grid grid-cols-3 gap-1 text-center">
+                            <div className="bg-blue-50 rounded px-1 py-1">
+                              <div className="text-xs font-semibold text-blue-700">{item.protein_g}g</div>
+                              <div className="text-[10px] text-blue-600">Protein</div>
                             </div>
-                            <div className="bg-green-50 rounded px-2 py-1">
-                              <div className="text-sm font-semibold text-green-700">{item.carbs_g}g</div>
-                              <div className="text-xs text-green-600">Carbs</div>
+                            <div className="bg-green-50 rounded px-1 py-1">
+                              <div className="text-xs font-semibold text-green-700">{item.carbs_g}g</div>
+                              <div className="text-[10px] text-green-600">Carbs</div>
                             </div>
-                            <div className="bg-yellow-50 rounded px-2 py-1">
-                              <div className="text-sm font-semibold text-yellow-700">{item.fat_g}g</div>
-                              <div className="text-xs text-yellow-600">Fat</div>
+                            <div className="bg-yellow-50 rounded px-1 py-1">
+                              <div className="text-xs font-semibold text-yellow-700">{item.fat_g}g</div>
+                              <div className="text-[10px] text-yellow-600">Fat</div>
                             </div>
                           </div>
                         </div>
@@ -426,7 +419,7 @@ Return only the JSON in your response. No explanations or extra formatting.`;
                 </Card>
                 
                 <Button 
-                  className="w-full bg-hashim-600 hover:bg-hashim-700" 
+                  className="w-full h-8 text-xs bg-gradient-to-b from-hashim-500 to-hashim-600 hover:from-hashim-600 hover:to-hashim-700 shadow-sm" 
                   onClick={resetForm}
                 >
                   Log Another Meal
