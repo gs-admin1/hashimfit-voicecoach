@@ -358,6 +358,15 @@ export function Dashboard() {
         </div>
       </div>
       
+      {/* Moved MealCaptureCard and VoiceInput to the top */}
+      <div className="space-y-4 mb-6">
+        <MealCaptureCard />
+        <VoiceInput 
+          selectedWorkout={selectedWorkout}
+          onWorkoutUpdated={handleWorkoutUpdated}
+        />
+      </div>
+      
       <div className="space-y-4 mb-6">
         <DailyWorkoutSummaryCard 
           isCollapsed={cardStates.workoutSummary}
@@ -450,15 +459,6 @@ export function Dashboard() {
           </div>
         )}
       </AnimatedCard>
-      
-      <MealCaptureCard />
-      
-      <div className="my-6">
-        <VoiceInput 
-          selectedWorkout={selectedWorkout}
-          onWorkoutUpdated={handleWorkoutUpdated}
-        />
-      </div>
       
       <AddWorkoutModal 
         isOpen={showAddWorkout} 
