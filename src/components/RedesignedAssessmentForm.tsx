@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -59,6 +58,7 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
   const { userId } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [planGenerating, setPlanGenerating] = useState(false);
   
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(FormSchema),
@@ -108,6 +108,7 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
     }
 
     setSubmitting(true);
+    setPlanGenerating(true);
     
     try {
       const data = form.getValues();
@@ -118,18 +119,21 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
         throw new Error("Please complete all required fields");
       }
       
+      console.log('Submitting assessment data:', data);
+      
+      // This will now trigger the complete plan generation workflow
       const success = await AssessmentService.analyzeAssessment(userId, data);
       
       if (success) {
         toast({
           title: "Assessment complete!",
-          description: "Your personalized fitness plan is ready",
+          description: "Your personalized fitness plan has been generated and is ready to use",
         });
         onComplete();
       } else {
         toast({
           title: "Error",
-          description: "There was an error processing your assessment. Please try again.",
+          description: "There was an error generating your fitness plan. Please try again.",
           variant: "destructive",
         });
       }
@@ -142,6 +146,7 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
       });
     } finally {
       setSubmitting(false);
+      setPlanGenerating(false);
     }
   };
 
@@ -164,13 +169,13 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
     }
   };
 
-  const isLoading = submitting || isProcessing;
+  const isLoading = submitting || isProcessing || planGenerating;
 
   return (
     <Form {...form}>
       <AssessmentStep
         title={STEPS[currentStep].title}
-        subtitle={STEPS[currentStep].subtitle}
+        subtitle={planGenerating ? "Generating your custom plan..." : STEPS[currentStep].subtitle}
         currentStep={currentStep + 1}
         totalSteps={STEPS.length}
         onNext={handleNext}

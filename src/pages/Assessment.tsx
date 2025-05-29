@@ -36,7 +36,7 @@ export default function Assessment() {
       setTimeout(() => {
         console.log("Navigating to dashboard");
         navigate("/dashboard");
-      }, 3000);
+      }, 4000); // Extended to 4 seconds to show the success state
     } catch (error) {
       console.error("Error handling assessment completion:", error);
       setError("There was an error processing your assessment. Please try again.");
@@ -74,14 +74,14 @@ export default function Assessment() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <h2 className="text-2xl font-bold mb-3">🎉 Assessment Complete!</h2>
+              <h2 className="text-2xl font-bold mb-3">🎉 You're All Set!</h2>
               <p className="text-muted-foreground mb-6">
-                Your personalized fitness plan is being crafted by our AI trainer...
+                Your personalized fitness and nutrition plan has been generated and is ready to use.
               </p>
               
               <div className="flex items-center justify-center mb-6">
                 <Loader2 className="animate-spin text-hashim-500 mr-2" size={20} />
-                <span className="text-sm text-hashim-600">Building your custom plan</span>
+                <span className="text-sm text-hashim-600">Preparing your dashboard...</span>
               </div>
             </motion.div>
             
@@ -94,7 +94,7 @@ export default function Assessment() {
               <MessageSquare className="text-blue-500 mr-2 flex-shrink-0" size={16} />
               <p className="text-left">
                 <strong>What's next?</strong><br />
-                You'll get a personalized workout schedule, nutrition plan, and can chat with your AI fitness assistant!
+                Your workouts are scheduled, nutrition targets are set, and your AI fitness assistant is ready to help!
               </p>
             </motion.div>
           </AnimatedCard>
