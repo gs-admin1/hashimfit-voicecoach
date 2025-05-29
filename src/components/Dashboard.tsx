@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -452,8 +453,8 @@ export function Dashboard() {
 
   return (
     <div className="max-w-lg mx-auto pb-20">
-      {/* Snap a Snack and Log your workout buttons - positioned with relative z-index */}
-      <div className="grid grid-cols-2 gap-3 mb-6 relative z-10">
+      {/* Snap a Snack and Log your workout buttons */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="h-16">
           <MealCaptureCard />
         </div>
@@ -465,8 +466,8 @@ export function Dashboard() {
         </div>
       </div>
       
-      {/* DailyWorkoutSummaryCard positioned clearly underneath with proper z-index */}
-      <div className="mb-6 relative z-0">
+      {/* DailyWorkoutSummaryCard positioned with clear separation */}
+      <div className="mb-6 mt-4">
         <DailyWorkoutSummaryCard 
           isCollapsed={cardStates.workoutSummary}
           onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
