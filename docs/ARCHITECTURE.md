@@ -10,6 +10,7 @@ graph TB
         UI[React Frontend]
         PWA[Progressive Web App]
         Camera[Device Camera]
+        Microphone[Voice Input]
     end
     
     subgraph "API Gateway"
@@ -28,6 +29,7 @@ graph TB
     
     subgraph "AI Services"
         OpenAI[OpenAI GPT-4]
+        Whisper[OpenAI Whisper]
         AWS[AWS Rekognition]
     end
     
@@ -45,8 +47,10 @@ graph TB
     Query --> RT
     
     Camera --> Storage
+    Microphone --> EdgeFn
     Storage --> EdgeFn
     EdgeFn --> OpenAI
+    EdgeFn --> Whisper
     EdgeFn --> AWS
     EdgeFn --> DB
     
@@ -60,6 +64,7 @@ graph TB
     style DB fill:#f3e5f5
     style OpenAI fill:#fff3e0
     style AWS fill:#e8f5e8
+    style Whisper fill:#e8f5e8
 ```
 
 ### Data Flow Architecture
@@ -81,6 +86,18 @@ sequenceDiagram
     E->>S: Store Workout Plan
     S->>F: Update UI
     F->>U: Display Personalized Plan
+    
+    Note over U,AI: Voice Workout Logging
+    U->>F: Voice Input (Microphone)
+    F->>S: Upload Audio
+    S->>E: Process Audio
+    E->>AI: Transcribe with Whisper
+    AI->>E: Return Transcript
+    E->>AI: Parse Exercise Data
+    AI->>E: Return Structured Data
+    E->>S: Store Exercise Log
+    S->>F: Real-time Update
+    F->>U: Show Updated Workout
     
     Note over U,AI: Meal Photo Analysis
     U->>F: Capture Meal Photo
@@ -114,14 +131,29 @@ graph LR
         Profile[Profile]
         Workouts[Workouts]
         Progress[Progress]
+        Planner[Planner]
     end
     
-    subgraph "Components"
+    subgraph "Dashboard Components"
+        DashCards[Dashboard Cards]
         MealCapture[MealCaptureCard]
+        VoiceInput[VoiceInput]
         WorkoutCard[WorkoutCard]
-        Chat[ChatInterface]
-        Stats[StatsCard]
-        Forms[AssessmentForm]
+        DayTabs[DayTab]
+    end
+    
+    subgraph "Modular Dashboard"
+        WorkoutSummary[DailyWorkoutSummaryCard]
+        NutritionProgress[NutritionProgressCard]
+        TDEEBalance[TDEEBalanceCard]
+        HabitStreak[HabitStreakCard]
+        AIInsights[AICoachInsightCard]
+    end
+    
+    subgraph "Chat & Voice"
+        ChatFAB[ChatFAB]
+        ChatInterface[ChatInterface]
+        VoiceProcessor[Voice Processing]
     end
     
     subgraph "Hooks"
@@ -142,16 +174,22 @@ graph LR
         ThemeCtx[ThemeContext]
     end
     
-    Pages --> Components
-    Components --> Hooks
+    Pages --> DashCards
+    Pages --> ModularDash
+    DashCards --> MealCapture
+    DashCards --> VoiceInput
+    ModularDash --> WorkoutSummary
+    ModularDash --> NutritionProgress
+    Chat --> ChatInterface
+    Pages --> Hooks
     Hooks --> Services
     Components --> Context
     
     style Pages fill:#e3f2fd
-    style Components fill:#f1f8e9
-    style Hooks fill:#fff8e1
-    style Services fill:#fce4ec
-    style Context fill:#f3e5f5
+    style DashCards fill:#f1f8e9
+    style ModularDash fill:#fff8e1
+    style Chat fill:#fce4ec
+    style Services fill:#f3e5f5
 ```
 
 ### Database Schema Relationships
@@ -161,11 +199,11 @@ erDiagram
     users ||--|| profiles : has
     users ||--o{ workout_plans : creates
     users ||--o{ workout_logs : completes
+    users ||--o{ workout_schedule : schedules
     users ||--o{ nutrition_logs : tracks
     users ||--o{ chat_messages : sends
     users ||--o{ progress_metrics : records
-    
-    profiles ||--o{ assessment_data : completes
+    users ||--o{ assessment_data : completes
     
     workout_plans ||--o{ workout_exercises : contains
     workout_plans ||--o{ workout_schedule : scheduled
@@ -174,7 +212,6 @@ erDiagram
     workout_logs ||--o{ exercise_logs : contains
     
     nutrition_logs ||--o{ meal_logs : contains
-    nutrition_plans ||--o{ meal_plans : includes
     
     users {
         uuid id PK
@@ -190,6 +227,10 @@ erDiagram
         float height
         float weight
         string fitness_goal
+        int workout_frequency
+        string diet
+        string equipment
+        boolean has_completed_assessment
     }
     
     workout_plans {
@@ -198,6 +239,56 @@ erDiagram
         string title
         text description
         boolean ai_generated
+        string category
+        int difficulty
+        string estimated_duration
+        string[] target_muscles
+    }
+    
+    workout_exercises {
+        uuid id PK
+        uuid workout_plan_id FK
+        string name
+        int sets
+        string reps
+        string weight
+        string rest_time
+        text notes
+        int order_index
+    }
+    
+    workout_schedule {
+        uuid id PK
+        uuid user_id FK
+        uuid workout_plan_id FK
+        date scheduled_date
+        string scheduled_time
+        boolean is_completed
+        uuid workout_log_id FK
+        date completion_date
+        string duration
+        text notes
+    }
+    
+    workout_logs {
+        uuid id PK
+        uuid user_id FK
+        uuid workout_plan_id FK
+        timestamp start_time
+        timestamp end_time
+        text notes
+    }
+    
+    exercise_logs {
+        uuid id PK
+        uuid workout_log_id FK
+        string exercise_name
+        int sets_completed
+        string reps_completed
+        string weight_used
+        string rest_time
+        int order_index
+        text notes
     }
     
     nutrition_logs {
@@ -206,5 +297,48 @@ erDiagram
         date log_date
         int total_calories
         int total_protein_g
+        int total_carbs_g
+        int total_fat_g
     }
+    
+    chat_messages {
+        uuid id PK
+        uuid user_id FK
+        text message
+        string role
+        timestamp created_at
+    }
+```
+
+### Edge Functions Architecture
+
+```mermaid
+graph TD
+    subgraph "Edge Functions"
+        AnalyzeFitness[analyze-fitness-assessment]
+        GenerateWorkout[generate-workout]
+        AnalyzeMeal[analyze-meal-photo]
+        AIChat[ai-chat]
+        VoiceParser[voice-workout-parser]
+    end
+    
+    subgraph "AI Services Integration"
+        GPT4[OpenAI GPT-4]
+        Whisper[OpenAI Whisper]
+        Rekognition[AWS Rekognition]
+    end
+    
+    AnalyzeFitness --> GPT4
+    GenerateWorkout --> GPT4
+    AnalyzeMeal --> GPT4
+    AnalyzeMeal --> Rekognition
+    AIChat --> GPT4
+    VoiceParser --> Whisper
+    VoiceParser --> GPT4
+    
+    style AnalyzeFitness fill:#e3f2fd
+    style GenerateWorkout fill:#f1f8e9
+    style AnalyzeMeal fill:#fff8e1
+    style AIChat fill:#fce4ec
+    style VoiceParser fill:#f3e5f5
 ```
