@@ -1,4 +1,3 @@
-
 # Changelog
 ## Hashim - AI-Powered Personal Fitness Trainer
 
@@ -21,6 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Advanced workout recommendation algorithm with periodization
 - Improved user onboarding with interactive tutorials and goal-setting wizard
 - Performance optimizations for faster app loading and smoother interactions
+
+## [1.3.1] - 2024-03-22
+
+### Fixed
+- **Workout Template Persistence** - Fixed critical issue where workout modifications weren't saving to all future occurrences
+  - Resolved problems with "Apply to All" functionality not persisting changes across workout templates
+  - Fixed superset data not being properly preserved when updating workout plans
+  - Enhanced query cache invalidation to ensure template changes reflect immediately in UI
+  - Improved data consistency for workout plan modifications across multiple occurrences
+- **Enhanced Cache Management** - Improved data synchronization for workout template updates
+  - Added comprehensive query invalidation for all workout-related data when templates are modified
+  - Implemented cache removal strategies to force fresh data fetches for updated templates
+  - Better handling of workout plan data consistency across dashboard and workout pages
+  - Fixed race conditions in data updates between different app sections
 
 ## [1.3.0] - 2024-03-15
 
