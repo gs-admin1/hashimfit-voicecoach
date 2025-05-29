@@ -125,7 +125,7 @@ export function Dashboard() {
         reps: ex.reps,
         weight: ex.weight || 'bodyweight',
         completed: completedExercises[ex.name] || false,
-        source: 'planned'
+        source: 'planned' as const
       }));
 
       // Add voice-logged exercises that aren't in the plan
@@ -138,7 +138,7 @@ export function Dashboard() {
           reps: log.reps_completed,
           weight: log.weight_used || 'bodyweight',
           completed: true,
-          source: 'voice'
+          source: 'voice' as const
         }));
       
       return {
@@ -146,7 +146,8 @@ export function Dashboard() {
         id: workoutPlan.id,
         title: workoutPlan.title,
         exercises: [...plannedExercises, ...voiceLoggedExercises],
-        is_completed: scheduledWorkout.is_completed || false
+        is_completed: scheduledWorkout.is_completed || false,
+        workout_log_id: scheduledWorkout.workout_log_id
       };
     },
     enabled: !!userId && !!workoutSchedules,

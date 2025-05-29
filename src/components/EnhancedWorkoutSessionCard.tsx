@@ -162,9 +162,13 @@ export function EnhancedWorkoutSessionCard({
     ));
     
     if (workout.workout_log_id) {
-      const success = await WorkoutService.updateExerciseLog(exerciseId, {
-        [field]: newValue
-      });
+      // Create update object with only valid ExerciseLog fields
+      const updateData: Record<string, any> = {};
+      if (field === 'reps') updateData.reps_completed = newValue;
+      else if (field === 'weight') updateData.weight_used = newValue;
+      else if (field === 'sets') updateData.sets_completed = newValue;
+      
+      const success = await WorkoutService.updateExerciseLog(exerciseId, updateData);
       
       if (!success) {
         toast({
@@ -188,8 +192,8 @@ export function EnhancedWorkoutSessionCard({
       : parseInt(exercise[field as keyof Exercise] as string) || 0;
     
     const newValue = Math.max(0, currentValue + delta);
-    saveEdit(exerciseId, field);
     setEditValues({ [field]: newValue });
+    saveEdit(exerciseId, field);
   };
 
   const createSuperset = async () => {
@@ -267,7 +271,9 @@ export function EnhancedWorkoutSessionCard({
     ));
     
     if (workout.workout_log_id) {
-      await WorkoutService.updateExerciseLog(exerciseId, { rpe });
+      // Store RPE in notes field as JSON since it's not a direct ExerciseLog field
+      const notes = JSON.stringify({ rpe });
+      await WorkoutService.updateExerciseLog(exerciseId, { notes });
     }
   };
 

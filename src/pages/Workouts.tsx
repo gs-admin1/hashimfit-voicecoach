@@ -23,7 +23,6 @@ export default function WorkoutsPage() {
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(60);
   const { isAuthenticated, userId } = useAuth();
   const queryClient = useQueryClient();
@@ -87,7 +86,7 @@ export default function WorkoutsPage() {
             reps: ex.reps,
             weight: ex.weight || 'bodyweight',
             completed: completedExercises[ex.name] || false,
-            source: 'planned'
+            source: 'planned' as const
           }));
 
           // Add voice-logged exercises that aren't in the plan
@@ -100,7 +99,7 @@ export default function WorkoutsPage() {
               reps: log.reps_completed,
               weight: log.weight_used || 'bodyweight',
               completed: true,
-              source: 'voice'
+              source: 'voice' as const
             }));
           
           const allExercises = [...plannedExercises, ...voiceLoggedExercises];
@@ -248,7 +247,6 @@ export default function WorkoutsPage() {
 
   const startRestTimer = (duration: number = 60) => {
     setRestDuration(duration);
-    setShowRestTimer(true);
   };
 
   const filteredWorkouts = scheduledWorkouts.filter(workout => {
@@ -346,13 +344,7 @@ export default function WorkoutsPage() {
           </div>
         </main>
         
-        <RestTimerOverlay
-          isVisible={showRestTimer}
-          duration={restDuration}
-          onComplete={() => setShowRestTimer(false)}
-          onSkip={() => setShowRestTimer(false)}
-          onClose={() => setShowRestTimer(false)}
-        />
+        <RestTimerOverlay />
         
         <ChatFAB />
       </div>
