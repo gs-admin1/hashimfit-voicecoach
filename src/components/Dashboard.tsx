@@ -347,14 +347,20 @@ export function Dashboard() {
     setShowAddWorkout(true);
   };
 
-  const handleUpdateWorkout = async (updatedWorkout: any, saveType: 'today' | 'all_future' = 'today') => {
+  const handleUpdateWorkout = async (updatedWorkout: any) => {
     if (!selectedWorkout || !selectedWorkout.schedule_id) return;
     
     try {
-      console.log(`Updating workout with save type: ${saveType}`, updatedWorkout);
+      console.log("Updating workout:", updatedWorkout);
       
-      // Prepare exercise data with proper superset handling
+      // Update the workout plan exercises
+      const existingExercises = await WorkoutService.getWorkoutExercises(updatedWorkout.id);
+      await Promise.all(
+        existingExercises.map(ex => WorkoutService.deleteWorkoutExercise(ex.id!))
+      );
+      
       const exerciseData = updatedWorkout.exercises.map((ex: any, index: number) => ({
+        workout_plan_id: updatedWorkout.id,
         name: ex.name,
         sets: ex.sets,
         reps: ex.reps,
@@ -363,33 +369,8 @@ export function Dashboard() {
         order_index: index,
         notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
       }));
-
-      if (saveType === 'all_future') {
-        console.log("Saving to all workouts of this type");
-        // Update the original workout plan (affects all future workouts)
-        const success = await WorkoutService.updateAllFutureWorkoutsOfType(
-          userId!,
-          updatedWorkout.id,
-          exerciseData
-        );
-        
-        if (!success) {
-          throw new Error("Failed to update all future workouts");
-        }
-      } else {
-        console.log("Saving for today only");
-        // Create a one-off workout plan for this specific date
-        const oneOffPlanId = await WorkoutService.createOneOffWorkoutSchedule(
-          userId!,
-          updatedWorkout.id,
-          selectedDateString,
-          exerciseData
-        );
-        
-        if (!oneOffPlanId) {
-          throw new Error("Failed to create one-off workout");
-        }
-      }
+      
+      await WorkoutService.createWorkoutExercises(exerciseData);
       
       // Refresh queries
       queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
@@ -398,9 +379,7 @@ export function Dashboard() {
       
       toast({
         title: "Workout Updated",
-        description: saveType === 'all_future' 
-          ? "Your changes have been applied to all future workouts of this type."
-          : "Your changes have been saved for today only."
+        description: "Your workout has been updated successfully."
       });
     } catch (error) {
       console.error("Error updating workout:", error);

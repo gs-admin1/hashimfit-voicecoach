@@ -1,31 +1,41 @@
 
-import React, { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
+  CheckCircle, 
+  Circle, 
+  Clock, 
+  Dumbbell, 
   Play, 
-  MessageCircle, 
-  RotateCcw, 
-  Plus, 
-  Edit3, 
-  Trash2, 
-  Save, 
-  X,
-  Clock,
-  Dumbbell,
-  Target,
+  ChevronDown, 
+  ChevronUp,
+  MessageCircle,
   Zap,
-  CheckCircle2,
-  Circle
+  Target,
+  TrendingUp,
+  Flame,
+  Star,
+  Edit3,
+  Save,
+  X,
+  GripVertical,
+  Plus,
+  Minus,
+  Copy,
+  Calendar,
+  CalendarDays,
+  Undo2,
+  RotateCcw,
+  Users,
+  ArrowLeftRight
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Exercise {
   id: string;
@@ -33,606 +43,863 @@ interface Exercise {
   sets: number;
   reps: string;
   weight: string;
-  completed: boolean;
-  source: 'planned' | 'voice';
+  completed?: boolean;
+  source?: 'planned' | 'voice';
   rest_seconds?: number;
-  superset_group_id?: string | null;
+  superset_group_id?: string;
   position_in_workout?: number;
 }
 
+interface Workout {
+  id: string;
+  title: string;
+  exercises: Exercise[];
+  category?: string;
+  estimatedDuration?: number;
+  targetMuscles?: string[];
+  difficulty?: number;
+  aiGenerated?: boolean;
+  streak?: number;
+  isFavorite?: boolean;
+  isCompleted?: boolean;
+  schedule_id?: string;
+}
+
 interface WorkoutCardProps {
-  workout: {
-    id: string;
-    schedule_id?: string;
-    title: string;
-    exercises: Exercise[];
-    category?: string;
-    isFavorite?: boolean;
-    estimatedDuration?: number;
-    targetMuscles?: string[];
-    difficulty?: number;
-    aiGenerated?: boolean;
-    isCompleted?: boolean;
-    scheduledDate?: string;
-    scheduledTime?: string;
-    streak?: number;
-    workout_log_id?: string;
-  };
-  onStart?: (workout: any) => void;
-  onEdit?: (workout: any) => void;
+  workout: Workout;
+  onStart?: (workout: Workout) => void;
+  onEdit?: (workout: Workout) => void;
   onAskCoach?: () => void;
   onReplaceWorkout?: () => void;
-  onUpdateWorkout?: (updatedWorkout: any, saveType: 'today' | 'all_future') => void;
+  onUpdateWorkout?: (workout: Workout) => void;
 }
 
 export function WorkoutCard({ 
   workout, 
-  onStart, 
-  onEdit, 
-  onAskCoach, 
-  onReplaceWorkout, 
-  onUpdateWorkout 
+  onStart,
+  onEdit,
+  onAskCoach,
+  onReplaceWorkout,
+  onUpdateWorkout
 }: WorkoutCardProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedExercises, setEditedExercises] = useState<Exercise[]>(workout.exercises);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showFullExercises, setShowFullExercises] = useState(false);
+  const [editingExercises, setEditingExercises] = useState<Exercise[]>(workout.exercises);
+  const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
+  const [showSaveOptions, setShowSaveOptions] = useState(false);
+  const [showAddExercise, setShowAddExercise] = useState(false);
   const [newExercise, setNewExercise] = useState({
-    name: "",
+    name: '',
     sets: 3,
-    reps: "10",
-    weight: "bodyweight",
+    reps: '10',
+    weight: 'bodyweight',
     rest_seconds: 60
   });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Calculate progress
   const completedExercises = workout.exercises.filter(ex => ex.completed).length;
   const totalExercises = workout.exercises.length;
-  const progressPercentage = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
+  const progress = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
 
-  // Update edited exercises when workout changes
-  useEffect(() => {
-    setEditedExercises(workout.exercises);
-  }, [workout.exercises]);
-
-  // Check if there are unsaved changes
-  const hasChanges = JSON.stringify(editedExercises) !== JSON.stringify(workout.exercises);
-
-  const handleStartEditing = () => {
-    setIsEditing(true);
-    setEditedExercises([...workout.exercises]);
+  // Get difficulty info with Apple-inspired colors
+  const getDifficultyInfo = (difficulty?: number) => {
+    if (!difficulty) return { 
+      label: "Intermediate", 
+      gradient: "from-yellow-400 to-orange-500",
+      bgColor: "bg-gradient-to-r from-yellow-50 to-orange-50",
+      textColor: "text-orange-700"
+    };
+    if (difficulty <= 2) return { 
+      label: "Beginner", 
+      gradient: "from-green-400 to-emerald-500",
+      bgColor: "bg-gradient-to-r from-green-50 to-emerald-50",
+      textColor: "text-green-700"
+    };
+    if (difficulty <= 4) return { 
+      label: "Intermediate", 
+      gradient: "from-yellow-400 to-orange-500",
+      bgColor: "bg-gradient-to-r from-yellow-50 to-orange-50",
+      textColor: "text-orange-700"
+    };
+    return { 
+      label: "Advanced", 
+      gradient: "from-red-400 to-pink-500",
+      bgColor: "bg-gradient-to-r from-red-50 to-pink-50",
+      textColor: "text-red-700"
+    };
   };
 
-  const handleCancelEditing = () => {
-    if (hasChanges) {
-      setShowResetDialog(true);
-    } else {
-      setIsEditing(false);
-    }
-  };
+  const difficultyInfo = getDifficultyInfo(workout.difficulty);
 
-  const handleResetChanges = () => {
-    setEditedExercises([...workout.exercises]);
-    setIsEditing(false);
-    setShowResetDialog(false);
-  };
+  // Get workout type with colors
+  const getWorkoutTypeInfo = () => {
+    const type = (!workout.targetMuscles || workout.targetMuscles.length === 0 || workout.targetMuscles.length > 3) 
+      ? "Full Body" 
+      : workout.targetMuscles.join(" & ");
 
-  const handleSaveChanges = () => {
-    setShowSaveModal(true);
-  };
-
-  const handleConfirmSave = (saveType: 'today' | 'all_future') => {
-    // Process superset information properly
-    const processedExercises = editedExercises.map(ex => ({
-      ...ex,
-      // Ensure superset_group_id is properly maintained
-      superset_group_id: ex.superset_group_id || null
-    }));
-
-    const updatedWorkout = {
-      ...workout,
-      exercises: processedExercises
+    const colorMap: Record<string, any> = {
+      "Full Body": { 
+        gradient: "from-purple-400 to-indigo-500",
+        bgColor: "bg-gradient-to-r from-purple-50 to-indigo-50",
+        textColor: "text-purple-700"
+      },
+      "Chest": { 
+        gradient: "from-blue-400 to-cyan-500",
+        bgColor: "bg-gradient-to-r from-blue-50 to-cyan-50",
+        textColor: "text-blue-700"
+      },
+      "Back": { 
+        gradient: "from-emerald-400 to-teal-500",
+        bgColor: "bg-gradient-to-r from-emerald-50 to-teal-50",
+        textColor: "text-emerald-700"
+      },
+      "Legs": { 
+        gradient: "from-orange-400 to-red-500",
+        bgColor: "bg-gradient-to-r from-orange-50 to-red-50",
+        textColor: "text-orange-700"
+      }
     };
 
-    onUpdateWorkout?.(updatedWorkout, saveType);
-    setIsEditing(false);
-    setShowSaveModal(false);
+    return {
+      type,
+      ...colorMap[type] || colorMap["Full Body"]
+    };
   };
 
-  const handleAddExercise = () => {
-    if (!newExercise.name.trim()) return;
+  const workoutTypeInfo = getWorkoutTypeInfo();
 
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination || !isEditMode) return;
+    
+    const items = Array.from(editingExercises);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    const updatedItems = items.map((item, index) => ({
+      ...item,
+      position_in_workout: index
+    }));
+    
+    setEditingExercises(updatedItems);
+    setHasUnsavedChanges(true);
+  };
+
+  const updateExercise = (exerciseId: string, field: keyof Exercise, value: any) => {
+    setEditingExercises(prev => prev.map(ex => 
+      ex.id === exerciseId ? { ...ex, [field]: value } : ex
+    ));
+    setHasUnsavedChanges(true);
+  };
+
+  const toggleExerciseSelection = (exerciseId: string) => {
+    setSelectedExercises(prev => 
+      prev.includes(exerciseId) 
+        ? prev.filter(id => id !== exerciseId)
+        : [...prev, exerciseId]
+    );
+  };
+
+  const createSuperset = () => {
+    if (selectedExercises.length < 2) return;
+    
+    const supersetId = `superset-${Date.now()}`;
+    setEditingExercises(prev => prev.map(ex => 
+      selectedExercises.includes(ex.id) 
+        ? { ...ex, superset_group_id: supersetId }
+        : ex
+    ));
+    setSelectedExercises([]);
+    setHasUnsavedChanges(true);
+  };
+
+  const removeFromSuperset = (exerciseId: string) => {
+    setEditingExercises(prev => prev.map(ex => 
+      ex.id === exerciseId ? { ...ex, superset_group_id: undefined } : ex
+    ));
+    setHasUnsavedChanges(true);
+  };
+
+  const addNewExercise = () => {
+    if (!newExercise.name.trim()) return;
+    
     const exercise: Exercise = {
       id: `new-${Date.now()}`,
       name: newExercise.name,
       sets: newExercise.sets,
       reps: newExercise.reps,
       weight: newExercise.weight,
+      rest_seconds: newExercise.rest_seconds,
       completed: false,
       source: 'planned',
-      rest_seconds: newExercise.rest_seconds,
-      superset_group_id: null,
-      position_in_workout: editedExercises.length
+      position_in_workout: editingExercises.length
     };
-
-    setEditedExercises([...editedExercises, exercise]);
+    
+    setEditingExercises(prev => [...prev, exercise]);
     setNewExercise({
-      name: "",
+      name: '',
       sets: 3,
-      reps: "10",
-      weight: "bodyweight",
+      reps: '10',
+      weight: 'bodyweight',
       rest_seconds: 60
     });
+    setShowAddExercise(false);
+    setHasUnsavedChanges(true);
   };
 
-  const handleRemoveExercise = (exerciseId: string) => {
-    setEditedExercises(editedExercises.filter(ex => ex.id !== exerciseId));
+  const removeExercise = (exerciseId: string) => {
+    setEditingExercises(prev => prev.filter(ex => ex.id !== exerciseId));
+    setHasUnsavedChanges(true);
   };
 
-  const handleUpdateExercise = (exerciseId: string, field: string, value: any) => {
-    setEditedExercises(editedExercises.map(ex => 
-      ex.id === exerciseId ? { ...ex, [field]: value } : ex
-    ));
+  const resetChanges = () => {
+    setEditingExercises(workout.exercises);
+    setHasUnsavedChanges(false);
+    setSelectedExercises([]);
   };
 
-  const createSuperset = (exerciseIds: string[]) => {
-    if (exerciseIds.length < 2) return;
+  const saveChanges = (applyToAll: boolean = false) => {
+    const updatedWorkout = {
+      ...workout,
+      exercises: editingExercises
+    };
     
-    const supersetId = `superset-${Date.now()}`;
-    setEditedExercises(editedExercises.map(ex => 
-      exerciseIds.includes(ex.id) ? { ...ex, superset_group_id: supersetId } : ex
-    ));
+    onUpdateWorkout?.(updatedWorkout);
+    setHasUnsavedChanges(false);
+    setIsEditMode(false);
+    setShowSaveOptions(false);
+    
+    // Here you would implement the logic to save to just this workout or all workouts of the same type
+    console.log(applyToAll ? 'Saving to all workouts of this type' : 'Saving to this workout only');
   };
 
-  const removeFromSuperset = (exerciseId: string) => {
-    setEditedExercises(editedExercises.map(ex => 
-      ex.id === exerciseId ? { ...ex, superset_group_id: null } : ex
-    ));
+  const enterEditMode = () => {
+    setIsEditMode(true);
+    setEditingExercises(workout.exercises);
+    setShowFullExercises(true);
   };
 
-  const getCategoryColor = (category?: string) => {
-    switch (category) {
-      case 'strength': return 'from-blue-500 to-indigo-600';
-      case 'cardio': return 'from-red-500 to-pink-600';
-      case 'hiit': return 'from-orange-500 to-red-600';
-      case 'recovery': return 'from-green-500 to-emerald-600';
-      case 'sport_specific': return 'from-purple-500 to-violet-600';
-      default: return 'from-gray-500 to-gray-600';
+  const exitEditMode = () => {
+    if (hasUnsavedChanges) {
+      setShowSaveOptions(true);
+    } else {
+      setIsEditMode(false);
+      setShowFullExercises(false);
     }
   };
-
-  const getDifficultyColor = (difficulty?: number) => {
-    if (!difficulty) return 'bg-gray-100 text-gray-600';
-    if (difficulty <= 2) return 'bg-green-100 text-green-700';
-    if (difficulty <= 4) return 'bg-yellow-100 text-yellow-700';
-    return 'bg-red-100 text-red-700';
-  };
-
-  const groupedExercises = editedExercises.reduce((groups, exercise) => {
-    const groupId = exercise.superset_group_id || exercise.id;
-    if (!groups[groupId]) {
-      groups[groupId] = [];
-    }
-    groups[groupId].push(exercise);
-    return groups;
-  }, {} as Record<string, Exercise[]>);
 
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="w-full"
     >
-      <Card className="overflow-hidden border-0 shadow-lg bg-white/90 backdrop-blur-sm">
-        {/* Header with gradient */}
-        <div className={`bg-gradient-to-r ${getCategoryColor(workout.category)} p-6 text-white relative overflow-hidden`}>
-          <div className="absolute inset-0 bg-black/10"></div>
+      <Card className={cn(
+        "w-full transition-all duration-500 hover:shadow-xl border-0 rounded-3xl overflow-hidden",
+        "bg-gradient-to-br from-white via-gray-50/50 to-white",
+        workout.isCompleted 
+          ? "shadow-lg shadow-green-500/20 ring-2 ring-green-500/20" 
+          : "shadow-lg shadow-hashim-500/10 hover:shadow-hashim-500/20",
+        isEditMode && "ring-2 ring-blue-500/30 shadow-blue-500/20"
+      )}>
+        {/* Header with gradient background */}
+        <CardHeader className={cn(
+          "pb-4 relative overflow-hidden",
+          workout.isCompleted 
+            ? "bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500"
+            : "bg-gradient-to-r from-hashim-400 via-hashim-500 to-hashim-600"
+        )}>
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
           <div className="relative z-10">
-            <div className="flex justify-between items-start mb-4">
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold leading-tight">{workout.title}</h3>
-                <div className="flex items-center space-x-3 text-white/90">
-                  <div className="flex items-center space-x-1">
-                    <Clock size={14} />
-                    <span className="text-sm">{workout.estimatedDuration || 45}min</span>
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-xl font-bold text-white drop-shadow-sm">{workout.title}</h3>
+                  <div className="flex items-center gap-1">
+                    {workout.aiGenerated && (
+                      <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
+                        <Zap size={10} className="mr-1" />
+                        AI
+                      </Badge>
+                    )}
+                    {workout.streak && workout.streak > 0 && (
+                      <Badge className="bg-orange-500/20 text-orange-100 border-orange-300/30 backdrop-blur-sm">
+                        <Flame size={10} className="mr-1" />
+                        {workout.streak}
+                      </Badge>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <Target size={14} />
-                    <span className="text-sm">{totalExercises} exercises</span>
-                  </div>
-                  {workout.difficulty && (
-                    <Badge className={`${getDifficultyColor(workout.difficulty)} text-xs border-0`}>
-                      Level {workout.difficulty}
-                    </Badge>
+                </div>
+
+                {/* Metadata Row */}
+                <div className="flex items-center gap-4 text-sm text-white/90 mb-3">
+                  {workout.estimatedDuration && (
+                    <div className="flex items-center gap-1">
+                      <Clock size={14} />
+                      <span>{workout.estimatedDuration} min</span>
+                    </div>
                   )}
+                  <div className="flex items-center gap-1">
+                    <Target size={14} />
+                    <span>{editingExercises.length} exercises</span>
+                  </div>
+                </div>
+
+                {/* Tags Row */}
+                <div className="flex items-center gap-2">
+                  <Badge className={cn(
+                    "text-xs px-3 py-1 border-0 font-medium",
+                    difficultyInfo.bgColor,
+                    difficultyInfo.textColor
+                  )}>
+                    {difficultyInfo.label}
+                  </Badge>
+                  <Badge className={cn(
+                    "text-xs px-3 py-1 border-0 font-medium",
+                    workoutTypeInfo.bgColor,
+                    workoutTypeInfo.textColor
+                  )}>
+                    {workoutTypeInfo.type}
+                  </Badge>
                 </div>
               </div>
-              
-              <div className="flex flex-col items-end space-y-2">
-                {workout.aiGenerated && (
-                  <Badge className="bg-white/20 text-white border-white/30 text-xs">
-                    <Zap size={12} className="mr-1" />
-                    AI Generated
-                  </Badge>
-                )}
-                {workout.streak && workout.streak > 1 && (
-                  <Badge className="bg-orange-500/90 text-white border-0 text-xs">
-                    🔥 {workout.streak} streak
-                  </Badge>
-                )}
-              </div>
-            </div>
 
-            {/* Progress bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-white/90">Progress</span>
-                <span className="font-medium">{completedExercises}/{totalExercises}</span>
+              <div className="flex items-center gap-2 ml-4">
+                {workout.isFavorite && (
+                  <Star size={20} className="text-yellow-300 fill-current drop-shadow-sm" />
+                )}
+                {workout.isCompleted && (
+                  <div className="flex items-center text-white">
+                    <CheckCircle size={20} className="drop-shadow-sm" />
+                    <TrendingUp size={16} className="ml-1 drop-shadow-sm" />
+                  </div>
+                )}
+                {!isEditMode ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={enterEditMode}
+                    className="h-8 w-8 p-0 bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  >
+                    <Edit3 size={16} />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={exitEditMode}
+                    className="h-8 w-8 p-0 bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  >
+                    <X size={16} />
+                  </Button>
+                )}
               </div>
-              <Progress 
-                value={progressPercentage} 
-                className="h-2 bg-white/20"
-              />
             </div>
           </div>
-        </div>
+        </CardHeader>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Target Muscles */}
-          {workout.targetMuscles && workout.targetMuscles.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {workout.targetMuscles.map((muscle, index) => (
-                <Badge 
-                  key={index} 
-                  variant="secondary" 
-                  className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
-                >
-                  {muscle}
-                </Badge>
-              ))}
-            </div>
-          )}
+        <CardContent className="pt-0 space-y-4 p-6">
+          {/* Exercise List */}
+          {(showFullExercises || isEditMode) && editingExercises.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Dumbbell size={16} />
+                  Exercises
+                  {isEditMode && hasUnsavedChanges && (
+                    <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
+                      Modified
+                    </Badge>
+                  )}
+                </h4>
+                
+                {isEditMode && (
+                  <div className="flex items-center gap-2">
+                    {selectedExercises.length >= 2 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={createSuperset}
+                        className="text-xs h-7"
+                      >
+                        <Users size={12} className="mr-1" />
+                        Superset
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddExercise(true)}
+                      className="text-xs h-7 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                    >
+                      <Plus size={12} className="mr-1" />
+                      Add
+                    </Button>
+                  </div>
+                )}
+              </div>
 
-          {/* Exercises */}
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h4 className="font-semibold text-gray-900 flex items-center">
-                <Dumbbell size={16} className="mr-2 text-blue-600" />
-                Exercises
-              </h4>
-              {!isEditing && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleStartEditing}
-                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                >
-                  <Edit3 size={14} className="mr-1" />
-                  Edit
-                </Button>
-              )}
-            </div>
-
-            <AnimatePresence mode="wait">
-              {isEditing ? (
-                <motion.div
-                  key="editing"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-4"
-                >
-                  {/* Exercise List in Edit Mode */}
-                  {Object.entries(groupedExercises).map(([groupId, exercises]) => (
-                    <div key={groupId} className="space-y-2">
-                      {exercises.length > 1 && exercises[0].superset_group_id && (
-                        <div className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1 rounded-full inline-block">
-                          Superset Group
-                        </div>
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <Droppable droppableId="exercises" isDropDisabled={!isEditMode}>
+                  {(provided, snapshot) => (
+                    <div 
+                      {...provided.droppableProps} 
+                      ref={provided.innerRef}
+                      className={cn(
+                        "space-y-2 transition-colors duration-200 rounded-xl p-3",
+                        snapshot.isDraggingOver && isEditMode && "bg-blue-50 ring-2 ring-blue-200"
                       )}
-                      {exercises.map((exercise, index) => (
-                        <motion.div
-                          key={exercise.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
-                          className={`p-4 rounded-xl border-2 ${
-                            exercise.superset_group_id 
-                              ? 'border-purple-200 bg-purple-50/50' 
-                              : 'border-gray-200 bg-gray-50'
-                          }`}
+                    >
+                      {editingExercises.map((exercise, index) => (
+                        <Draggable 
+                          key={exercise.id} 
+                          draggableId={exercise.id} 
+                          index={index}
+                          isDragDisabled={!isEditMode}
                         >
-                          <div className="grid grid-cols-12 gap-3 items-center">
-                            <div className="col-span-4">
-                              <Input
-                                value={exercise.name}
-                                onChange={(e) => handleUpdateExercise(exercise.id, 'name', e.target.value)}
-                                className="text-sm font-medium border-0 bg-white/80 focus:bg-white"
-                                placeholder="Exercise name"
-                              />
-                            </div>
-                            <div className="col-span-2">
-                              <Input
-                                type="number"
-                                value={exercise.sets}
-                                onChange={(e) => handleUpdateExercise(exercise.id, 'sets', parseInt(e.target.value) || 1)}
-                                className="text-sm border-0 bg-white/80 focus:bg-white"
-                                min="1"
-                              />
-                            </div>
-                            <div className="col-span-2">
-                              <Input
-                                value={exercise.reps}
-                                onChange={(e) => handleUpdateExercise(exercise.id, 'reps', e.target.value)}
-                                className="text-sm border-0 bg-white/80 focus:bg-white"
-                                placeholder="10"
-                              />
-                            </div>
-                            <div className="col-span-3">
-                              <Input
-                                value={exercise.weight}
-                                onChange={(e) => handleUpdateExercise(exercise.id, 'weight', e.target.value)}
-                                className="text-sm border-0 bg-white/80 focus:bg-white"
-                                placeholder="bodyweight"
-                              />
-                            </div>
-                            <div className="col-span-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveExercise(exercise.id)}
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 h-8 w-8"
-                              >
-                                <Trash2 size={14} />
-                              </Button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ))}
+                          {(provided, snapshot) => (
+                            <motion.div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              layout
+                              className={cn(
+                                "rounded-xl border border-gray-200 p-4 transition-all",
+                                exercise.completed 
+                                  ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200" 
+                                  : "bg-white hover:bg-gray-50",
+                                exercise.superset_group_id && "border-l-4 border-l-blue-400 bg-blue-50/50",
+                                selectedExercises.includes(exercise.id) && isEditMode && "ring-2 ring-orange-300 bg-orange-50",
+                                snapshot.isDragging && "shadow-lg scale-105 rotate-1 z-10 bg-white"
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                {isEditMode && (
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      {...provided.dragHandleProps}
+                                      className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                    >
+                                      <GripVertical size={16} />
+                                    </div>
+                                    <button
+                                      onClick={() => toggleExerciseSelection(exercise.id)}
+                                      className={cn(
+                                        "w-4 h-4 rounded border-2 transition-colors",
+                                        selectedExercises.includes(exercise.id) 
+                                          ? "bg-orange-500 border-orange-500" 
+                                          : "border-gray-300 hover:border-orange-300"
+                                      )}
+                                    >
+                                      {selectedExercises.includes(exercise.id) && (
+                                        <CheckCircle size={12} className="text-white" />
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
 
-                  {/* Add New Exercise */}
-                  <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50">
-                    <div className="grid grid-cols-12 gap-3 items-center">
-                      <div className="col-span-4">
-                        <Input
-                          value={newExercise.name}
-                          onChange={(e) => setNewExercise({...newExercise, name: e.target.value})}
-                          placeholder="Exercise name"
-                          className="border-0 bg-white/80 focus:bg-white"
-                        />
+                                <div className="flex-shrink-0">
+                                  {exercise.completed ? (
+                                    <CheckCircle size={20} className="text-green-600" />
+                                  ) : (
+                                    <Circle size={20} className="text-gray-400" />
+                                  )}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    {isEditMode ? (
+                                      <Input
+                                        value={exercise.name}
+                                        onChange={(e) => updateExercise(exercise.id, 'name', e.target.value)}
+                                        className="font-medium h-7 text-sm border-0 bg-transparent p-0 focus:bg-white focus:border focus:px-2 focus:rounded"
+                                      />
+                                    ) : (
+                                      <p className={cn(
+                                        "font-medium",
+                                        exercise.completed && "line-through text-gray-500"
+                                      )}>
+                                        {exercise.name}
+                                      </p>
+                                    )}
+                                    
+                                    {exercise.superset_group_id && (
+                                      <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                                        Superset
+                                        {isEditMode && (
+                                          <button
+                                            onClick={() => removeFromSuperset(exercise.id)}
+                                            className="ml-1 hover:text-red-600"
+                                          >
+                                            <X size={10} />
+                                          </button>
+                                        )}
+                                      </Badge>
+                                    )}
+                                    
+                                    {exercise.source === 'voice' && (
+                                      <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                                        Voice
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  {isEditMode ? (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          type="number"
+                                          value={exercise.sets}
+                                          onChange={(e) => updateExercise(exercise.id, 'sets', parseInt(e.target.value))}
+                                          className="w-12 h-6 text-xs text-center border-gray-300"
+                                          min="1"
+                                        />
+                                        <span className="text-gray-500">sets</span>
+                                      </div>
+                                      <span className="text-gray-400">×</span>
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          value={exercise.reps}
+                                          onChange={(e) => updateExercise(exercise.id, 'reps', e.target.value)}
+                                          className="w-16 h-6 text-xs text-center border-gray-300"
+                                        />
+                                        <span className="text-gray-500">reps</span>
+                                      </div>
+                                      <span className="text-gray-400">@</span>
+                                      <Input
+                                        value={exercise.weight}
+                                        onChange={(e) => updateExercise(exercise.id, 'weight', e.target.value)}
+                                        className="w-20 h-6 text-xs text-center border-gray-300"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-600">
+                                      {exercise.sets} × {exercise.reps}
+                                      {exercise.weight && exercise.weight !== 'bodyweight' && 
+                                        ` @ ${exercise.weight}`
+                                      }
+                                    </p>
+                                  )}
+                                </div>
+
+                                {isEditMode && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeExercise(exercise.id)}
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <X size={12} />
+                                  </Button>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+
+              {/* Add Exercise Form */}
+              <AnimatePresence>
+                {showAddExercise && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-blue-50 rounded-xl p-4 border border-blue-200"
+                  >
+                    <h5 className="text-sm font-medium text-blue-800 mb-3">Add New Exercise</h5>
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Exercise name"
+                        value={newExercise.name}
+                        onChange={(e) => setNewExercise(prev => ({ ...prev, name: e.target.value }))}
+                        className="bg-white"
+                      />
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-600">Sets</label>
+                          <Input
+                            type="number"
+                            value={newExercise.sets}
+                            onChange={(e) => setNewExercise(prev => ({ ...prev, sets: parseInt(e.target.value) }))}
+                            className="bg-white"
+                            min="1"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600">Reps</label>
+                          <Input
+                            value={newExercise.reps}
+                            onChange={(e) => setNewExercise(prev => ({ ...prev, reps: e.target.value }))}
+                            className="bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600">Weight</label>
+                          <Input
+                            value={newExercise.weight}
+                            onChange={(e) => setNewExercise(prev => ({ ...prev, weight: e.target.value }))}
+                            className="bg-white"
+                          />
+                        </div>
                       </div>
-                      <div className="col-span-2">
-                        <Input
-                          type="number"
-                          value={newExercise.sets}
-                          onChange={(e) => setNewExercise({...newExercise, sets: parseInt(e.target.value) || 1})}
-                          min="1"
-                          className="border-0 bg-white/80 focus:bg-white"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <Input
-                          value={newExercise.reps}
-                          onChange={(e) => setNewExercise({...newExercise, reps: e.target.value})}
-                          placeholder="10"
-                          className="border-0 bg-white/80 focus:bg-white"
-                        />
-                      </div>
-                      <div className="col-span-3">
-                        <Input
-                          value={newExercise.weight}
-                          onChange={(e) => setNewExercise({...newExercise, weight: e.target.value})}
-                          placeholder="bodyweight"
-                          className="border-0 bg-white/80 focus:bg-white"
-                        />
-                      </div>
-                      <div className="col-span-1">
-                        <Button
-                          variant="ghost"
+                      <div className="flex gap-2">
+                        <Button onClick={addNewExercise} size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                          <Plus size={14} className="mr-1" />
+                          Add Exercise
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowAddExercise(false)} 
                           size="sm"
-                          onClick={handleAddExercise}
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50 p-1 h-8 w-8"
-                          disabled={!newExercise.name.trim()}
+                          className="border-blue-200 text-blue-700 hover:bg-blue-50"
                         >
-                          <Plus size={14} />
+                          Cancel
                         </Button>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                  {/* Edit Actions */}
-                  <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                    <Button
-                      variant="outline"
-                      onClick={handleCancelEditing}
-                      className="text-gray-600 border-gray-300"
-                    >
-                      <X size={16} className="mr-2" />
-                      Cancel
-                    </Button>
-                    <div className="space-x-3">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowResetDialog(true)}
-                        className="text-orange-600 border-orange-300 hover:bg-orange-50"
-                        disabled={!hasChanges}
-                      >
-                        <RotateCcw size={16} className="mr-2" />
-                        Reset
-                      </Button>
-                      <Button
-                        onClick={handleSaveChanges}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
-                        disabled={!hasChanges}
-                      >
-                        <Save size={16} className="mr-2" />
-                        Save Changes
-                      </Button>
-                    </div>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="viewing"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-3"
-                >
-                  {Object.entries(groupedExercises).map(([groupId, exercises]) => (
-                    <div key={groupId} className="space-y-2">
-                      {exercises.length > 1 && exercises[0].superset_group_id && (
-                        <div className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1 rounded-full inline-block">
-                          Superset Group
-                        </div>
-                      )}
-                      {exercises.map((exercise) => (
-                        <motion.div
-                          key={exercise.id}
-                          whileHover={{ scale: 1.02 }}
-                          className={`p-4 rounded-xl border transition-all duration-200 ${
-                            exercise.completed
-                              ? 'border-green-200 bg-green-50'
-                              : exercise.superset_group_id
-                              ? 'border-purple-200 bg-purple-50/50 hover:bg-purple-50'
-                              : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              {exercise.completed ? (
-                                <CheckCircle2 size={20} className="text-green-600" />
-                              ) : (
-                                <Circle size={20} className="text-gray-400" />
-                              )}
-                              <div>
-                                <h5 className={`font-medium ${exercise.completed ? 'text-green-900' : 'text-gray-900'}`}>
-                                  {exercise.name}
-                                </h5>
-                                <p className={`text-sm ${exercise.completed ? 'text-green-700' : 'text-gray-600'}`}>
-                                  {exercise.sets} sets × {exercise.reps} reps
-                                  {exercise.weight && exercise.weight !== 'bodyweight' && ` @ ${exercise.weight}`}
-                                </p>
-                              </div>
-                            </div>
-                            {exercise.source === 'voice' && (
-                              <Badge className="bg-blue-100 text-blue-700 text-xs">
-                                Voice Added
-                              </Badge>
-                            )}
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ))}
-                </motion.div>
+              {!showFullExercises && !isEditMode && totalExercises > 3 && (
+                <div className="text-center py-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFullExercises(true)}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    <ChevronDown size={12} className="mr-1" />
+                    Show {totalExercises - 3} more exercises
+                  </Button>
+                </div>
               )}
-            </AnimatePresence>
-          </div>
+            </motion.div>
+          )}
 
-          {/* Action Buttons */}
-          {!isEditing && (
-            <div className="flex flex-col space-y-3 pt-4 border-t border-gray-200">
-              <div className="grid grid-cols-2 gap-3">
+          {/* Exercise Preview (when not in edit mode) */}
+          {!showFullExercises && !isEditMode && workout.exercises.length > 0 && (
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Dumbbell size={16} />
+                  Exercise Preview
+                </h4>
                 <Button
-                  onClick={() => onStart?.(workout)}
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium py-3"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowFullExercises(true)}
+                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                 >
-                  <Play size={16} className="mr-2" />
-                  Start Workout
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={onAskCoach}
-                  className="border-blue-200 text-blue-600 hover:bg-blue-50 font-medium py-3"
-                >
-                  <MessageCircle size={16} className="mr-2" />
-                  Ask Coach
+                  <ChevronDown size={12} className="mr-1" />
+                  View All
                 </Button>
               </div>
-              <Button
-                variant="outline"
-                onClick={onReplaceWorkout}
-                className="w-full border-orange-200 text-orange-600 hover:bg-orange-50"
-              >
-                <RotateCcw size={16} className="mr-2" />
-                Replace Workout
-              </Button>
+
+              <div className="space-y-2">
+                {workout.exercises.slice(0, 3).map((exercise, index) => (
+                  <div
+                    key={exercise.id}
+                    className="flex items-center justify-between p-2 rounded-xl bg-white/70 backdrop-blur-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      {exercise.completed ? (
+                        <CheckCircle size={16} className="text-green-600" />
+                      ) : (
+                        <Circle size={16} className="text-gray-400" />
+                      )}
+                      <div>
+                        <p className={cn(
+                          "text-sm font-medium",
+                          exercise.completed && "line-through text-gray-500"
+                        )}>
+                          {exercise.name}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          {exercise.sets} × {exercise.reps}
+                          {exercise.weight && exercise.weight !== 'bodyweight' && 
+                            ` @ ${exercise.weight}`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    {exercise.source === 'voice' && (
+                      <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                        Voice
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-        </div>
+
+          {/* Progress Section */}
+          {!workout.isCompleted && !isEditMode && totalExercises > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600 font-medium">Progress</span>
+                <span className="font-semibold text-gray-800">
+                  {completedExercises}/{totalExercises}
+                </span>
+              </div>
+              <div className="relative">
+                <Progress value={progress} className="h-3 bg-gray-200" />
+                <div 
+                  className="absolute top-0 h-3 bg-gradient-to-r from-hashim-400 to-hashim-600 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="space-y-3 pt-2">
+            {isEditMode ? (
+              <div className="space-y-2">
+                {hasUnsavedChanges && (
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={resetChanges}
+                      variant="outline"
+                      className="flex-1 text-gray-600 border-gray-300 hover:bg-gray-50"
+                    >
+                      <RotateCcw size={14} className="mr-2" />
+                      Reset
+                    </Button>
+                    <Button 
+                      onClick={() => setShowSaveOptions(true)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Save size={14} className="mr-2" />
+                      Save Changes
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {workout.isCompleted ? (
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    onClick={() => onStart?.(workout)}
+                    className="w-full text-green-600 border-green-200 hover:bg-green-50 h-12 rounded-2xl font-semibold"
+                  >
+                    <TrendingUp size={18} className="mr-2" />
+                    View Results
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => onStart?.(workout)}
+                    className="w-full bg-gradient-to-r from-hashim-500 to-hashim-600 hover:from-hashim-600 hover:to-hashim-700 text-white h-12 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                    size="lg"
+                  >
+                    <Play size={18} className="mr-2" />
+                    Start Workout
+                  </Button>
+                )}
+
+                {/* Secondary CTAs */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onAskCoach}
+                    className="flex-1 text-purple-600 border-purple-200 hover:bg-purple-50 rounded-xl"
+                  >
+                    <MessageCircle size={14} className="mr-1" />
+                    Ask Coach
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onReplaceWorkout}
+                    className="flex-1 text-blue-600 border-blue-200 hover:bg-blue-50 rounded-xl"
+                  >
+                    <Dumbbell size={14} className="mr-1" />
+                    Replace
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Empty State */}
+          {workout.exercises.length === 0 && (
+            <div className="text-center py-8 text-gray-400">
+              <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No exercises in this workout</p>
+              <p className="text-xs mt-1">Add exercises to get started</p>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
-      {/* Save Modal */}
-      <Dialog open={showSaveModal} onOpenChange={setShowSaveModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-gray-900">
-              Save Workout Changes
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-gray-600">
-              How would you like to apply these changes to your <strong>"{workout.title}"</strong> workouts?
-            </p>
-            <div className="space-y-3">
-              <Button
-                onClick={() => handleConfirmSave('today')}
-                variant="outline"
-                className="w-full justify-start text-left h-auto p-4 border-2 hover:border-blue-300"
-              >
-                <div>
-                  <div className="font-medium text-gray-900">Save for today only</div>
-                  <div className="text-sm text-gray-600">
-                    Changes will only apply to this specific workout session
-                  </div>
-                </div>
-              </Button>
-              <Button
-                onClick={() => handleConfirmSave('all_future')}
-                variant="outline"
-                className="w-full justify-start text-left h-auto p-4 border-2 hover:border-green-300"
-              >
-                <div>
-                  <div className="font-medium text-gray-900">Save for all future workouts</div>
-                  <div className="text-sm text-gray-600">
-                    Changes will apply to all upcoming "{workout.title}" workouts
-                  </div>
-                </div>
-              </Button>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSaveModal(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reset Confirmation Dialog */}
-      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset Changes?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will discard all your unsaved changes and return to the original workout. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleResetChanges}
-              className="bg-red-600 hover:bg-red-700"
+      {/* Save Options Modal */}
+      <AnimatePresence>
+        {showSaveOptions && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowSaveOptions(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
             >
-              Reset Changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Save Changes</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                How would you like to apply these changes?
+              </p>
+              
+              <div className="space-y-3">
+                <Button
+                  onClick={() => saveChanges(false)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 rounded-2xl font-medium"
+                >
+                  <Calendar size={16} className="mr-2" />
+                  Save for Today Only
+                </Button>
+                
+                <Button
+                  onClick={() => saveChanges(true)}
+                  variant="outline"
+                  className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 h-12 rounded-2xl font-medium"
+                >
+                  <CalendarDays size={16} className="mr-2" />
+                  Save for All "{workout.title}" Workouts
+                </Button>
+                
+                <Button
+                  onClick={() => setShowSaveOptions(false)}
+                  variant="ghost"
+                  className="w-full text-gray-600 hover:bg-gray-100 h-10 rounded-2xl"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
