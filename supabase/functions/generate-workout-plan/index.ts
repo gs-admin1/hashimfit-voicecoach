@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 
@@ -57,12 +56,13 @@ serve(async (req) => {
     const assessmentData = await req.json()
     console.log('Received assessment data:', assessmentData)
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    // Use the assessments-specific API key
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY_ASSESSMENTS')
     const assistantId = Deno.env.get('OPENAI_ASSISTANT_ASSESSMENT_ID')
     
     if (!openaiApiKey) {
-      console.error('Missing OpenAI API Key')
-      throw new Error('Missing OpenAI API Key')
+      console.error('Missing OpenAI Assessment API Key')
+      throw new Error('Missing OpenAI Assessment API Key')
     }
     
     if (!assistantId) {
@@ -73,6 +73,7 @@ serve(async (req) => {
     // Log the assistant ID being used (first 10 chars for security)
     console.log('Using Assistant ID:', assistantId.substring(0, 10) + '...')
     console.log('Full Assistant ID for debugging:', assistantId)
+    console.log('Using API Key (first 10 chars):', openaiApiKey.substring(0, 10) + '...')
 
     // Format the raw assessment data for the assistant
     const rawAssessmentData = {
