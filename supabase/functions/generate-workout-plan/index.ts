@@ -63,50 +63,21 @@ serve(async (req) => {
       throw new Error('Missing OpenAI API Key')
     }
 
-    // Map fitness goals to match our database constraints
-    const fitnessGoalMapping = {
-      'muscle_gain': 'muscle_gain',
-      'weight_loss': 'weight_loss', 
-      'endurance': 'endurance',
-      'sport_specific': 'sports_performance',
-      'general_fitness': 'general_fitness'
-    }
+    // Send the raw assessment data directly to OpenAI in the expected format
+    const assessmentPrompt = JSON.stringify({
+      age: parseInt(assessmentData.age),
+      gender: assessmentData.gender,
+      height: parseFloat(assessmentData.height),
+      weight: parseFloat(assessmentData.weight),
+      fitness_goal: assessmentData.fitnessGoal,
+      workout_frequency: parseInt(assessmentData.workoutFrequency),
+      equipment: assessmentData.equipment,
+      diet_type: assessmentData.diet,
+      sports_played: assessmentData.sportsPlayed || [],
+      allergies: assessmentData.allergies || []
+    })
 
-    // Map equipment values to match our database constraints
-    const equipmentMapping = {
-      'full_gym': 'full_gym',
-      'home_gym': 'home_gym',
-      'minimal': 'minimal',
-      'bodyweight_only': 'bodyweight',
-      'none': 'none'
-    }
-
-    const mappedFitnessGoal = fitnessGoalMapping[assessmentData.fitnessGoal] || 'general_fitness'
-    const mappedEquipment = equipmentMapping[assessmentData.equipment] || 'minimal'
-
-    // Generate comprehensive prompt for NEW MUSCLE! AI Coach
-    const assessmentPrompt = `Create a comprehensive 4-week fitness and nutrition plan for this client:
-
-**CLIENT PROFILE:**
-- Age: ${assessmentData.age}
-- Gender: ${assessmentData.gender}
-- Height: ${assessmentData.height}cm
-- Weight: ${assessmentData.weight}kg
-- Primary Goal: ${mappedFitnessGoal}
-- Workout Frequency: ${assessmentData.workoutFrequency} days per week
-- Available Equipment: ${mappedEquipment}
-- Diet Preference: ${assessmentData.diet}
-- Sports Played: ${assessmentData.sportsPlayed?.join(', ') || 'None'}
-- Allergies: ${assessmentData.allergies?.join(', ') || 'None'}
-
-**REQUIREMENTS:**
-1. Create a 4-week workout schedule with specific exercises, sets, reps, and rest periods
-2. Design nutrition plan with daily macro targets and 4 meals per day
-3. Provide actionable recommendations for success
-
-**IMPORTANT:** Return response in the exact JSON format specified in your system instructions. No markdown, no explanations - just pure JSON that can be parsed directly.`
-
-    console.log('Calling OpenAI API with NEW MUSCLE! system...')
+    console.log('Sending assessment data to OpenAI:', assessmentPrompt)
 
     // Call OpenAI API with NEW MUSCLE! system instructions
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -209,6 +180,7 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
 * All numeric values (reps, weight, macros) must be **realistic and actionable**
 * Avoid vague ranges like "varies" — prefer exact or goal-aligned quantities
 * Use \`"bodyweight"\` if no weight is needed for an exercise
+* \`difficulty\` must be a NUMBER from 1-5 (1=beginner, 5=expert)
 
 ---
 
@@ -283,7 +255,7 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
           title: scheduleItem.workout_title,
           description: scheduleItem.description || `Week ${scheduleItem.week} - ${scheduleItem.workout_title}`,
           category: scheduleItem.category || 'strength',
-          difficulty: scheduleItem.difficulty || 3,
+          difficulty: parseInt(scheduleItem.difficulty) || 3, // Ensure it's a number
           estimated_duration: scheduleItem.estimated_duration || '45 minutes',
           week: scheduleItem.week,
           day: scheduleItem.day,
@@ -418,7 +390,27 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
 
     console.log('Created nutrition plan successfully')
 
-    // Update user profile to mark assessment as completed with proper mapping
+    // Map assessment data to database format
+    const fitnessGoalMapping = {
+      'muscle_gain': 'muscle_gain',
+      'weight_loss': 'weight_loss', 
+      'endurance': 'endurance',
+      'sport_specific': 'sports_performance',
+      'general_fitness': 'general_fitness'
+    }
+
+    const equipmentMapping = {
+      'full_gym': 'full_gym',
+      'home_gym': 'home_gym',
+      'minimal': 'minimal',
+      'bodyweight_only': 'bodyweight',
+      'none': 'none'
+    }
+
+    const mappedFitnessGoal = fitnessGoalMapping[assessmentData.fitnessGoal] || 'general_fitness'
+    const mappedEquipment = equipmentMapping[assessmentData.equipment] || 'minimal'
+
+    // Update user profile to mark assessment as completed
     const { error: profileError } = await supabaseClient
       .from('profiles')
       .update({ 
