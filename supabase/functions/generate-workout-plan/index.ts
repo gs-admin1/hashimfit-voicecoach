@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 
@@ -58,13 +57,20 @@ serve(async (req) => {
     console.log('Received assessment data:', assessmentData)
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    const assistantId = Deno.env.get('OPENAI_ASSISTANT_ASSESSMENT_ID')
+    
     if (!openaiApiKey) {
       console.error('Missing OpenAI API Key')
       throw new Error('Missing OpenAI API Key')
     }
+    
+    if (!assistantId) {
+      console.error('Missing OpenAI Assistant ID')
+      throw new Error('Missing OpenAI Assistant ID')
+    }
 
-    // Send the raw assessment data directly to OpenAI in the expected format
-    const assessmentPrompt = JSON.stringify({
+    // Format the raw assessment data for the assistant
+    const rawAssessmentData = {
       age: parseInt(assessmentData.age),
       gender: assessmentData.gender,
       height: parseFloat(assessmentData.height),
@@ -75,149 +81,139 @@ serve(async (req) => {
       diet_type: assessmentData.diet,
       sports_played: assessmentData.sportsPlayed || [],
       allergies: assessmentData.allergies || []
-    })
+    }
 
-    console.log('Sending assessment data to OpenAI:', assessmentPrompt)
+    console.log('Sending raw assessment data to OpenAI Assistant:', JSON.stringify(rawAssessmentData))
 
-    // Call OpenAI API with NEW MUSCLE! system instructions
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Create a thread for the assistant
+    const threadResponse = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2',
+      },
+      body: JSON.stringify({}),
+    })
+
+    if (!threadResponse.ok) {
+      const errorText = await threadResponse.text()
+      console.error('Thread creation error:', threadResponse.status, errorText)
+      throw new Error(`Thread creation error: ${threadResponse.status} - ${errorText}`)
+    }
+
+    const threadData = await threadResponse.json()
+    const threadId = threadData.id
+    console.log('Created thread:', threadId)
+
+    // Add message to thread with raw assessment data
+    const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: `## 🧠 Unified System Instructions for OpenAI Assistant ("NEW MUSCLE!")
-
-**You are NEW MUSCLE!** — an AI fitness coach tailored to deliver **personalized, motivational, and scientifically accurate** training and nutrition plans. Each client has a unique assistant instance built around their assessment data and fitness goals.
-
-Your job is to collect client inputs, generate a complete fitness + nutrition blueprint, and return a structured plan **in the exact format provided below** for storage in the user's Supabase-connected app (HashimFit).
-
----
-
-### 💪 Responsibilities
-
-1. **Collect Key Client Data**
-   * Equipment access (e.g., bodyweight, dumbbells, gym)
-   * Weekly schedule & time per session
-   * Injuries or health restrictions
-   * Goals (muscle gain, fat loss, strength, etc.)
-   * Experience level (beginner, intermediate, advanced)
-   * Dietary preferences
-
-2. **Workout Plan Generation**
-   * Create a **4-week schedule** (at minimum) with:
-     * Day, week, workout_title, difficulty, duration, and description
-     * Exercises with sets, reps, weight, rest, and notes
-   * Prioritize:
-     * **Progressive overload**
-     * **Injury prevention**
-     * **Muscle group balance**
-   * Use scientific principles from uploaded documents (e.g., hypertrophy training, push-pull-legs splits)
-
-3. **Nutrition Plan Generation**
-   * Tailor macronutrient targets to goal and experience
-   * Provide **four meals/day**: breakfast, lunch, dinner, snack
-   * Include meal title, description, calories, and macros
-
-4. **Motivational Guidance**
-   * Offer workout tips, recovery advice, nutrition reminders, and weekly goals
-   * Tone should be encouraging and professional
-
----
-
-### ✅ Response Format (MUST match this schema exactly)
-
-\`\`\`json
-{
-  "workout_schedule": [...],  // 4-week training program
-  "nutrition_plan": {
-    "daily_calories": 2200,
-    "protein_g": 165,
-    "carbs_g": 220,
-    "fat_g": 85,
-    "diet_type": "standard",  // Options: standard, vegetarian, vegan, keto, paleo, gluten_free
-    "meals": [
-      {
-        "meal_type": "breakfast",  // breakfast, lunch, dinner, snack
-        "meal_title": "Example",
-        "description": "Ingredients + prep",
-        "calories": 400,
-        "protein_g": 30,
-        "carbs_g": 40,
-        "fat_g": 15
-      }
-    ]
-  },
-  "recommendations": {
-    "workout_tips": "Motivational advice for training",
-    "nutrition_tips": "Hydration, timing, portion reminders",
-    "weekly_goals": "Clear goals for the user to achieve this week"
-  }
-}
-\`\`\`
-
----
-
-### 🧩 Database Mapping Strategy (internal logic)
-
-* **Workout Plans** → \`workout_plans\`, \`workout_exercises\`, \`workout_schedule\`
-* **Nutrition** → \`nutrition_plans\`, \`meal_plans\`
-* **User Profile** → \`profiles\`, \`assessment_data\`
-
----
-
-### ⚠️ Formatting Rules
-
-* \`workout_schedule\` must include valid \`category\` values:
-  \`strength\`, \`cardio\`, \`hiit\`, \`recovery\`, \`sport_specific\`, \`custom\`
-* All \`day\` fields must be capitalized full names: \`Monday\`, \`Tuesday\`, etc.
-* All \`meal_type\` values must be: \`breakfast\`, \`lunch\`, \`dinner\`, \`snack\`
-* All numeric values (reps, weight, macros) must be **realistic and actionable**
-* Avoid vague ranges like "varies" — prefer exact or goal-aligned quantities
-* Use \`"bodyweight"\` if no weight is needed for an exercise
-* \`difficulty\` must be a NUMBER from 1-5 (1=beginner, 5=expert)
-* \`workout_title\` must be a descriptive string that will become the workout plan title
-
----
-
-### 🎯 Behavior Notes
-
-* Always return in **strict JSON** — no markdown or explanations
-* Avoid conversational phrasing outside the required schema
-* If user inputs are incomplete, **infer based on typical beginner/intermediate scenarios**
-* Prioritize structure over filler: **response must pass validation by the app**` 
-          },
-          { role: 'user', content: assessmentPrompt }
-        ],
-        temperature: 0.2,
-        max_tokens: 4000,
-        response_format: { type: "json_object" }
+        role: 'user',
+        content: JSON.stringify(rawAssessmentData)
       }),
     })
 
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text()
-      console.error('OpenAI API error:', openAIResponse.status, errorText)
-      throw new Error(`OpenAI API error: ${openAIResponse.status} - ${errorText}`)
+    if (!messageResponse.ok) {
+      const errorText = await messageResponse.text()
+      console.error('Message creation error:', messageResponse.status, errorText)
+      throw new Error(`Message creation error: ${messageResponse.status} - ${errorText}`)
     }
 
-    const openAIData = await openAIResponse.json()
-    console.log('OpenAI raw response:', openAIData)
-    
-    if (!openAIData.choices || !openAIData.choices[0] || !openAIData.choices[0].message) {
-      throw new Error('Invalid OpenAI response structure')
+    console.log('Added message to thread')
+
+    // Run the assistant
+    const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2',
+      },
+      body: JSON.stringify({
+        assistant_id: assistantId
+      }),
+    })
+
+    if (!runResponse.ok) {
+      const errorText = await runResponse.text()
+      console.error('Run creation error:', runResponse.status, errorText)
+      throw new Error(`Run creation error: ${runResponse.status} - ${errorText}`)
     }
+
+    const runData = await runResponse.json()
+    const runId = runData.id
+    console.log('Started run:', runId)
+
+    // Poll for completion
+    let runStatus = 'in_progress'
+    let attempts = 0
+    const maxAttempts = 30 // 30 seconds timeout
+
+    while (runStatus === 'in_progress' || runStatus === 'queued') {
+      if (attempts >= maxAttempts) {
+        throw new Error('Assistant run timeout')
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+      
+      const statusResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
+        headers: {
+          Authorization: `Bearer ${openaiApiKey}`,
+          'OpenAI-Beta': 'assistants=v2',
+        },
+      })
+
+      if (!statusResponse.ok) {
+        throw new Error(`Status check error: ${statusResponse.status}`)
+      }
+
+      const statusData = await statusResponse.json()
+      runStatus = statusData.status
+      attempts++
+      
+      console.log(`Run status: ${runStatus} (attempt ${attempts})`)
+    }
+
+    if (runStatus !== 'completed') {
+      throw new Error(`Assistant run failed with status: ${runStatus}`)
+    }
+
+    // Get the messages from the thread
+    const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      headers: {
+        Authorization: `Bearer ${openaiApiKey}`,
+        'OpenAI-Beta': 'assistants=v2',
+      },
+    })
+
+    if (!messagesResponse.ok) {
+      const errorText = await messagesResponse.text()
+      console.error('Messages retrieval error:', messagesResponse.status, errorText)
+      throw new Error(`Messages retrieval error: ${messagesResponse.status} - ${errorText}`)
+    }
+
+    const messagesData = await messagesResponse.json()
+    console.log('Retrieved messages from thread')
+
+    // Get the assistant's response (first message from assistant)
+    const assistantMessage = messagesData.data.find(msg => msg.role === 'assistant')
+    
+    if (!assistantMessage || !assistantMessage.content || !assistantMessage.content[0]) {
+      throw new Error('No response from assistant')
+    }
+
+    const rawContent = assistantMessage.content[0].text.value
+    console.log('Raw content from OpenAI Assistant:', rawContent)
 
     let planData
     try {
-      const rawContent = openAIData.choices[0].message.content
-      console.log('Raw content from OpenAI:', rawContent)
-      
       // Clean up the JSON content to handle potential formatting issues
       let cleanedContent = rawContent.trim()
       
@@ -230,14 +226,14 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
       console.log('Successfully parsed plan data:', planData)
     } catch (parseError) {
       console.error('JSON parse error:', parseError)
-      console.error('Failed to parse content:', openAIData.choices[0].message.content)
-      throw new Error(`Failed to parse OpenAI response as JSON: ${parseError.message}`)
+      console.error('Failed to parse content:', rawContent)
+      throw new Error(`Failed to parse Assistant response as JSON: ${parseError.message}`)
     }
 
     // Validate the required structure
     if (!planData.workout_schedule || !planData.nutrition_plan || !planData.recommendations) {
       console.error('Invalid plan data structure:', planData)
-      throw new Error('Invalid plan data structure from OpenAI')
+      throw new Error('Invalid plan data structure from Assistant')
     }
 
     console.log('Generated plan data:', planData)
@@ -253,7 +249,7 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
       
       if (!workoutsByWeekAndDay[key]) {
         workoutsByWeekAndDay[key] = {
-          title: scheduleItem.workout_title, // FIX: Map workout_title to title
+          title: scheduleItem.workout_title, // Map workout_title to title
           description: scheduleItem.description || `Week ${scheduleItem.week} - ${scheduleItem.workout_title}`,
           category: scheduleItem.category || 'strength',
           difficulty: parseInt(scheduleItem.difficulty) || 3, // Ensure it's a number
@@ -463,7 +459,7 @@ Your job is to collect client inputs, generate a complete fitness + nutrition bl
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'NEW MUSCLE! fitness plan generated and stored successfully',
+        message: 'HashimFit fitness plan generated and stored successfully',
         data: {
           workout_plans: workoutPlans.length,
           nutrition_plan: nutritionPlan.id,
