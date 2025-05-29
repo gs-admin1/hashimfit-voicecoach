@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
@@ -279,21 +280,92 @@ export default function WorkoutsPage() {
     }
   });
 
+  // Mutation for completing a workout
+  const completeWorkoutMutation = useMutation({
+    mutationFn: async ({ workoutData, exercises }: { workoutData: any, exercises: any[] }) => {
+      if (!userId) throw new Error("User not authenticated");
+      
+      console.log("Completing workout:", workoutData.title, "with", exercises.length, "exercises");
+      
+      // Create workout log
+      const workoutLog = {
+        user_id: userId,
+        workout_plan_id: workoutData.id,
+        start_time: new Date().toISOString(),
+        end_time: new Date().toISOString(),
+        duration: workoutData.estimatedDuration * 60, // Convert minutes to seconds
+        calories_burned: Math.round(workoutData.estimatedDuration * 5), // Rough estimate
+        rating: 4, // Default rating
+        notes: "Workout completed"
+      };
+      
+      // Prepare exercise logs
+      const exerciseLogs = exercises.map((ex, index) => ({
+        exercise_name: ex.name,
+        sets_completed: ex.sets,
+        reps_completed: ex.reps,
+        weight_used: ex.weight,
+        rest_time: ex.rest_seconds || 60,
+        order_index: index,
+        superset_group_id: ex.superset_group_id || null,
+        rest_seconds: ex.rest_seconds || 60,
+        position_in_workout: index,
+        notes: ""
+      }));
+      
+      // Log the workout
+      const workoutLogId = await WorkoutService.logWorkout(workoutLog, exerciseLogs);
+      if (!workoutLogId) throw new Error("Failed to log workout");
+      
+      // Mark the scheduled workout as completed
+      const selectedWorkoutSchedule = scheduledWorkouts.find(w => w.id === workoutData.id);
+      if (selectedWorkoutSchedule) {
+        await WorkoutService.completeScheduledWorkout(selectedWorkoutSchedule.schedule_id, workoutLogId);
+      }
+      
+      return { workoutLogId, scheduleId: selectedWorkoutSchedule?.schedule_id };
+    },
+    onSuccess: (result) => {
+      console.log("Successfully completed workout:", result);
+      
+      // Invalidate queries to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts'] });
+      queryClient.invalidateQueries({ queryKey: ['workoutLogs'] });
+      queryClient.invalidateQueries({ queryKey: ['recentWorkoutStats'] });
+      
+      toast({
+        title: "Workout Completed! 🎉",
+        description: "Your progress has been saved successfully.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error completing workout:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete workout. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const startWorkoutSession = (workout: any) => {
     setSelectedWorkout(workout);
     setView("session");
   };
 
   const completeWorkout = () => {
+    if (selectedWorkout) {
+      // Save the workout completion to database
+      completeWorkoutMutation.mutate({
+        workoutData: selectedWorkout,
+        exercises: selectedWorkout.exercises
+      });
+    }
     setView("completion");
   };
 
   const handleWorkoutCompletion = (rating: number, notes: string) => {
     console.log("Workout completed with rating:", rating, "notes:", notes);
-    toast({
-      title: "Workout Complete! 🎉",
-      description: "Your progress has been saved successfully.",
-    });
     setView("list");
     setSelectedWorkout(null);
   };
