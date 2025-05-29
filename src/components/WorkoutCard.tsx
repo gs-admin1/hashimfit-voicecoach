@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,11 +69,17 @@ export function WorkoutCard({
     const sessionWorkout = {
       id: workout.id,
       title: workout.title,
-      exercises: workout.exercises.map(ex => ({
+      exercises: workout.exercises.map((ex, index) => ({
         ...ex,
         completed: ex.completed ? 1 : 0,
         rest_seconds: 60,
-        position_in_workout: 0
+        position_in_workout: index,
+        originalData: {
+          sets: ex.sets,
+          reps: ex.reps,
+          weight: ex.weight,
+          rest_seconds: 60
+        }
       })),
       category: workout.category || 'strength',
       workout_log_id: workout.workout_log_id

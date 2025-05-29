@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
 import { WorkoutCardImproved } from "@/components/WorkoutCardImproved";
-import { WorkoutSessionCard } from "@/components/WorkoutSessionCard";
+import { EnhancedWorkoutSessionCard } from "@/components/EnhancedWorkoutSessionCard";
 import { CalendarStrip } from "@/components/CalendarStrip";
 import { WorkoutFilters } from "@/components/WorkoutFilters";
 import { WorkoutCompletionSummary } from "@/components/WorkoutCompletionSummary";
@@ -119,7 +119,8 @@ export default function WorkoutsPage() {
             isCompleted: schedule.is_completed,
             scheduledDate: schedule.scheduled_date,
             scheduledTime: schedule.scheduled_time,
-            streak: Math.floor(Math.random() * 5) + 1
+            streak: Math.floor(Math.random() * 5) + 1,
+            workout_log_id: schedule.workout_log_id
           };
         })
       );
@@ -315,8 +316,27 @@ export default function WorkoutsPage() {
     );
   }
 
-  // Session view
+  // Session view - now using EnhancedWorkoutSessionCard
   if (view === "session" && selectedWorkout) {
+    const enhancedWorkout = {
+      id: selectedWorkout.id,
+      title: selectedWorkout.title,
+      exercises: selectedWorkout.exercises.map((ex: any, index: number) => ({
+        ...ex,
+        completed: ex.completed ? 1 : 0,
+        rest_seconds: 60,
+        position_in_workout: index,
+        originalData: {
+          sets: ex.sets,
+          reps: ex.reps,
+          weight: ex.weight,
+          rest_seconds: 60
+        }
+      })),
+      category: selectedWorkout.category || 'strength',
+      workout_log_id: selectedWorkout.workout_log_id
+    };
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
         <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
@@ -334,8 +354,8 @@ export default function WorkoutsPage() {
         
         <main className="pt-4 px-4 animate-fade-in pb-20">
           <div className="max-w-lg mx-auto">
-            <WorkoutSessionCard
-              workout={selectedWorkout}
+            <EnhancedWorkoutSessionCard
+              workout={enhancedWorkout}
               onComplete={completeWorkout}
               onSaveAsFavorite={saveAsFavorite}
               onStartRestTimer={startRestTimer}
