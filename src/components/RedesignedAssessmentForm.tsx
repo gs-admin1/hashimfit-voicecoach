@@ -65,18 +65,17 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
     defaultValues: DEFAULT_VALUES,
   });
 
-  const validateCurrentStep = () => {
+  const validateCurrentStep = (): boolean => {
     const currentStepId = STEPS[currentStep].id;
+    const values = form.getValues();
     
     switch (currentStepId) {
       case "basic":
-        return form.getValues().age && form.getValues().gender && 
-               form.getValues().height && form.getValues().weight;
+        return !!(values.age && values.gender && values.height && values.weight);
       case "goals":
-        return form.getValues().fitnessGoal;
+        return !!values.fitnessGoal;
       case "preferences":
-        return form.getValues().workoutFrequency && form.getValues().diet && 
-               form.getValues().equipment;
+        return !!(values.workoutFrequency && values.diet && values.equipment);
       case "activities":
         return true; // Optional fields
       case "summary":
