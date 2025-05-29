@@ -78,7 +78,7 @@ export function DailyWorkoutSummaryCard({
   
   const collapsed = onToggleCollapse ? isCollapsed : localCollapsed;
 
-  // Get difficulty info with Apple-inspired colors
+  // Get difficulty info with conditional colors
   const getDifficultyInfo = (difficulty?: number) => {
     if (!difficulty) return { label: 'Beginner', color: 'bg-green-100 text-green-800', emoji: '🟢' };
     
@@ -114,6 +114,9 @@ export function DailyWorkoutSummaryCard({
   const totalExercises = workoutData?.exercises.length || 0;
   const progress = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
   const hasStarted = completedExercises > 0;
+
+  // Determine if workout is completed
+  const isCompleted = workoutData?.is_completed || false;
 
   if (isLoading) {
     return (
@@ -164,21 +167,30 @@ export function DailyWorkoutSummaryCard({
 
   const difficultyInfo = getDifficultyInfo(workoutData.difficulty);
 
+  // Use green gradient when completed, original when not
+  const cardBackground = isCompleted 
+    ? "bg-gradient-to-br from-green-400 via-green-500 to-emerald-600" 
+    : "";
+  
+  const textColor = isCompleted ? "text-white" : "";
+  const iconColor = isCompleted ? "text-white/90" : "text-hashim-600";
+  const badgeColor = isCompleted ? "bg-white/20 text-white border-white/20" : difficultyInfo.color;
+
   return (
-    <Card className={cn("transition-all duration-300", className)}>
+    <Card className={cn("transition-all duration-300", cardBackground, className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="p-2 bg-hashim-100 rounded-lg">
-              <Dumbbell className="h-4 w-4 text-hashim-600" />
+            <div className={cn("p-2 rounded-lg", isCompleted ? "bg-white/20" : "bg-hashim-100")}>
+              <Dumbbell className={cn("h-4 w-4", iconColor)} />
             </div>
-            <CardTitle className="text-lg">Today's Workout</CardTitle>
+            <CardTitle className={cn("text-lg", textColor)}>Today's Workout</CardTitle>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleToggle}
-            className="h-8 w-8 p-0"
+            className={cn("h-8 w-8 p-0", isCompleted && "hover:bg-white/20 text-white")}
           >
             {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </Button>
@@ -190,13 +202,13 @@ export function DailyWorkoutSummaryCard({
           {/* Workout Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-base">{workoutData.title}</h3>
+              <h3 className={cn("font-semibold text-base", textColor)}>{workoutData.title}</h3>
               <div className="flex items-center space-x-2 mt-1">
-                <Badge className={cn("text-xs", difficultyInfo.color)}>
+                <Badge className={cn("text-xs", badgeColor)}>
                   {difficultyInfo.emoji} {difficultyInfo.label}
                 </Badge>
-                {workoutData.is_completed && (
-                  <div className="flex items-center space-x-1 text-green-600">
+                {isCompleted && (
+                  <div className="flex items-center space-x-1 text-white">
                     <CheckCircle className="h-4 w-4" />
                     <span className="text-sm font-medium">Complete</span>
                   </div>
@@ -208,14 +220,17 @@ export function DailyWorkoutSummaryCard({
           {/* Progress Section */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Progress</span>
-              <span>{completedExercises}/{totalExercises} exercises</span>
+              <span className={textColor}>Progress</span>
+              <span className={textColor}>{completedExercises}/{totalExercises} exercises</span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress 
+              value={progress} 
+              className={cn("h-2", isCompleted && "bg-white/20")} 
+            />
           </div>
 
           {/* Workout Stats */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className={cn("flex items-center justify-between text-sm", isCompleted ? "text-white/90" : "text-muted-foreground")}>
             <div className="flex items-center space-x-1">
               <Clock className="h-4 w-4" />
               <span>{workoutData.estimated_duration || 45} min</span>
@@ -230,27 +245,36 @@ export function DailyWorkoutSummaryCard({
           {workoutData.target_muscles && workoutData.target_muscles.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {workoutData.target_muscles.slice(0, 3).map((muscle, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
+                <Badge 
+                  key={index} 
+                  variant="secondary" 
+                  className={cn("text-xs", isCompleted && "bg-white/20 text-white")}
+                >
                   {muscle}
                 </Badge>
               ))}
               {workoutData.target_muscles.length > 3 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge 
+                  variant="secondary" 
+                  className={cn("text-xs", isCompleted && "bg-white/20 text-white")}
+                >
                   +{workoutData.target_muscles.length - 3} more
                 </Badge>
               )}
             </div>
           )}
 
-          {/* Exercise List (if workout has started) */}
-          {hasStarted && !workoutData.is_completed && (
+          {/* Exercise List (if workout has started and not completed) */}
+          {hasStarted && !isCompleted && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">Exercises</h4>
+              <h4 className={cn("text-sm font-medium", textColor)}>Exercises</h4>
               <div className="space-y-1 max-h-32 overflow-y-auto">
                 {workoutData.exercises.slice(0, 4).map((exercise) => (
                   <div 
                     key={exercise.id}
-                    className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                    className={cn("flex items-center justify-between p-2 rounded-lg", 
+                      isCompleted ? "bg-white/20" : "bg-gray-50"
+                    )}
                   >
                     <div className="flex items-center space-x-2">
                       <button
@@ -259,7 +283,9 @@ export function DailyWorkoutSummaryCard({
                           "w-4 h-4 rounded border-2 flex items-center justify-center transition-colors",
                           exercise.completed 
                             ? "bg-green-500 border-green-500" 
-                            : "border-gray-300 hover:border-green-400"
+                            : isCompleted 
+                              ? "border-white/50 hover:border-white" 
+                              : "border-gray-300 hover:border-green-400"
                         )}
                       >
                         {exercise.completed && (
@@ -268,19 +294,52 @@ export function DailyWorkoutSummaryCard({
                       </button>
                       <span className={cn(
                         "text-sm",
-                        exercise.completed && "line-through text-muted-foreground"
+                        exercise.completed && "line-through",
+                        isCompleted ? "text-white" : exercise.completed ? "text-muted-foreground" : ""
                       )}>
                         {exercise.name}
                       </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className={cn("text-xs", isCompleted ? "text-white/90" : "text-muted-foreground")}>
                       {exercise.sets} × {exercise.reps}
                     </span>
                   </div>
                 ))}
                 {workoutData.exercises.length > 4 && (
                   <div className="text-center">
-                    <span className="text-xs text-muted-foreground">
+                    <span className={cn("text-xs", isCompleted ? "text-white/90" : "text-muted-foreground")}>
+                      +{workoutData.exercises.length - 4} more exercises
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Exercise List for completed workouts */}
+          {isCompleted && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-white">Completed Exercises</h4>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {workoutData.exercises.slice(0, 4).map((exercise) => (
+                  <div 
+                    key={exercise.id}
+                    className="flex items-center justify-between p-2 bg-white/20 rounded-lg"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="w-4 h-4 text-white" />
+                      <span className="text-sm text-white">
+                        {exercise.name}
+                      </span>
+                    </div>
+                    <span className="text-xs text-white/90">
+                      {exercise.sets} × {exercise.reps}
+                    </span>
+                  </div>
+                ))}
+                {workoutData.exercises.length > 4 && (
+                  <div className="text-center">
+                    <span className="text-xs text-white/90">
                       +{workoutData.exercises.length - 4} more exercises
                     </span>
                   </div>
@@ -291,12 +350,12 @@ export function DailyWorkoutSummaryCard({
           
           {/* Action Button */}
           <div className="pt-2">
-            {workoutData.is_completed ? (
+            {isCompleted ? (
               <Button 
                 size="sm" 
                 variant="outline"
                 onClick={handleViewResults}
-                className="w-full text-green-600 border-green-200 hover:bg-green-50"
+                className="w-full bg-white/20 text-white border-white/50 hover:bg-white/30 hover:text-white"
               >
                 <BarChart3 size={16} className="mr-2" />
                 View Results

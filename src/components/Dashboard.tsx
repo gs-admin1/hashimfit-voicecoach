@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -465,7 +466,8 @@ export function Dashboard() {
         </div>
       </div>
       
-      <div className="space-y-4 mb-6">
+      {/* Move DailyWorkoutSummaryCard here - right after the snap/log buttons */}
+      <div className="mb-6">
         <DailyWorkoutSummaryCard 
           isCollapsed={cardStates.workoutSummary}
           onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
@@ -475,7 +477,9 @@ export function Dashboard() {
           onCompleteExercise={handleCompleteExercise}
           isLoading={isLoadingSelectedWorkout}
         />
-        
+      </div>
+      
+      <div className="space-y-4 mb-6">
         <NutritionProgressCard 
           isCollapsed={cardStates.nutrition}
           onToggleCollapse={() => toggleCardCollapse('nutrition')}
