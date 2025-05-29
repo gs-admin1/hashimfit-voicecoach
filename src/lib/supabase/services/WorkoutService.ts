@@ -751,4 +751,20 @@ export class WorkoutService {
       return null;
     }
   }
+
+  static async getWorkoutLogById(logId: string): Promise<WorkoutLog | null> {
+    try {
+      const { data, error } = await supabase
+        .from('workout_logs')
+        .select('*')
+        .eq('id', logId)
+        .single();
+        
+      if (error) throw error;
+      return data as WorkoutLog;
+    } catch (error) {
+      console.error('Error fetching workout log:', error);
+      return null;
+    }
+  }
 }

@@ -10,6 +10,7 @@ import Assessment from "./pages/Assessment";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Workouts from "./pages/Workouts";
+import WorkoutResults from "./pages/WorkoutResults";
 import Planner from "./pages/Planner";
 import Progress from "./pages/Progress";
 import { UserProvider } from "./context/UserContext";
@@ -55,6 +56,11 @@ const App = () => (
               <Route path="/workouts" element={
                 <AuthGuard>
                   <Workouts />
+                </AuthGuard>
+              } />
+              <Route path="/workout-results/:workoutLogId" element={
+                <AuthGuard>
+                  <WorkoutResults />
                 </AuthGuard>
               } />
               <Route path="/planner" element={
