@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
-import { WorkoutCardImproved } from "@/components/WorkoutCardImproved";
+import { WorkoutCard } from "@/components/WorkoutCard";
 import { EnhancedWorkoutSessionCard } from "@/components/EnhancedWorkoutSessionCard";
 import { CalendarStrip } from "@/components/CalendarStrip";
 import { WorkoutFilters } from "@/components/WorkoutFilters";
@@ -19,7 +19,7 @@ import { format, addDays, startOfDay, endOfDay } from "date-fns";
 
 export default function WorkoutsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [view, setView] = useState<"list" | "session" | "completion">("list");
+  const [view, setView<"list" | "session" | "completion">("list");
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
@@ -86,7 +86,10 @@ export default function WorkoutsPage() {
             reps: ex.reps,
             weight: ex.weight || 'bodyweight',
             completed: completedExercises[ex.name] || false,
-            source: 'planned' as const
+            source: 'planned' as const,
+            rest_seconds: 60,
+            superset_group_id: null,
+            position_in_workout: exercises.findIndex(e => e.id === ex.id)
           }));
 
           // Add voice-logged exercises that aren't in the plan
@@ -99,7 +102,10 @@ export default function WorkoutsPage() {
               reps: log.reps_completed,
               weight: log.weight_used || 'bodyweight',
               completed: true,
-              source: 'voice' as const
+              source: 'voice' as const,
+              rest_seconds: 60,
+              superset_group_id: null,
+              position_in_workout: allExerciseLogs.findIndex(l => l.id === log.id)
             }));
           
           const allExercises = [...plannedExercises, ...voiceLoggedExercises];
@@ -206,6 +212,51 @@ export default function WorkoutsPage() {
     }
   });
 
+  // Mutation for updating workout exercises
+  const updateWorkoutMutation = useMutation({
+    mutationFn: async ({ workoutPlanId, exercises }: { workoutPlanId: string, exercises: any[] }) => {
+      if (!userId) throw new Error("User not authenticated");
+      
+      console.log("Updating workout exercises:", workoutPlanId, exercises);
+      
+      // First, delete all existing exercises for this workout plan
+      const existingExercises = await WorkoutService.getWorkoutExercises(workoutPlanId);
+      await Promise.all(
+        existingExercises.map(ex => WorkoutService.deleteWorkoutExercise(ex.id!))
+      );
+      
+      // Then create new exercises with updated data
+      const exerciseData = exercises.map((ex, index) => ({
+        workout_plan_id: workoutPlanId,
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: ex.weight || 'bodyweight',
+        rest_time: ex.rest_seconds ? `${ex.rest_seconds} seconds` : '60 seconds',
+        order_index: index,
+        notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
+      }));
+      
+      return await WorkoutService.createWorkoutExercises(exerciseData);
+    },
+    onSuccess: () => {
+      console.log("Successfully updated workout exercises");
+      queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts'] });
+      toast({
+        title: "Workout Updated",
+        description: "Your workout changes have been saved successfully."
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating workout:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save workout changes. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const startWorkoutSession = (workout: any) => {
     setSelectedWorkout(workout);
     setView("session");
@@ -276,6 +327,13 @@ export default function WorkoutsPage() {
       }
     });
   });
+
+  const handleWorkoutUpdate = (updatedWorkout: any) => {
+    updateWorkoutMutation.mutate({
+      workoutPlanId: updatedWorkout.id,
+      exercises: updatedWorkout.exercises
+    });
+  };
 
   // Completion view
   if (view === "completion" && selectedWorkout) {
@@ -423,11 +481,13 @@ export default function WorkoutsPage() {
             <div className="space-y-4">
               {filteredWorkouts.length > 0 ? (
                 filteredWorkouts.map((workout, index) => (
-                  <WorkoutCardImproved
+                  <WorkoutCard
                     key={`${workout.schedule_id}-${workout.id}` || index}
                     workout={workout}
                     onStart={startWorkoutSession}
-                    onEdit={() => {}}
+                    onAskCoach={() => {}}
+                    onReplaceWorkout={() => {}}
+                    onUpdateWorkout={handleWorkoutUpdate}
                   />
                 ))
               ) : (
