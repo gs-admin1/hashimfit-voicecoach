@@ -1,3 +1,4 @@
+
 import supabase from '@/lib/supabase';
 import { PlanGenerationService, type AssessmentData } from './PlanGenerationService';
 
@@ -29,7 +30,7 @@ interface WorkoutScheduleWithPlan {
   workout_plan_id: string;
   workout_plans: {
     title: string;
-  };
+  }[];
 }
 
 export class AssessmentService {
@@ -95,7 +96,7 @@ export class AssessmentService {
       
       (workoutSchedules as WorkoutScheduleWithPlan[])?.forEach(schedule => {
         const day = new Date(schedule.scheduled_date).toLocaleDateString('en-US', { weekday: 'long' });
-        const workout_title = schedule.workout_plans?.title || 'Unknown Workout';
+        const workout_title = schedule.workout_plans?.[0]?.title || 'Unknown Workout';
         
         if (!weeklyWorkouts[day]) {
           weeklyWorkouts[day] = [];
