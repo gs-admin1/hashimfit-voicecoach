@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 
@@ -69,6 +70,10 @@ serve(async (req) => {
       throw new Error('Missing OpenAI Assistant ID')
     }
 
+    // Log the assistant ID being used (first 10 chars for security)
+    console.log('Using Assistant ID:', assistantId.substring(0, 10) + '...')
+    console.log('Full Assistant ID for debugging:', assistantId)
+
     // Format the raw assessment data for the assistant
     const rawAssessmentData = {
       age: parseInt(assessmentData.age),
@@ -84,6 +89,25 @@ serve(async (req) => {
     }
 
     console.log('Sending raw assessment data to OpenAI Assistant:', JSON.stringify(rawAssessmentData))
+
+    // First, let's verify the assistant exists by trying to retrieve it
+    console.log('Verifying assistant exists...')
+    const assistantVerifyResponse = await fetch(`https://api.openai.com/v1/assistants/${assistantId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${openaiApiKey}`,
+        'OpenAI-Beta': 'assistants=v2',
+      },
+    })
+
+    if (!assistantVerifyResponse.ok) {
+      const errorText = await assistantVerifyResponse.text()
+      console.error('Assistant verification failed:', assistantVerifyResponse.status, errorText)
+      throw new Error(`Assistant verification failed: ${assistantVerifyResponse.status} - ${errorText}`)
+    }
+
+    const assistantData = await assistantVerifyResponse.json()
+    console.log('Assistant verified successfully. Name:', assistantData.name)
 
     // Create a thread for the assistant
     const threadResponse = await fetch('https://api.openai.com/v1/threads', {
