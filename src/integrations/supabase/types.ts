@@ -183,9 +183,12 @@ export type Database = {
           id: string
           notes: string | null
           order_index: number
+          position_in_workout: number | null
           reps_completed: string
+          rest_seconds: number | null
           rest_time: unknown | null
           sets_completed: number
+          superset_group_id: string | null
           updated_at: string | null
           weight_used: string | null
           workout_log_id: string
@@ -196,9 +199,12 @@ export type Database = {
           id?: string
           notes?: string | null
           order_index: number
+          position_in_workout?: number | null
           reps_completed: string
+          rest_seconds?: number | null
           rest_time?: unknown | null
           sets_completed: number
+          superset_group_id?: string | null
           updated_at?: string | null
           weight_used?: string | null
           workout_log_id: string
@@ -209,9 +215,12 @@ export type Database = {
           id?: string
           notes?: string | null
           order_index?: number
+          position_in_workout?: number | null
           reps_completed?: string
+          rest_seconds?: number | null
           rest_time?: unknown | null
           sets_completed?: number
+          superset_group_id?: string | null
           updated_at?: string | null
           weight_used?: string | null
           workout_log_id?: string
@@ -839,7 +848,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      manage_superset: {
+        Args: {
+          p_workout_log_id: string
+          p_exercise_ids: string[]
+          p_superset_group_id?: string
+        }
+        Returns: string
+      }
+      remove_from_superset: {
+        Args: { p_exercise_id: string }
+        Returns: boolean
+      }
+      reorder_workout_exercises: {
+        Args: { p_workout_log_id: string; p_exercise_positions: Json }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

@@ -1,109 +1,115 @@
 
-import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Clock, Play, Pause, SkipForward } from "lucide-react";
+import { Timer, Play, Pause, Plus, Minus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRestTimer } from "@/hooks/useRestTimer";
 
 interface RestTimerOverlayProps {
-  isVisible: boolean;
-  duration: number;
-  onComplete: () => void;
-  onSkip: () => void;
-  onClose: () => void;
   className?: string;
 }
 
-export function RestTimerOverlay({ 
-  isVisible, 
-  duration, 
-  onComplete, 
-  onSkip, 
-  onClose,
-  className 
-}: RestTimerOverlayProps) {
-  const [timeLeft, setTimeLeft] = useState(duration);
-  const [isPaused, setIsPaused] = useState(false);
-  
-  useEffect(() => {
-    if (isVisible) {
-      setTimeLeft(duration);
-      setIsPaused(false);
-    }
-  }, [isVisible, duration]);
-  
-  useEffect(() => {
-    if (!isVisible || isPaused || timeLeft <= 0) return;
-    
-    const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          onComplete();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, [isVisible, isPaused, timeLeft, onComplete]);
-  
-  if (!isVisible) return null;
-  
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-  const progress = ((duration - timeLeft) / duration) * 100;
-  
+export function RestTimerOverlay({ className }: RestTimerOverlayProps) {
+  const { timer, pauseTimer, resumeTimer, stopTimer, addTime, formatTime } = useRestTimer();
+
+  if (!timer.isActive && timer.remaining === 0) {
+    return null;
+  }
+
   return (
     <div className={cn(
-      "fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in",
+      "fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 max-w-sm w-full px-4",
       className
     )}>
-      <Card className="p-6 mx-4 w-full max-w-sm text-center space-y-4 animate-scale-in">
-        <div className="space-y-2">
-          <Clock className="h-8 w-8 mx-auto text-hashim-600" />
-          <h3 className="text-lg font-semibold">Rest Time</h3>
-        </div>
-        
-        <div className="space-y-4">
-          <div className="text-4xl font-bold text-hashim-600">
-            {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+      <Card className={cn(
+        "bg-gradient-to-r border-2 shadow-lg",
+        timer.remaining > 10 
+          ? "from-blue-50 to-blue-100 border-blue-200" 
+          : "from-red-50 to-red-100 border-red-200"
+      )}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Timer className={cn(
+                "h-5 w-5",
+                timer.remaining > 10 ? "text-blue-600" : "text-red-600"
+              )} />
+              <span className={cn(
+                "font-medium",
+                timer.remaining > 10 ? "text-blue-800" : "text-red-800"
+              )}>
+                Rest Timer
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={stopTimer}
+              className="h-6 w-6 p-0"
+            >
+              <X className="h-3 w-3" />
+            </Button>
           </div>
           
-          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addTime(-10)}
+                disabled={timer.remaining <= 10}
+                className="h-8 w-8 p-0"
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={timer.isActive ? pauseTimer : resumeTimer}
+                className="h-8 w-8 p-0"
+              >
+                {timer.isActive ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addTime(10)}
+                className="h-8 w-8 p-0"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+            
+            <div className="text-right">
+              <div className={cn(
+                "text-2xl font-bold",
+                timer.remaining > 10 ? "text-blue-600" : "text-red-600"
+              )}>
+                {formatTime(timer.remaining)}
+              </div>
+              {timer.exerciseName && (
+                <div className="text-xs text-muted-foreground">
+                  {timer.exerciseName}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Progress bar */}
+          <div className="mt-3 w-full bg-gray-200 rounded-full h-1">
             <div 
-              className="h-full bg-gradient-to-r from-hashim-500 to-hashim-600 rounded-full transition-all duration-1000"
-              style={{ width: `${progress}%` }}
+              className={cn(
+                "h-1 rounded-full transition-all duration-1000",
+                timer.remaining > 10 ? "bg-blue-500" : "bg-red-500"
+              )}
+              style={{ 
+                width: `${timer.duration > 0 ? (timer.remaining / timer.duration) * 100 : 0}%` 
+              }}
             />
           </div>
-        </div>
-        
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => setIsPaused(!isPaused)}
-            className="flex-1"
-          >
-            {isPaused ? <Play size={16} /> : <Pause size={16} />}
-            {isPaused ? "Resume" : "Pause"}
-          </Button>
-          
-          <Button
-            onClick={onSkip}
-            className="flex-1 bg-hashim-600 hover:bg-hashim-700"
-          >
-            <SkipForward size={16} className="mr-1" />
-            Skip
-          </Button>
-        </div>
-        
-        <Button
-          variant="ghost"
-          onClick={onClose}
-          className="w-full text-muted-foreground"
-        >
-          Close
-        </Button>
+        </CardContent>
       </Card>
     </div>
   );

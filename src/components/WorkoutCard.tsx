@@ -1,12 +1,11 @@
 
-import { useState } from "react";
-import { AnimatedCard } from "./ui-components";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
-import { CheckCircle, Circle, ChevronDown, ChevronUp, Plus, X, Edit, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, Circle, Clock, Dumbbell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EnhancedWorkoutSessionCard } from "./EnhancedWorkoutSessionCard";
 
 interface Exercise {
   id: string;
@@ -15,193 +14,147 @@ interface Exercise {
   reps: string;
   weight: string;
   completed?: boolean;
+  source?: 'planned' | 'voice';
+}
+
+interface Workout {
+  id: string;
+  title: string;
+  exercises: Exercise[];
+  is_completed?: boolean;
+  schedule_id?: string;
+  workout_log_id?: string;
 }
 
 interface WorkoutCardProps {
-  workout: {
-    id?: string;
-    schedule_id?: string;
-    title: string;
-    exercises: Exercise[];
-    is_completed?: boolean;
-  };
-  editable?: boolean;
+  workout: Workout;
   onExerciseComplete?: (exerciseId: string, completed: boolean) => void;
-  onAddExercise?: (workoutId: string, exercise: { name: string; sets: number; reps: string; weight: string }) => void;
-  onRemoveExercise?: (exerciseId: string) => void;
+  isSessionMode?: boolean;
 }
 
-export function WorkoutCard({ 
-  workout, 
-  editable = false, 
-  onExerciseComplete, 
-  onAddExercise, 
-  onRemoveExercise 
-}: WorkoutCardProps) {
-  const [expanded, setExpanded] = useState(true);
-  const [showAddExercise, setShowAddExercise] = useState(false);
-  const [newExercise, setNewExercise] = useState({ name: '', sets: 3, reps: '10', weight: 'bodyweight' });
+export function WorkoutCard({ workout, onExerciseComplete, isSessionMode = false }: WorkoutCardProps) {
+  // If in session mode, use the enhanced session card
+  if (isSessionMode) {
+    const sessionWorkout = {
+      id: workout.id,
+      title: workout.title,
+      exercises: workout.exercises.map(ex => ({
+        ...ex,
+        completed: ex.completed ? 1 : 0,
+        rest_seconds: 60,
+        position_in_workout: 0
+      })),
+      category: 'strength',
+      workout_log_id: workout.workout_log_id
+    };
 
-  // Note: We're no longer managing exercises state locally in this component
-  // Instead, we'll rely on the parent component to manage this state
-  
-  const toggleExerciseCompletion = (exerciseId: string, currentStatus: boolean) => {
-    // Call parent callback if provided
-    if (onExerciseComplete) {
-      onExerciseComplete(exerciseId, !currentStatus);
-    }
-  };
+    return (
+      <EnhancedWorkoutSessionCard 
+        workout={sessionWorkout}
+        onComplete={() => {}}
+        onSaveAsFavorite={() => {}}
+        onStartRestTimer={() => {}}
+      />
+    );
+  }
 
-  const handleAddExercise = () => {
-    // Validate
-    if (!newExercise.name.trim()) {
-      return;
-    }
-    
-    // Call parent callback
-    if (onAddExercise && workout.id) {
-      onAddExercise(workout.id, newExercise);
-      // Reset form
-      setNewExercise({ name: '', sets: 3, reps: '10', weight: 'bodyweight' });
-      setShowAddExercise(false);
-    }
-  };
-
-  const handleRemoveExercise = (exerciseId: string) => {
-    if (onRemoveExercise) {
-      onRemoveExercise(exerciseId);
-    }
-  };
-
-  const completedCount = workout.exercises.filter((ex) => ex.completed).length;
-  const progress = workout.exercises.length > 0 ? (completedCount / workout.exercises.length) * 100 : 0;
+  // Default workout card for dashboard view
+  const completedExercises = workout.exercises.filter(ex => ex.completed).length;
+  const totalExercises = workout.exercises.length;
+  const progress = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
 
   return (
-    <AnimatedCard>
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h3 className="font-bold text-lg">{workout.title}</h3>
-          <p className="text-sm text-muted-foreground">
-            {workout.exercises.length} exercises • {completedCount} completed
-          </p>
+    <Card className="w-full">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="p-2 bg-hashim-100 rounded-lg">
+              <Dumbbell className="h-4 w-4 text-hashim-600" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">{workout.title}</CardTitle>
+              <div className="flex items-center space-x-2 mt-1">
+                <Badge variant={workout.is_completed ? "default" : "secondary"}>
+                  {workout.is_completed ? "Completed" : "In Progress"}
+                </Badge>
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Clock className="h-3 w-3 mr-1" />
+                  {totalExercises} exercises
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <button 
-          onClick={() => setExpanded(!expanded)}
-          className="p-2 rounded-full hover:bg-muted transition-colors"
-        >
-          {expanded ? (
-            <ChevronUp size={20} />
-          ) : (
-            <ChevronDown size={20} />
-          )}
-        </button>
-      </div>
-
-      <Progress value={progress} className="h-2 mb-4" />
-
-      {expanded && (
-        <div className="space-y-3 mt-6">
-          {workout.exercises.map((exercise) => (
-            <div 
-              key={exercise.id}
-              className={cn(
-                "flex items-center p-3 rounded-xl transition-all duration-300",
-                exercise.completed ? "bg-hashim-50 dark:bg-hashim-900/20" : ""
-              )}
-            >
-              <Checkbox
-                checked={!!exercise.completed}
-                onCheckedChange={() => toggleExerciseCompletion(exercise.id, !!exercise.completed)}
-                className="mr-3"
-                id={`exercise-${exercise.id}`}
+        
+        {!workout.is_completed && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Progress</span>
+              <span>{completedExercises}/{totalExercises} exercises</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-hashim-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
               />
-              <label 
-                htmlFor={`exercise-${exercise.id}`} 
-                className="flex-1 cursor-pointer"
+            </div>
+          </div>
+        )}
+      </CardHeader>
+      
+      <CardContent className="space-y-3">
+        {workout.exercises.map((exercise, index) => (
+          <div
+            key={exercise.id}
+            className={cn(
+              "flex items-center justify-between p-3 rounded-lg border transition-all",
+              exercise.completed ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200",
+              exercise.source === 'voice' && "border-l-4 border-l-blue-400"
+            )}
+          >
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onExerciseComplete?.(exercise.id, !exercise.completed)}
+                className="h-8 w-8 p-0"
               >
-                <p className="font-medium">{exercise.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {exercise.sets} sets • {exercise.reps} reps • {exercise.weight}
-                </p>
-              </label>
-              
-              {editable && (
-                <button
-                  onClick={() => handleRemoveExercise(exercise.id)}
-                  className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              )}
-            </div>
-          ))}
-          
-          {editable && showAddExercise ? (
-            <div className="border rounded-xl p-4 space-y-3">
-              <h4 className="font-medium text-sm">Add Exercise</h4>
+                {exercise.completed ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <Circle className="h-5 w-5 text-gray-400" />
+                )}
+              </Button>
               <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Exercise Name</label>
-                <Input 
-                  value={newExercise.name}
-                  onChange={(e) => setNewExercise({...newExercise, name: e.target.value})}
-                  placeholder="e.g. Bench Press"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Sets</label>
-                  <Input 
-                    type="number" 
-                    min={1}
-                    value={newExercise.sets}
-                    onChange={(e) => setNewExercise({...newExercise, sets: parseInt(e.target.value) || 1})}
-                  />
+                <div className="flex items-center space-x-2">
+                  <p className={cn(
+                    "font-medium",
+                    exercise.completed && "line-through text-muted-foreground"
+                  )}>
+                    {exercise.name}
+                  </p>
+                  {exercise.source === 'voice' && (
+                    <Badge variant="outline" className="text-xs bg-blue-100">
+                      Voice logged
+                    </Badge>
+                  )}
                 </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Reps</label>
-                  <Input 
-                    value={newExercise.reps}
-                    onChange={(e) => setNewExercise({...newExercise, reps: e.target.value})}
-                    placeholder="e.g. 10 or 8-12"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Weight</label>
-                  <Input 
-                    value={newExercise.weight}
-                    onChange={(e) => setNewExercise({...newExercise, weight: e.target.value})}
-                    placeholder="e.g. 50kg"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end space-x-2 mt-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setShowAddExercise(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  size="sm"
-                  onClick={handleAddExercise}
-                >
-                  Add
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  {exercise.sets} sets × {exercise.reps} reps
+                  {exercise.weight && exercise.weight !== 'bodyweight' && ` @ ${exercise.weight}`}
+                </p>
               </div>
             </div>
-          ) : editable && (
-            <Button 
-              variant="outline" 
-              className="w-full flex items-center justify-center"
-              onClick={() => setShowAddExercise(true)}
-            >
-              <Plus size={16} className="mr-1" />
-              Add Exercise
-            </Button>
-          )}
-        </div>
-      )}
-    </AnimatedCard>
+          </div>
+        ))}
+        
+        {workout.exercises.length === 0 && (
+          <div className="text-center py-6 text-muted-foreground">
+            <Dumbbell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>No exercises in this workout</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -3,6 +3,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { Logo } from "@/components/Logo";
 import { NavigationBar } from "@/components/ui-components";
 import { ChatFAB } from "@/components/ChatFAB";
+import { RestTimerOverlay } from "@/components/RestTimerOverlay";
 import { IconButton } from "@/components/ui-components";
 import { Settings, User } from "lucide-react";
 import { useState } from "react";
@@ -37,6 +38,7 @@ export default function DashboardPage() {
       
       <NavigationBar />
       <ChatFAB />
+      <RestTimerOverlay />
       
       <UserStatsModal 
         isOpen={showStatsModal}

@@ -53,6 +53,9 @@ export interface ExerciseLog {
   rest_time?: number;
   notes?: string;
   order_index: number;
+  superset_group_id?: string;
+  rest_seconds?: number;
+  position_in_workout?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -582,6 +585,71 @@ export class WorkoutService {
       return true;
     } catch (error) {
       console.error('Error updating scheduled workout:', error);
+      return false;
+    }
+  }
+
+  // New methods for enhanced workout session management
+
+  static async updateExerciseLog(exerciseLogId: string, updates: Partial<ExerciseLog>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('exercise_logs')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', exerciseLogId);
+        
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error updating exercise log:', error);
+      return false;
+    }
+  }
+
+  static async reorderExercises(workoutLogId: string, exercisePositions: Array<{exercise_id: string, new_position: number}>): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.rpc('reorder_workout_exercises', {
+        p_workout_log_id: workoutLogId,
+        p_exercise_positions: exercisePositions
+      });
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error reordering exercises:', error);
+      return false;
+    }
+  }
+
+  static async createSuperset(workoutLogId: string, exerciseIds: string[], supersetGroupId?: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase.rpc('manage_superset', {
+        p_workout_log_id: workoutLogId,
+        p_exercise_ids: exerciseIds,
+        p_superset_group_id: supersetGroupId
+      });
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating superset:', error);
+      return null;
+    }
+  }
+
+  static async removeFromSuperset(exerciseId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.rpc('remove_from_superset', {
+        p_exercise_id: exerciseId
+      });
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error removing from superset:', error);
       return false;
     }
   }
