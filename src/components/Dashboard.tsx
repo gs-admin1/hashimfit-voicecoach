@@ -453,8 +453,8 @@ export function Dashboard() {
 
   return (
     <div className="max-w-lg mx-auto pb-20">
-      {/* Snap a Snack and Log your workout buttons */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      {/* Snap a Snack and Log your workout buttons - minimal spacing from logo */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="h-16">
           <MealCaptureCard />
         </div>
@@ -466,8 +466,8 @@ export function Dashboard() {
         </div>
       </div>
       
-      {/* DailyWorkoutSummaryCard positioned with clear separation */}
-      <div className="mb-6 mt-4">
+      {/* Move DailyWorkoutSummaryCard here - right after the snap/log buttons */}
+      <div className="mb-6">
         <DailyWorkoutSummaryCard 
           isCollapsed={cardStates.workoutSummary}
           onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
@@ -479,7 +479,6 @@ export function Dashboard() {
         />
       </div>
       
-      {/* Other dashboard cards */}
       <div className="space-y-4 mb-6">
         <NutritionProgressCard 
           isCollapsed={cardStates.nutrition}
@@ -502,7 +501,6 @@ export function Dashboard() {
         />
       </div>
       
-      {/* Day tabs */}
       <div className="flex flex-nowrap overflow-x-auto mb-6 pb-1 scrollbar-none">
         {weekDates.map((date, index) => {
           const dayName = format(date, 'EEEE');
@@ -527,7 +525,6 @@ export function Dashboard() {
         })}
       </div>
       
-      {/* Legacy workout card section */}
       <AnimatedCard className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <div>
