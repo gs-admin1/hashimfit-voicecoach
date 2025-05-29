@@ -38,7 +38,7 @@ export function WorkoutCompletionSummary({
   onComplete,
   className 
 }: WorkoutCompletionSummaryProps) {
-  const [rating, setRating] = useState([3]);
+  const [rating, setRating] = useState([5]); // Start at "Too Hard" like in the screenshot
   const [notes, setNotes] = useState("");
   
   const getTrendInfo = (trend: string) => {
@@ -173,13 +173,13 @@ export function WorkoutCompletionSummary({
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-muted-foreground">Difficulty Level</span>
-              <span className={cn("text-lg", getDifficultyColor(rating[0]))}>
+              <span className={cn("text-xl font-bold", getDifficultyColor(rating[0]))}>
                 {getDifficultyLabel(rating[0])}
               </span>
             </div>
             
             {/* Enhanced Slider with Gradient */}
-            <div className="px-1">
+            <div className="px-2 py-3">
               <Slider
                 value={rating}
                 onValueChange={setRating}
@@ -192,29 +192,29 @@ export function WorkoutCompletionSummary({
             </div>
             
             {/* Slider Labels */}
-            <div className="flex justify-between text-xs font-medium">
+            <div className="flex justify-between text-sm font-semibold px-1">
               <span className="text-green-600">Too Easy</span>
               <span className="text-blue-600">Just Right</span>
               <span className="text-red-600">Too Hard</span>
             </div>
             
             {/* Visual Difficulty Indicators */}
-            <div className="flex justify-between items-center pt-2">
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                <span className="text-xs text-green-600">1-2</span>
+            <div className="flex justify-between items-center pt-2 px-1">
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-green-500 shadow-sm"></div>
+                <span className="text-xs font-medium text-green-600">1-2</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-                <span className="text-xs text-blue-600">3</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-blue-500 shadow-sm"></div>
+                <span className="text-xs font-medium text-blue-600">3</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 rounded-full bg-orange-400"></div>
-                <span className="text-xs text-orange-600">4</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-orange-500 shadow-sm"></div>
+                <span className="text-xs font-medium text-orange-600">4</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span className="text-xs text-red-600">5</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-red-500 shadow-sm"></div>
+                <span className="text-xs font-medium text-red-600">5</span>
               </div>
             </div>
           </div>

@@ -20,7 +20,7 @@ const Slider = React.forwardRef<
   >
     <SliderPrimitive.Track 
       className={cn(
-        "relative h-3 w-full grow overflow-hidden rounded-full",
+        "relative h-4 w-full grow overflow-hidden rounded-full",
         showGradient 
           ? "bg-gradient-to-r from-green-400 via-yellow-400 via-orange-400 to-red-500" 
           : "bg-secondary"
@@ -32,8 +32,8 @@ const Slider = React.forwardRef<
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb 
       className={cn(
-        "block h-6 w-6 rounded-full border-3 bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 shadow-lg",
-        showGradient ? "border-white" : "border-primary"
+        "block h-7 w-7 rounded-full border-3 bg-white ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 shadow-lg cursor-pointer",
+        showGradient ? "border-gray-300 shadow-xl" : "border-primary"
       )} 
     />
   </SliderPrimitive.Root>
