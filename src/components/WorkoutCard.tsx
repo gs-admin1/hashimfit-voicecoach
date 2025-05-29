@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,20 +18,24 @@ import {
   Target,
   TrendingUp,
   Flame,
+  Star,
   Edit3,
+  Save,
+  X,
   GripVertical,
   Plus,
   Minus,
+  Copy,
+  Calendar,
+  CalendarDays,
+  Undo2,
   RotateCcw,
-  Save,
-  Link,
-  Unlink,
-  Eye,
-  EyeOff
+  Users,
+  ArrowLeftRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { EnhancedWorkoutSessionCard } from "./EnhancedWorkoutSessionCard";
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Exercise {
   id: string;
@@ -50,549 +54,680 @@ interface Workout {
   id: string;
   title: string;
   exercises: Exercise[];
-  is_completed?: boolean;
-  schedule_id?: string;
-  workout_log_id?: string;
   category?: string;
   estimatedDuration?: number;
   targetMuscles?: string[];
   difficulty?: number;
   aiGenerated?: boolean;
   streak?: number;
+  isFavorite?: boolean;
+  isCompleted?: boolean;
+  schedule_id?: string;
 }
 
 interface WorkoutCardProps {
   workout: Workout;
-  onExerciseComplete?: (exerciseId: string, completed: boolean) => void;
-  isSessionMode?: boolean;
   onStart?: (workout: Workout) => void;
+  onEdit?: (workout: Workout) => void;
   onAskCoach?: () => void;
   onReplaceWorkout?: () => void;
-  onUpdateWorkout?: (updatedWorkout: Workout) => void;
+  onUpdateWorkout?: (workout: Workout) => void;
 }
 
 export function WorkoutCard({ 
   workout, 
-  onExerciseComplete, 
-  isSessionMode = false,
   onStart,
+  onEdit,
   onAskCoach,
   onReplaceWorkout,
-  onUpdateWorkout 
+  onUpdateWorkout
 }: WorkoutCardProps) {
-  const [showFullExercises, setShowFullExercises] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editedWorkout, setEditedWorkout] = useState<Workout>(workout);
-  const [originalWorkout, setOriginalWorkout] = useState<Workout>(workout);
-  const [editHistory, setEditHistory] = useState<Workout[]>([workout]);
-  const [historyIndex, setHistoryIndex] = useState(0);
+  const [showFullExercises, setShowFullExercises] = useState(false);
+  const [editingExercises, setEditingExercises] = useState<Exercise[]>(workout.exercises);
+  const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
+  const [showSaveOptions, setShowSaveOptions] = useState(false);
+  const [showAddExercise, setShowAddExercise] = useState(false);
+  const [newExercise, setNewExercise] = useState({
+    name: '',
+    sets: 3,
+    reps: '10',
+    weight: 'bodyweight',
+    rest_seconds: 60
+  });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // If in session mode, use the enhanced session card
-  if (isSessionMode) {
-    const sessionWorkout = {
-      id: workout.id,
-      title: workout.title,
-      exercises: workout.exercises.map((ex, index) => ({
-        ...ex,
-        completed: ex.completed ? 1 : 0,
-        rest_seconds: 60,
-        position_in_workout: index,
-        originalData: {
-          sets: ex.sets,
-          reps: ex.reps,
-          weight: ex.weight,
-          rest_seconds: 60
-        }
-      })),
-      category: workout.category || 'strength',
-      workout_log_id: workout.workout_log_id
+  // Calculate progress
+  const completedExercises = workout.exercises.filter(ex => ex.completed).length;
+  const totalExercises = workout.exercises.length;
+  const progress = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
+
+  // Get difficulty info with Apple-inspired colors
+  const getDifficultyInfo = (difficulty?: number) => {
+    if (!difficulty) return { 
+      label: "Intermediate", 
+      gradient: "from-yellow-400 to-orange-500",
+      bgColor: "bg-gradient-to-r from-yellow-50 to-orange-50",
+      textColor: "text-orange-700"
+    };
+    if (difficulty <= 2) return { 
+      label: "Beginner", 
+      gradient: "from-green-400 to-emerald-500",
+      bgColor: "bg-gradient-to-r from-green-50 to-emerald-50",
+      textColor: "text-green-700"
+    };
+    if (difficulty <= 4) return { 
+      label: "Intermediate", 
+      gradient: "from-yellow-400 to-orange-500",
+      bgColor: "bg-gradient-to-r from-yellow-50 to-orange-50",
+      textColor: "text-orange-700"
+    };
+    return { 
+      label: "Advanced", 
+      gradient: "from-red-400 to-pink-500",
+      bgColor: "bg-gradient-to-r from-red-50 to-pink-50",
+      textColor: "text-red-700"
+    };
+  };
+
+  const difficultyInfo = getDifficultyInfo(workout.difficulty);
+
+  // Get workout type with colors
+  const getWorkoutTypeInfo = () => {
+    const type = (!workout.targetMuscles || workout.targetMuscles.length === 0 || workout.targetMuscles.length > 3) 
+      ? "Full Body" 
+      : workout.targetMuscles.join(" & ");
+
+    const colorMap: Record<string, any> = {
+      "Full Body": { 
+        gradient: "from-purple-400 to-indigo-500",
+        bgColor: "bg-gradient-to-r from-purple-50 to-indigo-50",
+        textColor: "text-purple-700"
+      },
+      "Chest": { 
+        gradient: "from-blue-400 to-cyan-500",
+        bgColor: "bg-gradient-to-r from-blue-50 to-cyan-50",
+        textColor: "text-blue-700"
+      },
+      "Back": { 
+        gradient: "from-emerald-400 to-teal-500",
+        bgColor: "bg-gradient-to-r from-emerald-50 to-teal-50",
+        textColor: "text-emerald-700"
+      },
+      "Legs": { 
+        gradient: "from-orange-400 to-red-500",
+        bgColor: "bg-gradient-to-r from-orange-50 to-red-50",
+        textColor: "text-orange-700"
+      }
     };
 
-    return (
-      <EnhancedWorkoutSessionCard 
-        workout={sessionWorkout}
-        onComplete={() => {}}
-        onSaveAsFavorite={() => {}}
-        onStartRestTimer={() => {}}
-      />
-    );
-  }
+    return {
+      type,
+      ...colorMap[type] || colorMap["Full Body"]
+    };
+  };
 
-  // Save current state to history for undo
-  const saveToHistory = useCallback((newWorkout: Workout) => {
-    const newHistory = editHistory.slice(0, historyIndex + 1);
-    newHistory.push(newWorkout);
-    setEditHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-  }, [editHistory, historyIndex]);
+  const workoutTypeInfo = getWorkoutTypeInfo();
 
-  // Handle drag end for reordering exercises
-  const handleDragEnd = (result: any) => {
-    if (!result.destination) return;
-
-    const items = Array.from(editedWorkout.exercises);
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination || !isEditMode) return;
+    
+    const items = Array.from(editingExercises);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
-
-    const updatedWorkout = {
-      ...editedWorkout,
-      exercises: items.map((ex, index) => ({
-        ...ex,
-        position_in_workout: index
-      }))
-    };
-
-    setEditedWorkout(updatedWorkout);
-    saveToHistory(updatedWorkout);
-  };
-
-  // Update exercise parameter
-  const updateExercise = (exerciseId: string, field: string, value: any) => {
-    const updatedExercises = editedWorkout.exercises.map(ex =>
-      ex.id === exerciseId ? { ...ex, [field]: value } : ex
-    );
-
-    const updatedWorkout = {
-      ...editedWorkout,
-      exercises: updatedExercises
-    };
-
-    setEditedWorkout(updatedWorkout);
-    saveToHistory(updatedWorkout);
-  };
-
-  // Toggle superset grouping
-  const toggleSuperset = (exerciseIds: string[]) => {
-    const groupId = exerciseIds.length > 1 ? `superset-${Date.now()}` : undefined;
     
-    const updatedExercises = editedWorkout.exercises.map(ex =>
-      exerciseIds.includes(ex.id) 
-        ? { ...ex, superset_group_id: groupId }
-        : ex
-    );
-
-    const updatedWorkout = {
-      ...editedWorkout,
-      exercises: updatedExercises
-    };
-
-    setEditedWorkout(updatedWorkout);
-    saveToHistory(updatedWorkout);
+    const updatedItems = items.map((item, index) => ({
+      ...item,
+      position_in_workout: index
+    }));
+    
+    setEditingExercises(updatedItems);
+    setHasUnsavedChanges(true);
   };
 
-  // Undo last change
-  const undo = () => {
-    if (historyIndex > 0) {
-      const previousState = editHistory[historyIndex - 1];
-      setEditedWorkout(previousState);
-      setHistoryIndex(historyIndex - 1);
+  const updateExercise = (exerciseId: string, field: keyof Exercise, value: any) => {
+    setEditingExercises(prev => prev.map(ex => 
+      ex.id === exerciseId ? { ...ex, [field]: value } : ex
+    ));
+    setHasUnsavedChanges(true);
+  };
+
+  const toggleExerciseSelection = (exerciseId: string) => {
+    setSelectedExercises(prev => 
+      prev.includes(exerciseId) 
+        ? prev.filter(id => id !== exerciseId)
+        : [...prev, exerciseId]
+    );
+  };
+
+  const createSuperset = () => {
+    if (selectedExercises.length < 2) return;
+    
+    const supersetId = `superset-${Date.now()}`;
+    setEditingExercises(prev => prev.map(ex => 
+      selectedExercises.includes(ex.id) 
+        ? { ...ex, superset_group_id: supersetId }
+        : ex
+    ));
+    setSelectedExercises([]);
+    setHasUnsavedChanges(true);
+  };
+
+  const removeFromSuperset = (exerciseId: string) => {
+    setEditingExercises(prev => prev.map(ex => 
+      ex.id === exerciseId ? { ...ex, superset_group_id: undefined } : ex
+    ));
+    setHasUnsavedChanges(true);
+  };
+
+  const addNewExercise = () => {
+    if (!newExercise.name.trim()) return;
+    
+    const exercise: Exercise = {
+      id: `new-${Date.now()}`,
+      name: newExercise.name,
+      sets: newExercise.sets,
+      reps: newExercise.reps,
+      weight: newExercise.weight,
+      rest_seconds: newExercise.rest_seconds,
+      completed: false,
+      source: 'planned',
+      position_in_workout: editingExercises.length
+    };
+    
+    setEditingExercises(prev => [...prev, exercise]);
+    setNewExercise({
+      name: '',
+      sets: 3,
+      reps: '10',
+      weight: 'bodyweight',
+      rest_seconds: 60
+    });
+    setShowAddExercise(false);
+    setHasUnsavedChanges(true);
+  };
+
+  const removeExercise = (exerciseId: string) => {
+    setEditingExercises(prev => prev.filter(ex => ex.id !== exerciseId));
+    setHasUnsavedChanges(true);
+  };
+
+  const resetChanges = () => {
+    setEditingExercises(workout.exercises);
+    setHasUnsavedChanges(false);
+    setSelectedExercises([]);
+  };
+
+  const saveChanges = (applyToAll: boolean = false) => {
+    const updatedWorkout = {
+      ...workout,
+      exercises: editingExercises
+    };
+    
+    onUpdateWorkout?.(updatedWorkout);
+    setHasUnsavedChanges(false);
+    setIsEditMode(false);
+    setShowSaveOptions(false);
+    
+    // Here you would implement the logic to save to just this workout or all workouts of the same type
+    console.log(applyToAll ? 'Saving to all workouts of this type' : 'Saving to this workout only');
+  };
+
+  const enterEditMode = () => {
+    setIsEditMode(true);
+    setEditingExercises(workout.exercises);
+    setShowFullExercises(true);
+  };
+
+  const exitEditMode = () => {
+    if (hasUnsavedChanges) {
+      setShowSaveOptions(true);
+    } else {
+      setIsEditMode(false);
+      setShowFullExercises(false);
     }
   };
 
-  // Reset to original
-  const resetToOriginal = () => {
-    setEditedWorkout(originalWorkout);
-    setEditHistory([originalWorkout]);
-    setHistoryIndex(0);
-  };
-
-  // Save changes and exit edit mode
-  const saveChanges = () => {
-    onUpdateWorkout?.(editedWorkout);
-    setOriginalWorkout(editedWorkout);
-    setIsEditMode(false);
-  };
-
-  // Cancel editing
-  const cancelEditing = () => {
-    setEditedWorkout(originalWorkout);
-    setIsEditMode(false);
-  };
-
-  // Check if exercise has been modified
-  const isExerciseModified = (exercise: Exercise) => {
-    const original = originalWorkout.exercises.find(ex => ex.id === exercise.id);
-    if (!original) return true;
-    
-    return (
-      original.sets !== exercise.sets ||
-      original.reps !== exercise.reps ||
-      original.weight !== exercise.weight ||
-      original.rest_seconds !== exercise.rest_seconds ||
-      original.superset_group_id !== exercise.superset_group_id
-    );
-  };
-
-  // Calculate progress
-  const currentWorkout = isEditMode ? editedWorkout : workout;
-  const completedExercises = currentWorkout.exercises.filter(ex => ex.completed).length;
-  const totalExercises = currentWorkout.exercises.length;
-  const progress = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
-
-  // Get difficulty info
-  const getDifficultyInfo = (difficulty?: number) => {
-    if (!difficulty) return { label: "Intermediate", color: "bg-yellow-100 text-yellow-700" };
-    if (difficulty <= 2) return { label: "Beginner", color: "bg-green-100 text-green-700" };
-    if (difficulty <= 4) return { label: "Intermediate", color: "bg-yellow-100 text-yellow-700" };
-    return { label: "Advanced", color: "bg-red-100 text-red-700" };
-  };
-
-  const difficultyInfo = getDifficultyInfo(currentWorkout.difficulty);
-
-  // Get workout type from target muscles
-  const getWorkoutType = () => {
-    if (!currentWorkout.targetMuscles || currentWorkout.targetMuscles.length === 0) return "Full Body";
-    if (currentWorkout.targetMuscles.length > 3) return "Full Body";
-    return currentWorkout.targetMuscles.join(" & ");
-  };
-
   return (
-    <Card className={cn(
-      "w-full transition-all duration-300 hover:shadow-lg border-l-4",
-      currentWorkout.is_completed 
-        ? "border-l-green-500 bg-green-50/30" 
-        : "border-l-hashim-500"
-    )}>
-      {/* Top Section - Overview */}
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-xl font-bold text-foreground">{currentWorkout.title}</h3>
-              <div className="flex items-center gap-1">
-                {currentWorkout.aiGenerated && (
-                  <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 px-2 py-1">
-                    <Zap size={10} className="mr-1" />
-                    AI
-                  </Badge>
-                )}
-                {currentWorkout.streak && currentWorkout.streak > 0 && (
-                  <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 px-2 py-1">
-                    <Flame size={10} className="mr-1" />
-                    {currentWorkout.streak}
-                  </Badge>
-                )}
-                {isEditMode && (
-                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 px-2 py-1">
-                    <Edit3 size={10} className="mr-1" />
-                    Editing
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            {/* Metadata Row */}
-            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-              {currentWorkout.estimatedDuration && (
-                <div className="flex items-center gap-1">
-                  <Clock size={14} />
-                  <span>{currentWorkout.estimatedDuration} min</span>
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="w-full"
+    >
+      <Card className={cn(
+        "w-full transition-all duration-500 hover:shadow-xl border-0 rounded-3xl overflow-hidden",
+        "bg-gradient-to-br from-white via-gray-50/50 to-white",
+        workout.isCompleted 
+          ? "shadow-lg shadow-green-500/20 ring-2 ring-green-500/20" 
+          : "shadow-lg shadow-hashim-500/10 hover:shadow-hashim-500/20",
+        isEditMode && "ring-2 ring-blue-500/30 shadow-blue-500/20"
+      )}>
+        {/* Header with gradient background */}
+        <CardHeader className={cn(
+          "pb-4 relative overflow-hidden",
+          workout.isCompleted 
+            ? "bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500"
+            : "bg-gradient-to-r from-hashim-400 via-hashim-500 to-hashim-600"
+        )}>
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
+          <div className="relative z-10">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-xl font-bold text-white drop-shadow-sm">{workout.title}</h3>
+                  <div className="flex items-center gap-1">
+                    {workout.aiGenerated && (
+                      <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
+                        <Zap size={10} className="mr-1" />
+                        AI
+                      </Badge>
+                    )}
+                    {workout.streak && workout.streak > 0 && (
+                      <Badge className="bg-orange-500/20 text-orange-100 border-orange-300/30 backdrop-blur-sm">
+                        <Flame size={10} className="mr-1" />
+                        {workout.streak}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-              )}
-              <div className="flex items-center gap-1">
-                <Target size={14} />
-                <span>{totalExercises} exercises</span>
+
+                {/* Metadata Row */}
+                <div className="flex items-center gap-4 text-sm text-white/90 mb-3">
+                  {workout.estimatedDuration && (
+                    <div className="flex items-center gap-1">
+                      <Clock size={14} />
+                      <span>{workout.estimatedDuration} min</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Target size={14} />
+                    <span>{editingExercises.length} exercises</span>
+                  </div>
+                </div>
+
+                {/* Tags Row */}
+                <div className="flex items-center gap-2">
+                  <Badge className={cn(
+                    "text-xs px-3 py-1 border-0 font-medium",
+                    difficultyInfo.bgColor,
+                    difficultyInfo.textColor
+                  )}>
+                    {difficultyInfo.label}
+                  </Badge>
+                  <Badge className={cn(
+                    "text-xs px-3 py-1 border-0 font-medium",
+                    workoutTypeInfo.bgColor,
+                    workoutTypeInfo.textColor
+                  )}>
+                    {workoutTypeInfo.type}
+                  </Badge>
+                </div>
               </div>
-            </div>
 
-            {/* Tags Row */}
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={cn("text-xs px-2 py-1", difficultyInfo.color)}>
-                {difficultyInfo.label}
-              </Badge>
-              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 px-2 py-1">
-                {getWorkoutType()}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 ml-4">
-            {!currentWorkout.is_completed && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  if (isEditMode) {
-                    setIsEditMode(false);
-                  } else {
-                    setIsEditMode(true);
-                    setShowFullExercises(true);
-                  }
-                }}
-                className="h-8 px-2"
-              >
-                {isEditMode ? <EyeOff size={14} /> : <Edit3 size={14} />}
-              </Button>
-            )}
-            {currentWorkout.is_completed && (
-              <div className="flex items-center text-green-600">
-                <CheckCircle size={20} />
-                <TrendingUp size={16} className="ml-1" />
-              </div>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pt-0 space-y-4">
-        {/* Edit Mode Controls */}
-        {isEditMode && (
-          <div className="bg-blue-50 rounded-lg p-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-blue-800">Edit Mode</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={undo}
-                  disabled={historyIndex === 0}
-                  className="h-6 px-2 text-xs"
-                >
-                  <RotateCcw size={12} className="mr-1" />
-                  Undo
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetToOriginal}
-                  className="h-6 px-2 text-xs text-orange-600"
-                >
-                  Reset
-                </Button>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={cancelEditing}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={saveChanges}
-                className="flex-1 bg-hashim-600 hover:bg-hashim-700 text-white"
-              >
-                <Save size={14} className="mr-1" />
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Exercise Preview/Edit Section */}
-        <div className="bg-muted/30 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-muted-foreground">
-              {isEditMode ? "Edit Exercises" : "Workout Preview"}
-            </h4>
-            {totalExercises > 3 && !isEditMode && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowFullExercises(!showFullExercises)}
-                className="h-6 px-2 text-xs"
-              >
-                {showFullExercises ? (
-                  <>
-                    <ChevronUp size={12} className="mr-1" />
-                    Show Less
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown size={12} className="mr-1" />
-                    Show All
-                  </>
+              <div className="flex items-center gap-2 ml-4">
+                {workout.isFavorite && (
+                  <Star size={20} className="text-yellow-300 fill-current drop-shadow-sm" />
                 )}
-              </Button>
-            )}
-          </div>
-
-          {isEditMode ? (
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <Droppable droppableId="exercises">
-                {(provided) => (
-                  <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                    {currentWorkout.exercises.map((exercise, index) => (
-                      <Draggable key={exercise.id} draggableId={exercise.id} index={index}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            className={cn(
-                              "bg-white rounded-lg border p-3 space-y-3 transition-all",
-                              snapshot.isDragging && "shadow-lg rotate-1",
-                              isExerciseModified(exercise) && "ring-2 ring-blue-200 bg-blue-50/50"
-                            )}
-                          >
-                            {/* Exercise Header */}
-                            <div className="flex items-center gap-2">
-                              <div {...provided.dragHandleProps} className="cursor-grab">
-                                <GripVertical size={16} className="text-gray-400" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{exercise.name}</p>
-                                  {isExerciseModified(exercise) && (
-                                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                                      Modified
-                                    </Badge>
-                                  )}
-                                  {exercise.superset_group_id && (
-                                    <Badge variant="outline" className="text-xs">
-                                      <Link size={10} className="mr-1" />
-                                      Superset
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Exercise Parameters */}
-                            <div className="grid grid-cols-4 gap-2">
-                              <div className="text-center">
-                                <label className="text-xs text-muted-foreground block mb-1">Sets</label>
-                                <div className="flex items-center">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => updateExercise(exercise.id, 'sets', Math.max(1, exercise.sets - 1))}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <Minus size={12} />
-                                  </Button>
-                                  <Input
-                                    type="number"
-                                    value={exercise.sets}
-                                    onChange={(e) => updateExercise(exercise.id, 'sets', parseInt(e.target.value) || 1)}
-                                    className="h-6 text-center border-0 text-sm font-medium mx-1"
-                                    min="1"
-                                  />
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => updateExercise(exercise.id, 'sets', exercise.sets + 1)}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <Plus size={12} />
-                                  </Button>
-                                </div>
-                              </div>
-
-                              <div className="text-center">
-                                <label className="text-xs text-muted-foreground block mb-1">Reps</label>
-                                <Input
-                                  type="text"
-                                  value={exercise.reps}
-                                  onChange={(e) => updateExercise(exercise.id, 'reps', e.target.value)}
-                                  className="h-6 text-center text-sm font-medium"
-                                />
-                              </div>
-
-                              <div className="text-center">
-                                <label className="text-xs text-muted-foreground block mb-1">Weight</label>
-                                <Input
-                                  type="text"
-                                  value={exercise.weight}
-                                  onChange={(e) => updateExercise(exercise.id, 'weight', e.target.value)}
-                                  className="h-6 text-center text-sm font-medium"
-                                  placeholder="lbs"
-                                />
-                              </div>
-
-                              <div className="text-center">
-                                <label className="text-xs text-muted-foreground block mb-1">Rest</label>
-                                <Input
-                                  type="number"
-                                  value={exercise.rest_seconds || 60}
-                                  onChange={(e) => updateExercise(exercise.id, 'rest_seconds', parseInt(e.target.value) || 60)}
-                                  className="h-6 text-center text-sm font-medium"
-                                  min="0"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Superset Controls */}
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (exercise.superset_group_id) {
-                                    updateExercise(exercise.id, 'superset_group_id', undefined);
-                                  } else {
-                                    toggleSuperset([exercise.id]);
-                                  }
-                                }}
-                                className="text-xs h-6"
-                              >
-                                {exercise.superset_group_id ? (
-                                  <>
-                                    <Unlink size={10} className="mr-1" />
-                                    Remove from Superset
-                                  </>
-                                ) : (
-                                  <>
-                                    <Link size={10} className="mr-1" />
-                                    Create Superset
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
+                {workout.isCompleted && (
+                  <div className="flex items-center text-white">
+                    <CheckCircle size={20} className="drop-shadow-sm" />
+                    <TrendingUp size={16} className="ml-1 drop-shadow-sm" />
                   </div>
                 )}
-              </Droppable>
-            </DragDropContext>
-          ) : (
-            <div className="space-y-2">
-              {currentWorkout.exercises
-                .slice(0, showFullExercises ? undefined : 3)
-                .map((exercise, index) => (
+                {!isEditMode ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={enterEditMode}
+                    className="h-8 w-8 p-0 bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  >
+                    <Edit3 size={16} />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={exitEditMode}
+                    className="h-8 w-8 p-0 bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  >
+                    <X size={16} />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-0 space-y-4 p-6">
+          {/* Exercise List */}
+          {(showFullExercises || isEditMode) && editingExercises.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Dumbbell size={16} />
+                  Exercises
+                  {isEditMode && hasUnsavedChanges && (
+                    <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
+                      Modified
+                    </Badge>
+                  )}
+                </h4>
+                
+                {isEditMode && (
+                  <div className="flex items-center gap-2">
+                    {selectedExercises.length >= 2 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={createSuperset}
+                        className="text-xs h-7"
+                      >
+                        <Users size={12} className="mr-1" />
+                        Superset
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddExercise(true)}
+                      className="text-xs h-7 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                    >
+                      <Plus size={12} className="mr-1" />
+                      Add
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <Droppable droppableId="exercises" isDropDisabled={!isEditMode}>
+                  {(provided, snapshot) => (
+                    <div 
+                      {...provided.droppableProps} 
+                      ref={provided.innerRef}
+                      className={cn(
+                        "space-y-2 transition-colors duration-200 rounded-xl p-3",
+                        snapshot.isDraggingOver && isEditMode && "bg-blue-50 ring-2 ring-blue-200"
+                      )}
+                    >
+                      {editingExercises.map((exercise, index) => (
+                        <Draggable 
+                          key={exercise.id} 
+                          draggableId={exercise.id} 
+                          index={index}
+                          isDragDisabled={!isEditMode}
+                        >
+                          {(provided, snapshot) => (
+                            <motion.div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              layout
+                              className={cn(
+                                "rounded-xl border border-gray-200 p-4 transition-all",
+                                exercise.completed 
+                                  ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200" 
+                                  : "bg-white hover:bg-gray-50",
+                                exercise.superset_group_id && "border-l-4 border-l-blue-400 bg-blue-50/50",
+                                selectedExercises.includes(exercise.id) && isEditMode && "ring-2 ring-orange-300 bg-orange-50",
+                                snapshot.isDragging && "shadow-lg scale-105 rotate-1 z-10 bg-white"
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                {isEditMode && (
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      {...provided.dragHandleProps}
+                                      className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                    >
+                                      <GripVertical size={16} />
+                                    </div>
+                                    <button
+                                      onClick={() => toggleExerciseSelection(exercise.id)}
+                                      className={cn(
+                                        "w-4 h-4 rounded border-2 transition-colors",
+                                        selectedExercises.includes(exercise.id) 
+                                          ? "bg-orange-500 border-orange-500" 
+                                          : "border-gray-300 hover:border-orange-300"
+                                      )}
+                                    >
+                                      {selectedExercises.includes(exercise.id) && (
+                                        <CheckCircle size={12} className="text-white" />
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+
+                                <div className="flex-shrink-0">
+                                  {exercise.completed ? (
+                                    <CheckCircle size={20} className="text-green-600" />
+                                  ) : (
+                                    <Circle size={20} className="text-gray-400" />
+                                  )}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    {isEditMode ? (
+                                      <Input
+                                        value={exercise.name}
+                                        onChange={(e) => updateExercise(exercise.id, 'name', e.target.value)}
+                                        className="font-medium h-7 text-sm border-0 bg-transparent p-0 focus:bg-white focus:border focus:px-2 focus:rounded"
+                                      />
+                                    ) : (
+                                      <p className={cn(
+                                        "font-medium",
+                                        exercise.completed && "line-through text-gray-500"
+                                      )}>
+                                        {exercise.name}
+                                      </p>
+                                    )}
+                                    
+                                    {exercise.superset_group_id && (
+                                      <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                                        Superset
+                                        {isEditMode && (
+                                          <button
+                                            onClick={() => removeFromSuperset(exercise.id)}
+                                            className="ml-1 hover:text-red-600"
+                                          >
+                                            <X size={10} />
+                                          </button>
+                                        )}
+                                      </Badge>
+                                    )}
+                                    
+                                    {exercise.source === 'voice' && (
+                                      <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                                        Voice
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  {isEditMode ? (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          type="number"
+                                          value={exercise.sets}
+                                          onChange={(e) => updateExercise(exercise.id, 'sets', parseInt(e.target.value))}
+                                          className="w-12 h-6 text-xs text-center border-gray-300"
+                                          min="1"
+                                        />
+                                        <span className="text-gray-500">sets</span>
+                                      </div>
+                                      <span className="text-gray-400">×</span>
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          value={exercise.reps}
+                                          onChange={(e) => updateExercise(exercise.id, 'reps', e.target.value)}
+                                          className="w-16 h-6 text-xs text-center border-gray-300"
+                                        />
+                                        <span className="text-gray-500">reps</span>
+                                      </div>
+                                      <span className="text-gray-400">@</span>
+                                      <Input
+                                        value={exercise.weight}
+                                        onChange={(e) => updateExercise(exercise.id, 'weight', e.target.value)}
+                                        className="w-20 h-6 text-xs text-center border-gray-300"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-600">
+                                      {exercise.sets} × {exercise.reps}
+                                      {exercise.weight && exercise.weight !== 'bodyweight' && 
+                                        ` @ ${exercise.weight}`
+                                      }
+                                    </p>
+                                  )}
+                                </div>
+
+                                {isEditMode && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeExercise(exercise.id)}
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <X size={12} />
+                                  </Button>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+
+              {/* Add Exercise Form */}
+              <AnimatePresence>
+                {showAddExercise && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-blue-50 rounded-xl p-4 border border-blue-200"
+                  >
+                    <h5 className="text-sm font-medium text-blue-800 mb-3">Add New Exercise</h5>
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Exercise name"
+                        value={newExercise.name}
+                        onChange={(e) => setNewExercise(prev => ({ ...prev, name: e.target.value }))}
+                        className="bg-white"
+                      />
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-600">Sets</label>
+                          <Input
+                            type="number"
+                            value={newExercise.sets}
+                            onChange={(e) => setNewExercise(prev => ({ ...prev, sets: parseInt(e.target.value) }))}
+                            className="bg-white"
+                            min="1"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600">Reps</label>
+                          <Input
+                            value={newExercise.reps}
+                            onChange={(e) => setNewExercise(prev => ({ ...prev, reps: e.target.value }))}
+                            className="bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600">Weight</label>
+                          <Input
+                            value={newExercise.weight}
+                            onChange={(e) => setNewExercise(prev => ({ ...prev, weight: e.target.value }))}
+                            className="bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={addNewExercise} size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                          <Plus size={14} className="mr-1" />
+                          Add Exercise
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowAddExercise(false)} 
+                          size="sm"
+                          className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {!showFullExercises && !isEditMode && totalExercises > 3 && (
+                <div className="text-center py-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFullExercises(true)}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    <ChevronDown size={12} className="mr-1" />
+                    Show {totalExercises - 3} more exercises
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Exercise Preview (when not in edit mode) */}
+          {!showFullExercises && !isEditMode && workout.exercises.length > 0 && (
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Dumbbell size={16} />
+                  Exercise Preview
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowFullExercises(true)}
+                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                >
+                  <ChevronDown size={12} className="mr-1" />
+                  View All
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                {workout.exercises.slice(0, 3).map((exercise, index) => (
                   <div
                     key={exercise.id}
-                    className={cn(
-                      "flex items-center justify-between p-2 rounded-md transition-colors",
-                      exercise.completed 
-                        ? "bg-green-50 text-green-800" 
-                        : "bg-background/50"
-                    )}
+                    className="flex items-center justify-between p-2 rounded-xl bg-white/70 backdrop-blur-sm"
                   >
-                    <div className="flex items-center gap-2 flex-1">
-                      <div className="flex-shrink-0">
-                        {exercise.completed ? (
-                          <CheckCircle size={16} className="text-green-600" />
-                        ) : (
-                          <Circle size={16} className="text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={cn(
-                            "text-sm font-medium truncate",
-                            exercise.completed && "line-through"
-                          )}>
-                            {exercise.name}
-                          </p>
-                          {exercise.source === 'voice' && (
-                            <Badge variant="outline" className="text-xs bg-blue-100">
-                              Voice
-                            </Badge>
-                          )}
-                          {exercise.superset_group_id && (
-                            <Badge variant="outline" className="text-xs">
-                              <Link size={8} className="mr-1" />
-                              SS
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      {exercise.completed ? (
+                        <CheckCircle size={16} className="text-green-600" />
+                      ) : (
+                        <Circle size={16} className="text-gray-400" />
+                      )}
+                      <div>
+                        <p className={cn(
+                          "text-sm font-medium",
+                          exercise.completed && "line-through text-gray-500"
+                        )}>
+                          {exercise.name}
+                        </p>
+                        <p className="text-xs text-gray-600">
                           {exercise.sets} × {exercise.reps}
                           {exercise.weight && exercise.weight !== 'bodyweight' && 
                             ` @ ${exercise.weight}`
@@ -600,93 +735,171 @@ export function WorkoutCard({
                         </p>
                       </div>
                     </div>
+                    {exercise.source === 'voice' && (
+                      <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                        Voice
+                      </Badge>
+                    )}
                   </div>
                 ))}
-
-              {!showFullExercises && totalExercises > 3 && (
-                <div className="text-center py-2">
-                  <span className="text-xs text-muted-foreground">
-                    +{totalExercises - 3} more exercises
-                  </span>
-                </div>
-              )}
+              </div>
             </div>
           )}
-        </div>
 
-        {/* Progress Section */}
-        {!currentWorkout.is_completed && !isEditMode && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground font-medium">Progress</span>
-              <span className="font-semibold">
-                {completedExercises}/{totalExercises} completed
-              </span>
+          {/* Progress Section */}
+          {!workout.isCompleted && !isEditMode && totalExercises > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600 font-medium">Progress</span>
+                <span className="font-semibold text-gray-800">
+                  {completedExercises}/{totalExercises}
+                </span>
+              </div>
+              <div className="relative">
+                <Progress value={progress} className="h-3 bg-gray-200" />
+                <div 
+                  className="absolute top-0 h-3 bg-gradient-to-r from-hashim-400 to-hashim-600 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
-            <Progress 
-              value={progress} 
-              className="h-2"
-            />
-          </div>
-        )}
+          )}
 
-        {/* Bottom CTA Section */}
-        {!isEditMode && (
-          <div className="space-y-2 pt-2">
-            {currentWorkout.is_completed ? (
-              <Button 
-                variant="outline" 
-                size="lg"
-                onClick={() => onStart?.(currentWorkout)}
-                className="w-full text-green-600 border-green-200 hover:bg-green-50"
-              >
-                <TrendingUp size={16} className="mr-2" />
-                View Results
-              </Button>
+          {/* Action Buttons */}
+          <div className="space-y-3 pt-2">
+            {isEditMode ? (
+              <div className="space-y-2">
+                {hasUnsavedChanges && (
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={resetChanges}
+                      variant="outline"
+                      className="flex-1 text-gray-600 border-gray-300 hover:bg-gray-50"
+                    >
+                      <RotateCcw size={14} className="mr-2" />
+                      Reset
+                    </Button>
+                    <Button 
+                      onClick={() => setShowSaveOptions(true)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Save size={14} className="mr-2" />
+                      Save Changes
+                    </Button>
+                  </div>
+                )}
+              </div>
             ) : (
-              <Button 
-                onClick={() => onStart?.(currentWorkout)}
-                className="w-full bg-hashim-600 hover:bg-hashim-700 text-white"
-                size="lg"
-              >
-                <Play size={16} className="mr-2" />
-                Start Workout
-              </Button>
+              <>
+                {workout.isCompleted ? (
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    onClick={() => onStart?.(workout)}
+                    className="w-full text-green-600 border-green-200 hover:bg-green-50 h-12 rounded-2xl font-semibold"
+                  >
+                    <TrendingUp size={18} className="mr-2" />
+                    View Results
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => onStart?.(workout)}
+                    className="w-full bg-gradient-to-r from-hashim-500 to-hashim-600 hover:from-hashim-600 hover:to-hashim-700 text-white h-12 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                    size="lg"
+                  >
+                    <Play size={18} className="mr-2" />
+                    Start Workout
+                  </Button>
+                )}
+
+                {/* Secondary CTAs */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onAskCoach}
+                    className="flex-1 text-purple-600 border-purple-200 hover:bg-purple-50 rounded-xl"
+                  >
+                    <MessageCircle size={14} className="mr-1" />
+                    Ask Coach
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onReplaceWorkout}
+                    className="flex-1 text-blue-600 border-blue-200 hover:bg-blue-50 rounded-xl"
+                  >
+                    <Dumbbell size={14} className="mr-1" />
+                    Replace
+                  </Button>
+                </div>
+              </>
             )}
+          </div>
 
-            {/* Secondary CTAs */}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onAskCoach}
-                className="flex-1 text-muted-foreground hover:text-foreground"
-              >
-                <MessageCircle size={14} className="mr-1" />
-                Ask Coach
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onReplaceWorkout}
-                className="flex-1 text-muted-foreground hover:text-foreground"
-              >
-                <Dumbbell size={14} className="mr-1" />
-                Replace
-              </Button>
+          {/* Empty State */}
+          {workout.exercises.length === 0 && (
+            <div className="text-center py-8 text-gray-400">
+              <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No exercises in this workout</p>
+              <p className="text-xs mt-1">Add exercises to get started</p>
             </div>
-          </div>
-        )}
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Empty State */}
-        {currentWorkout.exercises.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No exercises in this workout</p>
-            <p className="text-xs mt-1">Add exercises to get started</p>
-          </div>
+      {/* Save Options Modal */}
+      <AnimatePresence>
+        {showSaveOptions && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowSaveOptions(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Save Changes</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                How would you like to apply these changes?
+              </p>
+              
+              <div className="space-y-3">
+                <Button
+                  onClick={() => saveChanges(false)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 rounded-2xl font-medium"
+                >
+                  <Calendar size={16} className="mr-2" />
+                  Save for Today Only
+                </Button>
+                
+                <Button
+                  onClick={() => saveChanges(true)}
+                  variant="outline"
+                  className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 h-12 rounded-2xl font-medium"
+                >
+                  <CalendarDays size={16} className="mr-2" />
+                  Save for All "{workout.title}" Workouts
+                </Button>
+                
+                <Button
+                  onClick={() => setShowSaveOptions(false)}
+                  variant="ghost"
+                  className="w-full text-gray-600 hover:bg-gray-100 h-10 rounded-2xl"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
-      </CardContent>
-    </Card>
+      </AnimatePresence>
+    </motion.div>
   );
 }
