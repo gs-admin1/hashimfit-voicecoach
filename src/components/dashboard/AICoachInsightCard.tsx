@@ -6,16 +6,30 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, Brain, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface Insight {
+  id: number;
+  type: 'encouraging' | 'suggestion';
+  title: string;
+  message: string;
+  icon: any;
+  color: string;
+  bgColor: string;
+}
+
 interface AICoachInsightCardProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   className?: string;
+  insights?: Insight[];
+  onChatWithCoach?: () => void;
 }
 
 export function AICoachInsightCard({ 
   isCollapsed = false, 
   onToggleCollapse,
-  className 
+  className,
+  insights = [],
+  onChatWithCoach
 }: AICoachInsightCardProps) {
   const [localCollapsed, setLocalCollapsed] = useState(isCollapsed);
   
@@ -28,28 +42,6 @@ export function AICoachInsightCard({
   };
   
   const collapsed = onToggleCollapse ? isCollapsed : localCollapsed;
-  
-  // Mock AI insights
-  const insights = [
-    {
-      id: 1,
-      type: "encouraging",
-      title: "Great Progress!",
-      message: "You've hit your protein target 5 days in a row. Keep up the excellent work!",
-      icon: CheckCircle,
-      color: "text-green-600",
-      bgColor: "bg-green-50"
-    },
-    {
-      id: 2,
-      type: "suggestion",
-      title: "Optimization Tip",
-      message: "Try adding 20g more carbs pre-workout to boost your energy levels.",
-      icon: TrendingUp,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50"
-    }
-  ];
 
   return (
     <Card className={cn("transition-all duration-300", className)}>
@@ -74,32 +66,46 @@ export function AICoachInsightCard({
       
       {!collapsed && (
         <CardContent className="space-y-3">
-          {insights.map((insight) => (
-            <div key={insight.id} className={`p-3 rounded-lg border ${insight.bgColor}`}>
-              <div className="flex items-start space-x-3">
-                <div className={`p-1 rounded-full ${insight.color}`}>
-                  <insight.icon className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-semibold text-sm">{insight.title}</h4>
-                    <Badge 
-                      variant="secondary" 
-                      className={`text-xs ${insight.type === 'encouraging' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}
-                    >
-                      {insight.type === 'encouraging' ? 'Encouraging' : 'Tip'}
-                    </Badge>
+          {insights.length > 0 ? (
+            <>
+              {insights.map((insight) => (
+                <div key={insight.id} className={`p-3 rounded-lg border ${insight.bgColor}`}>
+                  <div className="flex items-start space-x-3">
+                    <div className={`p-1 rounded-full ${insight.color}`}>
+                      <insight.icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-semibold text-sm">{insight.title}</h4>
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs ${insight.type === 'encouraging' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}
+                        >
+                          {insight.type === 'encouraging' ? 'Encouraging' : 'Tip'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {insight.message}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {insight.message}
-                  </p>
                 </div>
-              </div>
+              ))}
+            </>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Brain size={48} className="mx-auto mb-4 opacity-20" />
+              <p>No insights available yet. Complete more workouts to get personalized coaching!</p>
             </div>
-          ))}
+          )}
           
           <div className="pt-2">
-            <Button variant="outline" size="sm" className="w-full">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={onChatWithCoach}
+            >
               Chat with AI Coach
             </Button>
           </div>

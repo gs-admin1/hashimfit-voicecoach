@@ -3,26 +3,31 @@ import { AnimatedCard } from "@/components/ui-components";
 import { Button } from "@/components/ui/button";
 import { Bot, CheckCircle, X } from "lucide-react";
 
-export function AICoachSuggestionsCard() {
-  const suggestions = [
-    {
-      id: 1,
-      message: "You've been skipping Sunday workouts — want to remove that day?",
-      type: "schedule"
-    },
-    {
-      id: 2, 
-      message: "Protein intake is low — update your nutrition goal?",
-      type: "nutrition"
-    }
-  ];
+interface Suggestion {
+  id: number;
+  message: string;
+  type: string;
+}
 
+interface AICoachSuggestionsCardProps {
+  suggestions?: Suggestion[];
+  onAcceptSuggestion?: (id: number) => void;
+  onDismissSuggestion?: (id: number) => void;
+}
+
+export function AICoachSuggestionsCard({ 
+  suggestions = [],
+  onAcceptSuggestion,
+  onDismissSuggestion
+}: AICoachSuggestionsCardProps) {
   const handleAcceptSuggestion = (id: number) => {
     console.log(`Accepted suggestion ${id}`);
+    onAcceptSuggestion?.(id);
   };
 
   const handleDismissSuggestion = (id: number) => {
     console.log(`Dismissed suggestion ${id}`);
+    onDismissSuggestion?.(id);
   };
 
   if (suggestions.length === 0) return null;

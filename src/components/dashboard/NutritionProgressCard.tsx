@@ -6,16 +6,25 @@ import { Progress } from "@/components/ui/progress";
 import { ChevronDown, ChevronUp, Utensils } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface NutritionData {
+  calories: { current: number; target: number; percentage: number };
+  protein: { current: number; target: number; percentage: number };
+  carbs: { current: number; target: number; percentage: number };
+  fat: { current: number; target: number; percentage: number };
+}
+
 interface NutritionProgressCardProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   className?: string;
+  nutritionData?: NutritionData;
 }
 
 export function NutritionProgressCard({ 
   isCollapsed = false, 
   onToggleCollapse,
-  className 
+  className,
+  nutritionData
 }: NutritionProgressCardProps) {
   const [localCollapsed, setLocalCollapsed] = useState(isCollapsed);
   
@@ -28,14 +37,6 @@ export function NutritionProgressCard({
   };
   
   const collapsed = onToggleCollapse ? isCollapsed : localCollapsed;
-  
-  // Mock nutrition data
-  const nutritionData = {
-    calories: { current: 1650, target: 2200, percentage: 75 },
-    protein: { current: 120, target: 165, percentage: 73 },
-    carbs: { current: 180, target: 250, percentage: 72 },
-    fat: { current: 65, target: 85, percentage: 76 }
-  };
 
   const MacroBar = ({ label, current, target, percentage, color }: any) => (
     <div className="space-y-1">
@@ -51,6 +52,29 @@ export function NutritionProgressCard({
       </div>
     </div>
   );
+
+  if (!nutritionData) {
+    return (
+      <Card className={cn("transition-all duration-300", className)}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Utensils className="h-4 w-4 text-green-600" />
+              </div>
+              <CardTitle className="text-lg">Nutrition Today</CardTitle>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <Utensils size={48} className="mx-auto mb-4 opacity-20" />
+            <p>No nutrition data logged yet. Start tracking your meals!</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={cn("transition-all duration-300", className)}>

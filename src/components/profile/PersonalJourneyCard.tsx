@@ -4,19 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Calendar, TrendingUp, ExternalLink } from "lucide-react";
 
-export function PersonalJourneyCard() {
-  const achievements = [
-    { id: 1, title: "First 10 Workouts", earned: true, date: "2 weeks ago" },
-    { id: 2, title: "30-Day Streak", earned: false, progress: "23/30" },
-    { id: 3, title: "5lb Goal Reached", earned: true, date: "1 month ago" }
-  ];
+interface Achievement {
+  id: number;
+  title: string;
+  earned: boolean;
+  date?: string;
+  progress?: string;
+}
 
-  const milestones = [
-    { title: "Started Muscle Gain Program", date: "3 months ago" },
-    { title: "First 5-Workout Week", date: "2 months ago" },
-    { title: "10lb Progress Milestone", date: "1 month ago" }
-  ];
+interface Milestone {
+  title: string;
+  date: string;
+}
 
+interface PersonalJourneyCardProps {
+  achievements?: Achievement[];
+  milestones?: Milestone[];
+  onViewFullJourney?: () => void;
+}
+
+export function PersonalJourneyCard({
+  achievements = [],
+  milestones = [],
+  onViewFullJourney
+}: PersonalJourneyCardProps) {
   return (
     <AnimatedCard className="mb-6" delay={500}>
       <div className="flex items-center justify-between mb-4">
@@ -30,49 +41,67 @@ export function PersonalJourneyCard() {
       </div>
       
       {/* Achievements */}
-      <div className="mb-4">
-        <h4 className="text-sm font-medium mb-3 flex items-center">
-          <TrendingUp size={14} className="mr-1" />
-          Recent Achievements
-        </h4>
-        <div className="flex flex-wrap gap-2">
-          {achievements.map((achievement) => (
-            <Badge 
-              key={achievement.id}
-              variant={achievement.earned ? "default" : "secondary"}
-              className={achievement.earned 
-                ? "bg-hashim-100 text-hashim-800 dark:bg-hashim-900/20 dark:text-hashim-400" 
-                : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-              }
-            >
-              {achievement.title}
-              {!achievement.earned && achievement.progress && (
-                <span className="ml-1 text-xs">({achievement.progress})</span>
-              )}
-            </Badge>
-          ))}
+      {achievements.length > 0 && (
+        <div className="mb-4">
+          <h4 className="text-sm font-medium mb-3 flex items-center">
+            <TrendingUp size={14} className="mr-1" />
+            Recent Achievements
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {achievements.map((achievement) => (
+              <Badge 
+                key={achievement.id}
+                variant={achievement.earned ? "default" : "secondary"}
+                className={achievement.earned 
+                  ? "bg-hashim-100 text-hashim-800 dark:bg-hashim-900/20 dark:text-hashim-400" 
+                  : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                }
+              >
+                {achievement.title}
+                {!achievement.earned && achievement.progress && (
+                  <span className="ml-1 text-xs">({achievement.progress})</span>
+                )}
+              </Badge>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       
       {/* Timeline */}
-      <div>
-        <h4 className="text-sm font-medium mb-3 flex items-center">
-          <Calendar size={14} className="mr-1" />
-          Key Milestones
-        </h4>
-        <div className="space-y-2">
-          {milestones.slice(0, 3).map((milestone, index) => (
-            <div key={index} className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">{milestone.title}</span>
-              <span className="text-xs text-hashim-600">{milestone.date}</span>
-            </div>
-          ))}
+      {milestones.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium mb-3 flex items-center">
+            <Calendar size={14} className="mr-1" />
+            Key Milestones
+          </h4>
+          <div className="space-y-2">
+            {milestones.slice(0, 3).map((milestone, index) => (
+              <div key={index} className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">{milestone.title}</span>
+                <span className="text-xs text-hashim-600">{milestone.date}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       
-      <Button variant="outline" size="sm" className="w-full mt-4">
-        View Full Journey
-      </Button>
+      {(achievements.length > 0 || milestones.length > 0) && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full mt-4"
+          onClick={onViewFullJourney}
+        >
+          View Full Journey
+        </Button>
+      )}
+      
+      {achievements.length === 0 && milestones.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <Trophy size={48} className="mx-auto mb-4 opacity-20" />
+          <p>Start your fitness journey to unlock achievements and milestones!</p>
+        </div>
+      )}
     </AnimatedCard>
   );
 }

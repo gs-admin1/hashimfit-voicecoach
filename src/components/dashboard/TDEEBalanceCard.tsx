@@ -5,16 +5,28 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface TDEEData {
+  tdee: number;
+  intake: number;
+  balance: number;
+  goal: "fat_loss" | "muscle_gain" | "maintenance";
+  targetDeficit: number;
+}
+
 interface TDEEBalanceCardProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   className?: string;
+  tdeeData?: TDEEData;
+  onAdjustGoals?: () => void;
 }
 
 export function TDEEBalanceCard({ 
   isCollapsed = false, 
   onToggleCollapse,
-  className 
+  className,
+  tdeeData,
+  onAdjustGoals
 }: TDEEBalanceCardProps) {
   const [localCollapsed, setLocalCollapsed] = useState(isCollapsed);
   
@@ -28,14 +40,31 @@ export function TDEEBalanceCard({
   
   const collapsed = onToggleCollapse ? isCollapsed : localCollapsed;
   
-  // Mock TDEE data
-  const tdeeData = {
-    tdee: 2400,
-    intake: 1650,
-    balance: -750,
-    goal: "fat_loss", // "fat_loss" | "muscle_gain" | "maintenance"
-    targetDeficit: -500
-  };
+  if (!tdeeData) {
+    return (
+      <Card className={cn("transition-all duration-300", className)}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Activity className="h-4 w-4 text-orange-600" />
+              </div>
+              <CardTitle className="text-lg">Energy Balance</CardTitle>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <Activity size={48} className="mx-auto mb-4 opacity-20" />
+            <p>Set up your nutrition goals to track energy balance</p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={onAdjustGoals}>
+              Set Goals
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   const isOnTrack = Math.abs(tdeeData.balance - tdeeData.targetDeficit) <= 200;
   const balanceColor = tdeeData.balance < 0 ? "text-red-600" : "text-green-600";
@@ -94,7 +123,7 @@ export function TDEEBalanceCard({
           </div>
           
           <div className="pt-2 text-center">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={onAdjustGoals}>
               Adjust Goals
             </Button>
           </div>
