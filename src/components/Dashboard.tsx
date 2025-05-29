@@ -125,7 +125,10 @@ export function Dashboard() {
         reps: ex.reps,
         weight: ex.weight || 'bodyweight',
         completed: completedExercises[ex.name] || false,
-        source: 'planned' as const
+        source: 'planned' as const,
+        rest_seconds: 60,
+        superset_group_id: ex.notes?.includes('Superset:') ? ex.notes.split('Superset: ')[1] : null,
+        position_in_workout: exercises.findIndex(e => e.id === ex.id)
       }));
 
       // Add voice-logged exercises that aren't in the plan
@@ -138,7 +141,10 @@ export function Dashboard() {
           reps: log.reps_completed,
           weight: log.weight_used || 'bodyweight',
           completed: true,
-          source: 'voice' as const
+          source: 'voice' as const,
+          rest_seconds: 60,
+          superset_group_id: log.superset_group_id || null,
+          position_in_workout: allExerciseLogs.findIndex(l => l.id === log.id)
         }));
       
       return {
@@ -220,7 +226,8 @@ export function Dashboard() {
           sets_completed: ex.sets,
           reps_completed: ex.reps,
           weight_used: ex.weight,
-          order_index: index
+          order_index: index,
+          superset_group_id: ex.superset_group_id || null
         } as Omit<ExerciseLog, 'workout_log_id'>));
       
       if (schedule.workout_log_id) {
@@ -356,7 +363,18 @@ export function Dashboard() {
       
       if (applyToAll) {
         // Update the workout plan template - this affects all future workouts
-        await WorkoutService.updateWorkoutPlanWithExercises(updatedWorkout.id, updatedWorkout.exercises);
+        const success = await WorkoutService.updateWorkoutPlanWithExercises(updatedWorkout.id, updatedWorkout.exercises);
+        if (!success) throw new Error("Failed to update workout plan");
+        
+        // Invalidate all workout-related queries since the template changed
+        queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
+        queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
+        queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
+        // Also invalidate any cached workout plan data
+        queryClient.invalidateQueries({ queryKey: ['workoutPlan'] });
+        queryClient.invalidateQueries({ queryKey: ['workoutExercises'] });
+        queryClient.invalidateQueries({ queryKey: ['allWorkoutPlans'] });
+        
         console.log("Updated workout plan template for all future workouts");
       } else {
         // Create a copy of the workout plan for this specific instance
@@ -368,12 +386,11 @@ export function Dashboard() {
           });
           console.log("Created workout plan copy for today only");
         }
+        
+        // Only invalidate current date queries for copy creation
+        queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
+        queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
       }
-      
-      // Refresh queries
-      queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
-      queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
-      queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
       
       toast({
         title: "Workout Updated",

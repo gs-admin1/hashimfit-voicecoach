@@ -88,7 +88,7 @@ export default function WorkoutsPage() {
             completed: completedExercises[ex.name] || false,
             source: 'planned' as const,
             rest_seconds: 60,
-            superset_group_id: null,
+            superset_group_id: ex.notes?.includes('Superset:') ? ex.notes.split('Superset: ')[1] : null,
             position_in_workout: exercises.findIndex(e => e.id === ex.id)
           }));
 
@@ -104,7 +104,7 @@ export default function WorkoutsPage() {
               completed: true,
               source: 'voice' as const,
               rest_seconds: 60,
-              superset_group_id: null,
+              superset_group_id: log.superset_group_id || null,
               position_in_workout: allExerciseLogs.findIndex(l => l.id === log.id)
             }));
           
@@ -214,37 +214,52 @@ export default function WorkoutsPage() {
 
   // Mutation for updating workout exercises
   const updateWorkoutMutation = useMutation({
-    mutationFn: async ({ workoutPlanId, exercises }: { workoutPlanId: string, exercises: any[] }) => {
+    mutationFn: async ({ workoutPlanId, exercises, applyToAll }: { workoutPlanId: string, exercises: any[], applyToAll: boolean }) => {
       if (!userId) throw new Error("User not authenticated");
       
-      console.log("Updating workout exercises:", workoutPlanId, exercises);
+      console.log("Updating workout exercises:", workoutPlanId, exercises, "Apply to all:", applyToAll);
       
-      // First, delete all existing exercises for this workout plan
-      const existingExercises = await WorkoutService.getWorkoutExercises(workoutPlanId);
-      await Promise.all(
-        existingExercises.map(ex => WorkoutService.deleteWorkoutExercise(ex.id!))
-      );
-      
-      // Then create new exercises with updated data
-      const exerciseData = exercises.map((ex, index) => ({
-        workout_plan_id: workoutPlanId,
-        name: ex.name,
-        sets: ex.sets,
-        reps: ex.reps,
-        weight: ex.weight || 'bodyweight',
-        rest_time: ex.rest_seconds || 60, // Convert to number
-        order_index: index,
-        notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
-      }));
-      
-      return await WorkoutService.createWorkoutExercises(exerciseData);
+      if (applyToAll) {
+        // Update the workout plan template - this affects all future workouts
+        const success = await WorkoutService.updateWorkoutPlanWithExercises(workoutPlanId, exercises);
+        if (!success) throw new Error("Failed to update workout plan");
+        return { type: 'update_template', workoutPlanId };
+      } else {
+        // Create a copy of the workout plan for this specific instance
+        const newPlan = await WorkoutService.createWorkoutPlanCopy(workoutPlanId, exercises);
+        if (!newPlan) throw new Error("Failed to create workout plan copy");
+        
+        // Update the schedule to use the new plan
+        const selectedWorkoutSchedule = scheduledWorkouts.find(w => w.id === workoutPlanId);
+        if (selectedWorkoutSchedule) {
+          await WorkoutService.updateScheduledWorkout(selectedWorkoutSchedule.schedule_id, {
+            workout_plan_id: newPlan.id
+          });
+        }
+        
+        return { type: 'create_copy', newPlanId: newPlan.id };
+      }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       console.log("Successfully updated workout exercises");
-      queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts'] });
+      
+      if (result.type === 'update_template') {
+        // Invalidate all workout-related queries since the template changed
+        queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts'] });
+        queryClient.invalidateQueries({ queryKey: ['allWorkoutPlans'] });
+        // Also invalidate any cached workout plan data
+        queryClient.invalidateQueries({ queryKey: ['workoutPlan'] });
+        queryClient.invalidateQueries({ queryKey: ['workoutExercises'] });
+      } else {
+        // Only invalidate current date queries for copy creation
+        queryClient.invalidateQueries({ queryKey: ['scheduledWorkouts', userId, format(selectedDate, 'yyyy-MM-dd')] });
+      }
+      
       toast({
         title: "Workout Updated",
-        description: "Your workout changes have been saved successfully."
+        description: result.type === 'update_template' 
+          ? "Your workout has been updated for all future sessions."
+          : "Your workout has been updated for today only."
       });
     },
     onError: (error) => {
@@ -328,10 +343,11 @@ export default function WorkoutsPage() {
     });
   });
 
-  const handleWorkoutUpdate = (updatedWorkout: any) => {
+  const handleWorkoutUpdate = (updatedWorkout: any, applyToAll: boolean = false) => {
     updateWorkoutMutation.mutate({
       workoutPlanId: updatedWorkout.id,
-      exercises: updatedWorkout.exercises
+      exercises: updatedWorkout.exercises,
+      applyToAll
     });
   };
 
