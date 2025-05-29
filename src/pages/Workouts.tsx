@@ -232,7 +232,7 @@ export default function WorkoutsPage() {
         sets: ex.sets,
         reps: ex.reps,
         weight: ex.weight || 'bodyweight',
-        rest_time: ex.rest_seconds ? `${ex.rest_seconds} seconds` : '60 seconds',
+        rest_time: ex.rest_seconds || 60, // Convert to number
         order_index: index,
         notes: ex.superset_group_id ? `Superset: ${ex.superset_group_id}` : undefined
       }));
