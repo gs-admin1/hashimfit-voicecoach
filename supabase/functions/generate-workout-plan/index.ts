@@ -84,7 +84,7 @@ serve(async (req) => {
     const mappedFitnessGoal = fitnessGoalMapping[assessmentData.fitnessGoal] || 'general_fitness'
     const mappedEquipment = equipmentMapping[assessmentData.equipment] || 'minimal'
 
-    // Generate comprehensive prompt for OpenAI
+    // Generate comprehensive prompt for OpenAI with stricter JSON requirements
     const prompt = `Create a comprehensive fitness and nutrition plan for a user with the following profile:
 
 Demographics:
@@ -101,13 +101,11 @@ Fitness Profile:
 - Sports played: ${assessmentData.sportsPlayed?.join(', ') || 'None'}
 - Allergies: ${assessmentData.allergies?.join(', ') || 'None'}
 
-Create a structured plan that includes:
+Create a 4-week workout schedule with specific exercises, sets, reps, and nutrition targets.
 
-1. A 4-week workout schedule with specific exercises, sets, reps, and rest periods
-2. Nutrition targets with daily calorie and macro goals
-3. General recommendations for success
+IMPORTANT: Return ONLY valid JSON. Do not include any explanation, markdown, or additional text. The response must be parseable JSON.
 
-Return ONLY a valid JSON object with this exact structure:
+JSON Structure:
 {
   "workout_schedule": [
     {
@@ -139,7 +137,9 @@ Return ONLY a valid JSON object with this exact structure:
   }
 }`
 
-    // Call OpenAI API
+    console.log('Calling OpenAI API...')
+
+    // Call OpenAI API with improved error handling
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -147,33 +147,64 @@ Return ONLY a valid JSON object with this exact structure:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
-            content: 'You are a professional fitness coach and nutritionist who creates personalized workout and nutrition plans. Always respond with valid JSON only.' 
+            content: 'You are a professional fitness coach and nutritionist. You MUST respond with valid JSON only. No explanations, no markdown, no additional text. Just pure JSON that can be parsed directly.' 
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: 0.3,
+        max_tokens: 3000,
         response_format: { type: "json_object" }
       }),
     })
 
     if (!openAIResponse.ok) {
-      console.error('OpenAI API error:', openAIResponse.statusText)
-      throw new Error(`OpenAI API error: ${openAIResponse.statusText}`)
+      const errorText = await openAIResponse.text()
+      console.error('OpenAI API error:', openAIResponse.status, errorText)
+      throw new Error(`OpenAI API error: ${openAIResponse.status} - ${errorText}`)
     }
 
     const openAIData = await openAIResponse.json()
-    const planData = JSON.parse(openAIData.choices[0].message.content)
+    console.log('OpenAI raw response:', openAIData)
     
+    if (!openAIData.choices || !openAIData.choices[0] || !openAIData.choices[0].message) {
+      throw new Error('Invalid OpenAI response structure')
+    }
+
+    let planData
+    try {
+      const rawContent = openAIData.choices[0].message.content
+      console.log('Raw content from OpenAI:', rawContent)
+      
+      // Clean up the JSON content to handle potential formatting issues
+      let cleanedContent = rawContent.trim()
+      
+      // Remove any markdown code block indicators if present
+      cleanedContent = cleanedContent.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+      cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```$/, '')
+      
+      // Try to parse the cleaned JSON
+      planData = JSON.parse(cleanedContent)
+      console.log('Successfully parsed plan data:', planData)
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError)
+      console.error('Failed to parse content:', openAIData.choices[0].message.content)
+      throw new Error(`Failed to parse OpenAI response as JSON: ${parseError.message}`)
+    }
+
+    // Validate the required structure
+    if (!planData.workout_schedule || !planData.nutrition_targets || !planData.recommendations) {
+      console.error('Invalid plan data structure:', planData)
+      throw new Error('Invalid plan data structure from OpenAI')
+    }
+
     console.log('Generated plan data:', planData)
 
     // Store workout plans in the database
     const workoutPlans = []
-    const workoutSchedules = []
     
     // Group exercises by week and workout
     const workoutsByWeekAndDay = {}
@@ -197,6 +228,8 @@ Return ONLY a valid JSON object with this exact structure:
 
     // Create workout plans and exercises
     for (const [key, workout] of Object.entries(workoutsByWeekAndDay)) {
+      console.log(`Creating workout plan: ${workout.title}`)
+      
       // Create workout plan
       const { data: workoutPlan, error: workoutPlanError } = await supabaseClient
         .from('workout_plans')
@@ -244,24 +277,28 @@ Return ONLY a valid JSON object with this exact structure:
       const startDate = new Date()
       const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(workout.day)
       
-      for (let weekOffset = workout.week - 1; weekOffset < 4; weekOffset += 4) {
-        const targetDate = new Date(startDate)
-        targetDate.setDate(startDate.getDate() + (weekOffset * 7) + (dayOfWeek - startDate.getDay()))
-        
-        const { error: scheduleError } = await supabaseClient
-          .from('workout_schedule')
-          .insert({
-            user_id: user.id,
-            workout_plan_id: workoutPlan.id,
-            scheduled_date: targetDate.toISOString().split('T')[0],
-            is_completed: false
-          })
+      if (dayOfWeek !== -1) {
+        for (let weekOffset = workout.week - 1; weekOffset < 4; weekOffset += 4) {
+          const targetDate = new Date(startDate)
+          targetDate.setDate(startDate.getDate() + (weekOffset * 7) + (dayOfWeek - startDate.getDay()))
+          
+          const { error: scheduleError } = await supabaseClient
+            .from('workout_schedule')
+            .insert({
+              user_id: user.id,
+              workout_plan_id: workoutPlan.id,
+              scheduled_date: targetDate.toISOString().split('T')[0],
+              is_completed: false
+            })
 
-        if (scheduleError) {
-          console.error('Error scheduling workout:', scheduleError)
+          if (scheduleError) {
+            console.error('Error scheduling workout:', scheduleError)
+          }
         }
       }
     }
+
+    console.log('Created workout plans successfully')
 
     // Create nutrition plan
     const { data: nutritionPlan, error: nutritionError } = await supabaseClient
@@ -285,6 +322,8 @@ Return ONLY a valid JSON object with this exact structure:
       throw nutritionError
     }
 
+    console.log('Created nutrition plan successfully')
+
     // Update user profile to mark assessment as completed with proper mapping
     const { error: profileError } = await supabaseClient
       .from('profiles')
@@ -307,6 +346,8 @@ Return ONLY a valid JSON object with this exact structure:
       console.error('Error updating profile:', profileError)
       throw profileError
     }
+
+    console.log('Updated profile successfully')
 
     // Store assessment data
     const { error: assessmentError } = await supabaseClient
