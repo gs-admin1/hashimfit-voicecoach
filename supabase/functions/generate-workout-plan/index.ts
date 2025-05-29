@@ -84,62 +84,31 @@ serve(async (req) => {
     const mappedFitnessGoal = fitnessGoalMapping[assessmentData.fitnessGoal] || 'general_fitness'
     const mappedEquipment = equipmentMapping[assessmentData.equipment] || 'minimal'
 
-    // Generate comprehensive prompt for OpenAI with stricter JSON requirements
-    const prompt = `Create a comprehensive fitness and nutrition plan for a user with the following profile:
+    // Generate comprehensive prompt for NEW MUSCLE! AI Coach
+    const assessmentPrompt = `Create a comprehensive 4-week fitness and nutrition plan for this client:
 
-Demographics:
+**CLIENT PROFILE:**
 - Age: ${assessmentData.age}
 - Gender: ${assessmentData.gender}
 - Height: ${assessmentData.height}cm
 - Weight: ${assessmentData.weight}kg
-
-Fitness Profile:
-- Goal: ${mappedFitnessGoal}
-- Workout frequency: ${assessmentData.workoutFrequency} days per week
-- Equipment available: ${mappedEquipment}
-- Diet preference: ${assessmentData.diet}
-- Sports played: ${assessmentData.sportsPlayed?.join(', ') || 'None'}
+- Primary Goal: ${mappedFitnessGoal}
+- Workout Frequency: ${assessmentData.workoutFrequency} days per week
+- Available Equipment: ${mappedEquipment}
+- Diet Preference: ${assessmentData.diet}
+- Sports Played: ${assessmentData.sportsPlayed?.join(', ') || 'None'}
 - Allergies: ${assessmentData.allergies?.join(', ') || 'None'}
 
-Create a 4-week workout schedule with specific exercises, sets, reps, and nutrition targets.
+**REQUIREMENTS:**
+1. Create a 4-week workout schedule with specific exercises, sets, reps, and rest periods
+2. Design nutrition plan with daily macro targets and 4 meals per day
+3. Provide actionable recommendations for success
 
-IMPORTANT: Return ONLY valid JSON. Do not include any explanation, markdown, or additional text. The response must be parseable JSON.
+**IMPORTANT:** Return response in the exact JSON format specified in your system instructions. No markdown, no explanations - just pure JSON that can be parsed directly.`
 
-JSON Structure:
-{
-  "workout_schedule": [
-    {
-      "week": 1,
-      "day": "Monday",
-      "workout_title": "Upper Body Strength",
-      "exercises": [
-        {
-          "name": "Push-ups",
-          "sets": 3,
-          "reps": "8-12",
-          "rest_seconds": 60,
-          "notes": "Focus on form"
-        }
-      ]
-    }
-  ],
-  "nutrition_targets": {
-    "daily_calories": 2200,
-    "protein_g": 165,
-    "carbs_g": 220,
-    "fat_g": 85,
-    "diet_type": "${assessmentData.diet}"
-  },
-  "recommendations": {
-    "workout_tips": "Start with lighter weights and focus on proper form",
-    "nutrition_tips": "Eat protein with every meal for muscle recovery",
-    "weekly_goals": "Complete 3 workouts and track your nutrition daily"
-  }
-}`
+    console.log('Calling OpenAI API with NEW MUSCLE! system...')
 
-    console.log('Calling OpenAI API...')
-
-    // Call OpenAI API with improved error handling
+    // Call OpenAI API with NEW MUSCLE! system instructions
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -151,12 +120,109 @@ JSON Structure:
         messages: [
           { 
             role: 'system', 
-            content: 'You are a professional fitness coach and nutritionist. You MUST respond with valid JSON only. No explanations, no markdown, no additional text. Just pure JSON that can be parsed directly.' 
+            content: `## 🧠 Unified System Instructions for OpenAI Assistant ("NEW MUSCLE!")
+
+**You are NEW MUSCLE!** — an AI fitness coach tailored to deliver **personalized, motivational, and scientifically accurate** training and nutrition plans. Each client has a unique assistant instance built around their assessment data and fitness goals.
+
+Your job is to collect client inputs, generate a complete fitness + nutrition blueprint, and return a structured plan **in the exact format provided below** for storage in the user's Supabase-connected app (HashimFit).
+
+---
+
+### 💪 Responsibilities
+
+1. **Collect Key Client Data**
+   * Equipment access (e.g., bodyweight, dumbbells, gym)
+   * Weekly schedule & time per session
+   * Injuries or health restrictions
+   * Goals (muscle gain, fat loss, strength, etc.)
+   * Experience level (beginner, intermediate, advanced)
+   * Dietary preferences
+
+2. **Workout Plan Generation**
+   * Create a **4-week schedule** (at minimum) with:
+     * Day, week, title, difficulty, duration, and description
+     * Exercises with sets, reps, weight, rest, and notes
+   * Prioritize:
+     * **Progressive overload**
+     * **Injury prevention**
+     * **Muscle group balance**
+   * Use scientific principles from uploaded documents (e.g., hypertrophy training, push-pull-legs splits)
+
+3. **Nutrition Plan Generation**
+   * Tailor macronutrient targets to goal and experience
+   * Provide **four meals/day**: breakfast, lunch, dinner, snack
+   * Include meal title, description, calories, and macros
+
+4. **Motivational Guidance**
+   * Offer workout tips, recovery advice, nutrition reminders, and weekly goals
+   * Tone should be encouraging and professional
+
+---
+
+### ✅ Response Format (MUST match this schema exactly)
+
+\`\`\`json
+{
+  "workout_schedule": [...],  // 4-week training program
+  "nutrition_plan": {
+    "daily_calories": 2200,
+    "protein_g": 165,
+    "carbs_g": 220,
+    "fat_g": 85,
+    "diet_type": "standard",  // Options: standard, vegetarian, vegan, keto, paleo, gluten_free
+    "meals": [
+      {
+        "meal_type": "breakfast",  // breakfast, lunch, dinner, snack
+        "meal_title": "Example",
+        "description": "Ingredients + prep",
+        "calories": 400,
+        "protein_g": 30,
+        "carbs_g": 40,
+        "fat_g": 15
+      }
+    ]
+  },
+  "recommendations": {
+    "workout_tips": "Motivational advice for training",
+    "nutrition_tips": "Hydration, timing, portion reminders",
+    "weekly_goals": "Clear goals for the user to achieve this week"
+  }
+}
+\`\`\`
+
+---
+
+### 🧩 Database Mapping Strategy (internal logic)
+
+* **Workout Plans** → \`workout_plans\`, \`workout_exercises\`, \`workout_schedule\`
+* **Nutrition** → \`nutrition_plans\`, \`meal_plans\`
+* **User Profile** → \`profiles\`, \`assessment_data\`
+
+---
+
+### ⚠️ Formatting Rules
+
+* \`workout_schedule\` must include valid \`category\` values:
+  \`strength\`, \`cardio\`, \`hiit\`, \`recovery\`, \`sport_specific\`, \`custom\`
+* All \`day\` fields must be capitalized full names: \`Monday\`, \`Tuesday\`, etc.
+* All \`meal_type\` values must be: \`breakfast\`, \`lunch\`, \`dinner\`, \`snack\`
+* All numeric values (reps, weight, macros) must be **realistic and actionable**
+* Avoid vague ranges like "varies" — prefer exact or goal-aligned quantities
+* Use \`"bodyweight"\` if no weight is needed for an exercise
+
+---
+
+### 🎯 Behavior Notes
+
+* Always return in **strict JSON** — no markdown or explanations
+* Avoid conversational phrasing outside the required schema
+* If user inputs are incomplete, **infer based on typical beginner/intermediate scenarios**
+* Prioritize structure over filler: **response must pass validation by the app**` 
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: assessmentPrompt }
         ],
-        temperature: 0.3,
-        max_tokens: 3000,
+        temperature: 0.2,
+        max_tokens: 4000,
         response_format: { type: "json_object" }
       }),
     })
@@ -196,7 +262,7 @@ JSON Structure:
     }
 
     // Validate the required structure
-    if (!planData.workout_schedule || !planData.nutrition_targets || !planData.recommendations) {
+    if (!planData.workout_schedule || !planData.nutrition_plan || !planData.recommendations) {
       console.error('Invalid plan data structure:', planData)
       throw new Error('Invalid plan data structure from OpenAI')
     }
@@ -215,6 +281,10 @@ JSON Structure:
       if (!workoutsByWeekAndDay[key]) {
         workoutsByWeekAndDay[key] = {
           title: scheduleItem.workout_title,
+          description: scheduleItem.description || `Week ${scheduleItem.week} - ${scheduleItem.workout_title}`,
+          category: scheduleItem.category || 'strength',
+          difficulty: scheduleItem.difficulty || 3,
+          estimated_duration: scheduleItem.estimated_duration || '45 minutes',
           week: scheduleItem.week,
           day: scheduleItem.day,
           exercises: []
@@ -236,10 +306,10 @@ JSON Structure:
         .insert({
           user_id: user.id,
           title: workout.title,
-          description: `Week ${workout.week} - ${workout.title}`,
-          category: 'strength',
-          difficulty: 3,
-          estimated_duration: '45 minutes',
+          description: workout.description,
+          category: workout.category,
+          difficulty: workout.difficulty,
+          estimated_duration: workout.estimated_duration,
           ai_generated: true
         })
         .select()
@@ -305,13 +375,13 @@ JSON Structure:
       .from('nutrition_plans')
       .insert({
         user_id: user.id,
-        title: 'AI Generated Nutrition Plan',
-        description: 'Personalized nutrition plan based on your fitness goals',
-        daily_calories: planData.nutrition_targets.daily_calories,
-        protein_g: planData.nutrition_targets.protein_g,
-        carbs_g: planData.nutrition_targets.carbs_g,
-        fat_g: planData.nutrition_targets.fat_g,
-        diet_type: planData.nutrition_targets.diet_type,
+        title: 'NEW MUSCLE! Nutrition Plan',
+        description: 'Personalized nutrition plan generated by NEW MUSCLE! AI Coach',
+        daily_calories: planData.nutrition_plan.daily_calories,
+        protein_g: planData.nutrition_plan.protein_g,
+        carbs_g: planData.nutrition_plan.carbs_g,
+        fat_g: planData.nutrition_plan.fat_g,
+        diet_type: planData.nutrition_plan.diet_type,
         ai_generated: true
       })
       .select()
@@ -320,6 +390,30 @@ JSON Structure:
     if (nutritionError) {
       console.error('Error creating nutrition plan:', nutritionError)
       throw nutritionError
+    }
+
+    // Create meal plans if provided
+    if (planData.nutrition_plan.meals && planData.nutrition_plan.meals.length > 0) {
+      const mealPlansToInsert = planData.nutrition_plan.meals.map((meal, index) => ({
+        nutrition_plan_id: nutritionPlan.id,
+        meal_type: meal.meal_type,
+        meal_title: meal.meal_title,
+        description: meal.description,
+        calories: meal.calories,
+        protein_g: meal.protein_g,
+        carbs_g: meal.carbs_g,
+        fat_g: meal.fat_g,
+        order_index: index
+      }))
+
+      const { error: mealPlansError } = await supabaseClient
+        .from('meal_plans')
+        .insert(mealPlansToInsert)
+
+      if (mealPlansError) {
+        console.error('Error creating meal plans:', mealPlansError)
+        throw mealPlansError
+      }
     }
 
     console.log('Created nutrition plan successfully')
@@ -376,7 +470,7 @@ JSON Structure:
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Fitness plan generated and stored successfully',
+        message: 'NEW MUSCLE! fitness plan generated and stored successfully',
         data: {
           workout_plans: workoutPlans.length,
           nutrition_plan: nutritionPlan.id,
