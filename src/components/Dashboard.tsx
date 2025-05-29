@@ -146,40 +146,14 @@ export function Dashboard() {
           superset_group_id: log.superset_group_id || null,
           position_in_workout: allExerciseLogs.findIndex(l => l.id === log.id)
         }));
-
-      // Helper function to safely parse estimated duration
-      const parseEstimatedDuration = (duration: any): number => {
-        if (!duration) return 45;
-        if (typeof duration === 'number') return duration;
-        if (typeof duration === 'string') {
-          // Handle time format like "00:45:00" or "45:00"
-          const parts = duration.split(':');
-          if (parts.length >= 2) {
-            return parseInt(parts[1]) || 45;
-          }
-          // Handle plain number string
-          const parsed = parseInt(duration);
-          return isNaN(parsed) ? 45 : parsed;
-        }
-        return 45;
-      };
       
       return {
         schedule_id: scheduledWorkout.id,
         id: workoutPlan.id,
         title: workoutPlan.title,
         exercises: [...plannedExercises, ...voiceLoggedExercises],
-        category: workoutPlan.category || 'strength',
-        isFavorite: false,
-        estimatedDuration: parseEstimatedDuration(workoutPlan.estimated_duration),
-        targetMuscles: workoutPlan.target_muscles || ['Full Body'],
-        difficulty: workoutPlan.difficulty || 3,
-        aiGenerated: workoutPlan.ai_generated || false,
-        isCompleted: scheduledWorkout.is_completed || false,
-        streak: 1,
-        workout_log_id: scheduledWorkout.workout_log_id,
-        scheduledDate: scheduledWorkout.scheduled_date,
-        completionDate: scheduledWorkout.completion_date || undefined
+        is_completed: scheduledWorkout.is_completed || false,
+        workout_log_id: scheduledWorkout.workout_log_id
       };
     },
     enabled: !!userId && !!workoutSchedules,
@@ -538,6 +512,7 @@ export function Dashboard() {
           <WorkoutCard 
             workout={selectedWorkout} 
             onStart={handleStartWorkout}
+            onEdit={handleEditWorkout}
             onAskCoach={handleAskCoach}
             onReplaceWorkout={handleReplaceWorkout}
             onUpdateWorkout={handleUpdateWorkout}
