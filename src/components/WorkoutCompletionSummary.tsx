@@ -79,10 +79,11 @@ export function WorkoutCompletionSummary({
   };
   
   const getDifficultyColor = (value: number) => {
-    if (value <= 2) return "text-green-600";
-    if (value <= 3) return "text-blue-600";
-    if (value <= 4) return "text-orange-600";
-    return "text-red-600";
+    if (value <= 1) return "text-green-600 font-bold";
+    if (value <= 2) return "text-green-500 font-bold";
+    if (value <= 3) return "text-blue-600 font-bold";
+    if (value <= 4) return "text-orange-600 font-bold";
+    return "text-red-600 font-bold";
   };
   
   return (
@@ -163,31 +164,58 @@ export function WorkoutCompletionSummary({
         </CardContent>
       </Card>
       
-      {/* Rating */}
+      {/* Enhanced Rating Section */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-4">
           <CardTitle className="text-lg">How was this workout?</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Difficulty</span>
-              <span className={cn("text-sm font-medium", getDifficultyColor(rating[0]))}>
+              <span className="text-sm font-medium text-muted-foreground">Difficulty Level</span>
+              <span className={cn("text-lg", getDifficultyColor(rating[0]))}>
                 {getDifficultyLabel(rating[0])}
               </span>
             </div>
-            <Slider
-              value={rating}
-              onValueChange={setRating}
-              max={5}
-              min={1}
-              step={1}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Too Easy</span>
-              <span>Just Right</span>
-              <span>Too Hard</span>
+            
+            {/* Enhanced Slider with Gradient */}
+            <div className="px-1">
+              <Slider
+                value={rating}
+                onValueChange={setRating}
+                max={5}
+                min={1}
+                step={1}
+                showGradient={true}
+                className="w-full"
+              />
+            </div>
+            
+            {/* Slider Labels */}
+            <div className="flex justify-between text-xs font-medium">
+              <span className="text-green-600">Too Easy</span>
+              <span className="text-blue-600">Just Right</span>
+              <span className="text-red-600">Too Hard</span>
+            </div>
+            
+            {/* Visual Difficulty Indicators */}
+            <div className="flex justify-between items-center pt-2">
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                <span className="text-xs text-green-600">1-2</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+                <span className="text-xs text-blue-600">3</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 rounded-full bg-orange-400"></div>
+                <span className="text-xs text-orange-600">4</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <span className="text-xs text-red-600">5</span>
+              </div>
             </div>
           </div>
           
