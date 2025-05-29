@@ -2,9 +2,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RedesignedAssessmentForm } from "@/components/RedesignedAssessmentForm";
+import { PlanGenerationScreen } from "@/components/PlanGenerationScreen";
 import { Logo } from "@/components/Logo";
-import { AnimatedCard } from "@/components/ui-components";
-import { Dumbbell, MessageSquare, AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 export default function Assessment() {
   const navigate = useNavigate();
   const { userId } = useAuth();
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showPlanGeneration, setShowPlanGeneration] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,14 +29,11 @@ export default function Assessment() {
       
       setIsProcessing(true);
       setError(null);
-      console.log("Assessment completed, showing success message");
-      setShowSuccess(true);
+      console.log("Assessment completed, showing plan generation screen");
       
-      // Add a delay to show the success message before navigating
-      setTimeout(() => {
-        console.log("Navigating to dashboard");
-        navigate("/dashboard");
-      }, 4000); // Extended to 4 seconds to show the success state
+      // Immediately show the plan generation screen
+      setShowPlanGeneration(true);
+      
     } catch (error) {
       console.error("Error handling assessment completion:", error);
       setError("There was an error processing your assessment. Please try again.");
@@ -50,57 +47,14 @@ export default function Assessment() {
     }
   };
 
-  if (showSuccess) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-hashim-50 to-white dark:from-gray-900 dark:to-gray-800">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="text-center max-w-md mx-auto px-4"
-        >
-          <AnimatedCard className="text-center py-8 px-6 flex flex-col items-center">
-            <motion.div 
-              className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            >
-              <Dumbbell className="text-green-600" size={32} />
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <h2 className="text-2xl font-bold mb-3">🎉 You're All Set!</h2>
-              <p className="text-muted-foreground mb-6">
-                Your personalized fitness and nutrition plan has been generated and is ready to use.
-              </p>
-              
-              <div className="flex items-center justify-center mb-6">
-                <Loader2 className="animate-spin text-hashim-500 mr-2" size={20} />
-                <span className="text-sm text-hashim-600">Preparing your dashboard...</span>
-              </div>
-            </motion.div>
-            
-            <motion.div 
-              className="flex items-center text-sm bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              <MessageSquare className="text-blue-500 mr-2 flex-shrink-0" size={16} />
-              <p className="text-left">
-                <strong>What's next?</strong><br />
-                Your workouts are scheduled, nutrition targets are set, and your AI fitness assistant is ready to help!
-              </p>
-            </motion.div>
-          </AnimatedCard>
-        </motion.div>
-      </div>
-    );
+  const handlePlanGenerationComplete = () => {
+    console.log("Plan generation completed, navigating to dashboard");
+    // Replace current history entry so back button doesn't return here
+    navigate("/dashboard", { replace: true });
+  };
+
+  if (showPlanGeneration) {
+    return <PlanGenerationScreen onComplete={handlePlanGenerationComplete} />;
   }
 
   return (

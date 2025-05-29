@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { useAuth } from "@/hooks/useAuth";
 import { Form } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
-import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
+import { PlanGenerationService } from "@/lib/supabase/services/PlanGenerationService";
 import { AssessmentStep } from "./assessment/AssessmentStep";
 import { BasicInfoStep } from "./assessment/steps/BasicInfoStep";
 import { FitnessGoalsStep } from "./assessment/steps/FitnessGoalsStep";
@@ -58,7 +58,6 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
   const { userId } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [planGenerating, setPlanGenerating] = useState(false);
   
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(FormSchema),
@@ -108,7 +107,6 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
     }
 
     setSubmitting(true);
-    setPlanGenerating(true);
     
     try {
       const data = form.getValues();
@@ -121,22 +119,21 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
       
       console.log('Submitting assessment data:', data);
       
-      // This will now trigger the complete plan generation workflow
-      const success = await AssessmentService.analyzeAssessment(userId, data);
+      // Trigger plan generation immediately and show loading screen
+      onComplete();
       
-      if (success) {
-        toast({
-          title: "Assessment complete!",
-          description: "Your personalized fitness plan has been generated and is ready to use",
-        });
-        onComplete();
-      } else {
-        toast({
-          title: "Error",
-          description: "There was an error generating your fitness plan. Please try again.",
-          variant: "destructive",
-        });
-      }
+      // Generate the plan in the background - this will take some time
+      setTimeout(async () => {
+        try {
+          await PlanGenerationService.generateFitnessPlan(data);
+          console.log('Plan generation completed successfully');
+        } catch (error) {
+          console.error('Error generating fitness plan:', error);
+          // The user will already be on the loading screen, so we don't show errors here
+          // The loading screen will complete and redirect to dashboard anyway
+        }
+      }, 100);
+      
     } catch (error: any) {
       console.error("Error in assessment submission:", error);
       toast({
@@ -144,9 +141,7 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
         description: error.message || "There was an error processing your assessment",
         variant: "destructive",
       });
-    } finally {
       setSubmitting(false);
-      setPlanGenerating(false);
     }
   };
 
@@ -169,13 +164,13 @@ export function RedesignedAssessmentForm({ onComplete, isProcessing = false }: R
     }
   };
 
-  const isLoading = submitting || isProcessing || planGenerating;
+  const isLoading = submitting || isProcessing;
 
   return (
     <Form {...form}>
       <AssessmentStep
         title={STEPS[currentStep].title}
-        subtitle={planGenerating ? "Generating your custom plan..." : STEPS[currentStep].subtitle}
+        subtitle={STEPS[currentStep].subtitle}
         currentStep={currentStep + 1}
         totalSteps={STEPS.length}
         onNext={handleNext}
