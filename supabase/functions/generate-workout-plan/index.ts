@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 
@@ -62,6 +63,27 @@ serve(async (req) => {
       throw new Error('Missing OpenAI API Key')
     }
 
+    // Map fitness goals to match our database constraints
+    const fitnessGoalMapping = {
+      'muscle_gain': 'muscle_gain',
+      'weight_loss': 'weight_loss', 
+      'endurance': 'endurance',
+      'sport_specific': 'sports_performance',
+      'general_fitness': 'general_fitness'
+    }
+
+    // Map equipment values to match our database constraints
+    const equipmentMapping = {
+      'full_gym': 'full_gym',
+      'home_gym': 'home_gym',
+      'minimal': 'minimal',
+      'bodyweight_only': 'bodyweight',
+      'none': 'none'
+    }
+
+    const mappedFitnessGoal = fitnessGoalMapping[assessmentData.fitnessGoal] || 'general_fitness'
+    const mappedEquipment = equipmentMapping[assessmentData.equipment] || 'minimal'
+
     // Generate comprehensive prompt for OpenAI
     const prompt = `Create a comprehensive fitness and nutrition plan for a user with the following profile:
 
@@ -72,9 +94,9 @@ Demographics:
 - Weight: ${assessmentData.weight}kg
 
 Fitness Profile:
-- Goal: ${assessmentData.fitnessGoal}
+- Goal: ${mappedFitnessGoal}
 - Workout frequency: ${assessmentData.workoutFrequency} days per week
-- Equipment available: ${assessmentData.equipment}
+- Equipment available: ${mappedEquipment}
 - Diet preference: ${assessmentData.diet}
 - Sports played: ${assessmentData.sportsPlayed?.join(', ') || 'None'}
 - Allergies: ${assessmentData.allergies?.join(', ') || 'None'}
@@ -263,17 +285,21 @@ Return ONLY a valid JSON object with this exact structure:
       throw nutritionError
     }
 
-    // Update user profile to mark assessment as completed
+    // Update user profile to mark assessment as completed with proper mapping
     const { error: profileError } = await supabaseClient
       .from('profiles')
       .update({ 
         has_completed_assessment: true,
-        fitness_goal: assessmentData.fitnessGoal,
+        fitness_goal: mappedFitnessGoal,
         workout_frequency: assessmentData.workoutFrequency,
         diet: assessmentData.diet,
-        equipment: assessmentData.equipment,
+        equipment: mappedEquipment,
         sports_played: assessmentData.sportsPlayed,
-        allergies: assessmentData.allergies
+        allergies: assessmentData.allergies,
+        age: parseInt(assessmentData.age),
+        gender: assessmentData.gender,
+        height: parseFloat(assessmentData.height),
+        weight: parseFloat(assessmentData.weight)
       })
       .eq('id', user.id)
 
@@ -287,14 +313,14 @@ Return ONLY a valid JSON object with this exact structure:
       .from('assessment_data')
       .insert({
         user_id: user.id,
-        age: assessmentData.age,
+        age: parseInt(assessmentData.age),
         gender: assessmentData.gender,
-        height: assessmentData.height,
-        weight: assessmentData.weight,
-        fitness_goal: assessmentData.fitnessGoal,
+        height: parseFloat(assessmentData.height),
+        weight: parseFloat(assessmentData.weight),
+        fitness_goal: mappedFitnessGoal,
         workout_frequency: assessmentData.workoutFrequency,
         diet: assessmentData.diet,
-        equipment: assessmentData.equipment,
+        equipment: mappedEquipment,
         sports_played: assessmentData.sportsPlayed || [],
         allergies: assessmentData.allergies || []
       })
