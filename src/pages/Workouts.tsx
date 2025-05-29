@@ -19,7 +19,7 @@ import { format, addDays, startOfDay, endOfDay } from "date-fns";
 
 export default function WorkoutsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [view, setView<"list" | "session" | "completion">("list");
+  const [view, setView] = useState<"list" | "session" | "completion">("list");
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
