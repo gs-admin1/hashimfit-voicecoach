@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -152,8 +153,20 @@ export function Dashboard() {
         id: workoutPlan.id,
         title: workoutPlan.title,
         exercises: [...plannedExercises, ...voiceLoggedExercises],
-        is_completed: scheduledWorkout.is_completed || false,
-        workout_log_id: scheduledWorkout.workout_log_id
+        category: workoutPlan.category || 'strength',
+        isFavorite: false,
+        estimatedDuration: workoutPlan.estimated_duration ? 
+          (typeof workoutPlan.estimated_duration === 'string' ? 
+            parseInt(workoutPlan.estimated_duration.split(':')[1]) || 45 : 
+            workoutPlan.estimated_duration) : 45,
+        targetMuscles: workoutPlan.target_muscles || ['Full Body'],
+        difficulty: workoutPlan.difficulty || 3,
+        aiGenerated: workoutPlan.ai_generated || false,
+        isCompleted: scheduledWorkout.is_completed || false,
+        streak: 1,
+        workout_log_id: scheduledWorkout.workout_log_id,
+        scheduledDate: scheduledWorkout.scheduled_date,
+        completionDate: scheduledWorkout.completion_date || undefined
       };
     },
     enabled: !!userId && !!workoutSchedules,
@@ -512,7 +525,6 @@ export function Dashboard() {
           <WorkoutCard 
             workout={selectedWorkout} 
             onStart={handleStartWorkout}
-            onEdit={handleEditWorkout}
             onAskCoach={handleAskCoach}
             onReplaceWorkout={handleReplaceWorkout}
             onUpdateWorkout={handleUpdateWorkout}

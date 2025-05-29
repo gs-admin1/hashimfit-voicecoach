@@ -87,12 +87,10 @@ export function WorkoutCard({
   };
 
   const handleCustomizePlan = () => {
-    // This would open the workout customization modal
     console.log("Customize plan for workout:", workout.id);
   };
 
   const handleViewHistory = () => {
-    // This would navigate to the workout history page
     console.log("View history for workout:", workout.id);
   };
 
@@ -212,10 +210,19 @@ export function WorkoutCard({
         onClose={() => setShowResults(false)}
         workout={{
           ...workout,
-          actualDuration: workout.estimatedDuration, // This would come from workout logs
-          caloriesBurned: Math.round(workout.estimatedDuration * 5), // Rough estimate
+          actualDuration: workout.estimatedDuration,
+          caloriesBurned: Math.round(workout.estimatedDuration * 5),
           intensityLevel: workout.difficulty,
-          aiModifications: workout.aiGenerated
+          aiModifications: workout.aiGenerated,
+          scheduledDate: workout.scheduledDate || new Date().toISOString().split('T')[0],
+          exercises: workout.exercises.map(ex => ({
+            ...ex,
+            actualSets: ex.sets,
+            actualReps: ex.reps,
+            actualWeight: ex.weight,
+            restTime: 60,
+            notes: ''
+          }))
         }}
         onRepeatWorkout={handleRepeatWorkout}
         onCustomizePlan={handleCustomizePlan}
