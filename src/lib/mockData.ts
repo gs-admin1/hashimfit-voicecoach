@@ -1,4 +1,3 @@
-
 import { format, addDays, subDays } from 'date-fns';
 
 export interface MockUser {
@@ -120,9 +119,12 @@ class MockDataService {
   }
 
   private initializeMockData() {
+    // Use the actual user ID from the system
+    const userId = 'c5c9c517-7c45-4744-a9c2-bbf629eb888c';
+
     // Mock user profile
     this.mockUser = {
-      id: 'mock-user-123',
+      id: userId,
       name: 'Alex Johnson',
       age: 28,
       gender: 'male',
@@ -142,7 +144,7 @@ class MockDataService {
     this.workoutPlans = [
       {
         id: 'workout-1',
-        user_id: this.mockUser.id,
+        user_id: userId,
         title: 'Push Day - Chest, Shoulders & Triceps',
         description: 'A comprehensive upper body push workout focusing on chest, shoulders, and triceps development.',
         category: 'strength',
@@ -215,7 +217,7 @@ class MockDataService {
       },
       {
         id: 'workout-2',
-        user_id: this.mockUser.id,
+        user_id: userId,
         title: 'Pull Day - Back & Biceps',
         description: 'Target your pulling muscles with this back and bicep focused workout.',
         category: 'strength',
@@ -282,7 +284,7 @@ class MockDataService {
       },
       {
         id: 'workout-3',
-        user_id: this.mockUser.id,
+        user_id: userId,
         title: 'Leg Day - Quads, Glutes & Hamstrings',
         description: 'A complete lower body workout targeting all major leg muscles.',
         category: 'strength',
@@ -340,7 +342,7 @@ class MockDataService {
       },
       {
         id: 'workout-4',
-        user_id: this.mockUser.id,
+        user_id: userId,
         title: 'HIIT Cardio Blast',
         description: 'High intensity interval training for maximum calorie burn.',
         category: 'hiit',
@@ -394,7 +396,7 @@ class MockDataService {
     this.workoutSchedules = [
       {
         id: 'schedule-1',
-        user_id: this.mockUser.id,
+        user_id: userId,
         workout_plan_id: 'workout-1',
         scheduled_date: format(subDays(today, 2), 'yyyy-MM-dd'),
         scheduled_time: '09:00:00',
@@ -404,7 +406,7 @@ class MockDataService {
       },
       {
         id: 'schedule-2',
-        user_id: this.mockUser.id,
+        user_id: userId,
         workout_plan_id: 'workout-2',
         scheduled_date: format(today, 'yyyy-MM-dd'),
         scheduled_time: '09:00:00',
@@ -412,7 +414,7 @@ class MockDataService {
       },
       {
         id: 'schedule-3',
-        user_id: this.mockUser.id,
+        user_id: userId,
         workout_plan_id: 'workout-3',
         scheduled_date: format(addDays(today, 2), 'yyyy-MM-dd'),
         scheduled_time: '09:00:00',
@@ -420,7 +422,7 @@ class MockDataService {
       },
       {
         id: 'schedule-4',
-        user_id: this.mockUser.id,
+        user_id: userId,
         workout_plan_id: 'workout-4',
         scheduled_date: format(addDays(today, 4), 'yyyy-MM-dd'),
         scheduled_time: '17:00:00',
@@ -432,7 +434,7 @@ class MockDataService {
     this.nutritionLogs = [
       {
         id: 'nutrition-1',
-        user_id: this.mockUser.id,
+        user_id: userId,
         log_date: format(subDays(today, 2), 'yyyy-MM-dd'),
         total_calories: 2750,
         total_protein_g: 175,
@@ -443,7 +445,7 @@ class MockDataService {
       },
       {
         id: 'nutrition-2',
-        user_id: this.mockUser.id,
+        user_id: userId,
         log_date: format(subDays(today, 1), 'yyyy-MM-dd'),
         total_calories: 2600,
         total_protein_g: 165,
@@ -454,7 +456,7 @@ class MockDataService {
       },
       {
         id: 'nutrition-3',
-        user_id: this.mockUser.id,
+        user_id: userId,
         log_date: format(today, 'yyyy-MM-dd'),
         total_calories: 1800,
         total_protein_g: 120,
@@ -527,7 +529,7 @@ class MockDataService {
     this.progressMetrics = [
       {
         id: 'progress-1',
-        user_id: this.mockUser.id,
+        user_id: userId,
         measurement_date: format(subDays(today, 30), 'yyyy-MM-dd'),
         weight: 78.0,
         body_fat_percentage: 15.5,
@@ -538,7 +540,7 @@ class MockDataService {
       },
       {
         id: 'progress-2',
-        user_id: this.mockUser.id,
+        user_id: userId,
         measurement_date: format(subDays(today, 15), 'yyyy-MM-dd'),
         weight: 78.5,
         body_fat_percentage: 15.2,
@@ -549,7 +551,7 @@ class MockDataService {
       },
       {
         id: 'progress-3',
-        user_id: this.mockUser.id,
+        user_id: userId,
         measurement_date: format(today, 'yyyy-MM-dd'),
         weight: 79.2,
         body_fat_percentage: 14.8,
@@ -564,28 +566,28 @@ class MockDataService {
     this.chatMessages = [
       {
         id: 'chat-1',
-        user_id: this.mockUser.id,
+        user_id: userId,
         content: 'Hi! I need help with my workout plan. I want to focus more on my shoulders.',
         role: 'user',
         created_at: format(subDays(today, 1), 'yyyy-MM-dd') + 'T10:00:00Z'
       },
       {
         id: 'chat-2',
-        user_id: this.mockUser.id,
+        user_id: userId,
         content: 'I\'d be happy to help you focus more on your shoulders! Based on your current Push Day workout, you already have some great shoulder exercises like Overhead Press and Lateral Raises. Here are some suggestions to enhance your shoulder development:\n\n1. **Add more shoulder volume**: Consider adding rear delt flies or face pulls to your push day\n2. **Vary your rep ranges**: Try 8-12 reps for strength and 15-20 for endurance\n3. **Focus on form**: Shoulders respond well to controlled movements\n\nWould you like me to suggest some specific exercises or modify your current routine?',
         role: 'assistant',
         created_at: format(subDays(today, 1), 'yyyy-MM-dd') + 'T10:02:00Z'
       },
       {
         id: 'chat-3',
-        user_id: this.mockUser.id,
+        user_id: userId,
         content: 'What should I eat after my workout today?',
         role: 'user',
         created_at: format(today, 'yyyy-MM-dd') + 'T14:00:00Z'
       },
       {
         id: 'chat-4',
-        user_id: this.mockUser.id,
+        user_id: userId,
         content: 'Great question! Since you just completed your Pull Day workout, here\'s what I recommend for post-workout nutrition:\n\n**Within 30-60 minutes:**\n- **Protein**: 25-30g (chicken breast, protein shake, or Greek yogurt)\n- **Carbs**: 30-50g (banana, rice, or oats) to replenish glycogen\n\n**Meal ideas:**\n- Protein shake with banana and berries\n- Chicken breast with sweet potato\n- Greek yogurt with granola and fruit\n\nBased on your muscle gain goals, aim for around 500-600 calories in this post-workout meal. Don\'t forget to hydrate well too!\n\nWould you like a specific recipe recommendation?',
         role: 'assistant',
         created_at: format(today, 'yyyy-MM-dd') + 'T14:01:00Z'
