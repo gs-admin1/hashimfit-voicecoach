@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,7 +16,9 @@ import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-// Import new modular dashboard components
+// Import new dashboard components
+import { DailyOverviewCard } from "@/components/dashboard/DailyOverviewCard";
+import { QuickActionsWidget } from "@/components/dashboard/QuickActionsWidget";
 import { DailyWorkoutSummaryCard } from "@/components/dashboard/DailyWorkoutSummaryCard";
 import { NutritionProgressCard } from "@/components/dashboard/NutritionProgressCard";
 import { TDEEBalanceCard } from "@/components/dashboard/TDEEBalanceCard";
@@ -444,6 +445,39 @@ export function Dashboard() {
     }
   };
 
+  // New handlers for the redesigned components
+  const handleSnapMeal = () => {
+    console.log("Opening meal capture");
+    toast({
+      title: "Meal Capture",
+      description: "Opening camera to capture your meal..."
+    });
+  };
+
+  const handleLogWorkoutVoice = () => {
+    console.log("Opening voice workout logging");
+    toast({
+      title: "Voice Logging",
+      description: "Workout logged ✅ — View/Edit"
+    });
+  };
+
+  const handleManualEntry = () => {
+    console.log("Opening manual entry");
+    toast({
+      title: "Manual Entry",
+      description: "Opening manual workout entry..."
+    });
+  };
+
+  const handleViewHabits = () => {
+    console.log("Opening habits view");
+    toast({
+      title: "Habits",
+      description: "Opening habits tracking..."
+    });
+  };
+
   const toggleCardCollapse = (cardKey: keyof typeof cardStates) => {
     setCardStates(prev => ({
       ...prev,
@@ -451,57 +485,85 @@ export function Dashboard() {
     }));
   };
 
+  // Get today's workout data for the overview card
+  const todayWorkoutData = selectedWorkout ? {
+    title: selectedWorkout.title,
+    duration: selectedWorkout.estimatedDuration || 45,
+    isCompleted: selectedWorkout.is_completed
+  } : undefined;
+
   return (
     <div className="max-w-lg mx-auto pb-20">
-      {/* Snap a Snack and Log your workout buttons - minimal spacing from logo */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="h-16">
-          <MealCaptureCard />
-        </div>
-        <div className="h-16">
-          <VoiceInput 
-            selectedWorkout={selectedWorkout}
-            onWorkoutUpdated={handleWorkoutUpdated}
-          />
-        </div>
-      </div>
-      
-      {/* Move DailyWorkoutSummaryCard here - right after the snap/log buttons */}
-      <div className="mb-6">
-        <DailyWorkoutSummaryCard 
-          isCollapsed={cardStates.workoutSummary}
-          onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
-          workoutData={selectedWorkout}
-          onContinueWorkout={handleContinueWorkout}
+      {/* 1. Daily Overview Card - Top Anchor */}
+      <div className="mb-4">
+        <DailyOverviewCard 
+          userName={user?.first_name || "Alex"}
+          todayWorkout={todayWorkoutData}
+          mealsLogged={1}
+          totalMeals={4}
+          habitsCompleted={1}
+          totalHabits={3}
+          streakDays={3}
           onStartWorkout={handleStartWorkout}
-          onCompleteExercise={handleCompleteExercise}
-          isLoading={isLoadingSelectedWorkout}
+          onSnapMeal={handleSnapMeal}
+          onViewHabits={handleViewHabits}
         />
       </div>
-      
-      <div className="space-y-4 mb-6">
+
+      {/* 2. Quick Actions Widget */}
+      <div className="mb-4">
+        <QuickActionsWidget 
+          onLogWorkout={handleLogWorkoutVoice}
+          onLogMeal={handleSnapMeal}
+          onManualEntry={handleManualEntry}
+        />
+      </div>
+
+      {/* 3. Reordered Dashboard Sections with reduced spacing */}
+      <div className="space-y-3 mb-4">
+        {/* Workout Today Card */}
+        <div>
+          <DailyWorkoutSummaryCard 
+            isCollapsed={cardStates.workoutSummary}
+            onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
+            workoutData={selectedWorkout}
+            onContinueWorkout={handleContinueWorkout}
+            onStartWorkout={handleStartWorkout}
+            onCompleteExercise={handleCompleteExercise}
+            isLoading={isLoadingSelectedWorkout}
+          />
+        </div>
+        
+        {/* Nutrition Today */}
         <NutritionProgressCard 
           isCollapsed={cardStates.nutrition}
           onToggleCollapse={() => toggleCardCollapse('nutrition')}
+          onLogMeal={handleSnapMeal}
         />
         
+        {/* Habit Streaks */}
+        <HabitStreakCard 
+          isCollapsed={cardStates.habitStreak}
+          onToggleCollapse={() => toggleCardCollapse('habitStreak')}
+          onTrackHabits={handleViewHabits}
+        />
+        
+        {/* Energy Balance */}
         <TDEEBalanceCard 
           isCollapsed={cardStates.tdeeBalance}
           onToggleCollapse={() => toggleCardCollapse('tdeeBalance')}
         />
         
-        <HabitStreakCard 
-          isCollapsed={cardStates.habitStreak}
-          onToggleCollapse={() => toggleCardCollapse('habitStreak')}
-        />
-        
+        {/* AI Coach Insights */}
         <AICoachInsightCard 
           isCollapsed={cardStates.aiInsights}
           onToggleCollapse={() => toggleCardCollapse('aiInsights')}
+          onCompleteWorkout={handleStartWorkout}
         />
       </div>
       
-      <div className="flex flex-nowrap overflow-x-auto mb-6 pb-1 scrollbar-none">
+      {/* Weekly Calendar - moved down */}
+      <div className="flex flex-nowrap overflow-x-auto mb-4 pb-1 scrollbar-none">
         {weekDates.map((date, index) => {
           const dayName = format(date, 'EEEE');
           const dayNumber = format(date, 'd');
@@ -525,10 +587,11 @@ export function Dashboard() {
         })}
       </div>
       
-      <AnimatedCard className="mb-6">
+      {/* Legacy Workout Card - kept for day switching functionality */}
+      <AnimatedCard className="mb-4">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h3 className="text-lg font-semibold">Today's Workout</h3>
+            <h3 className="text-lg font-semibold">📅 Weekly Schedule</h3>
             <p className="text-sm text-muted-foreground">{selectedDay}</p>
           </div>
           {!selectedWorkout && !isLoadingSelectedWorkout && (

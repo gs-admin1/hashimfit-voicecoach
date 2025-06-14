@@ -3,33 +3,32 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Brain, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Sparkles, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface Insight {
-  id: number;
-  type: 'encouraging' | 'suggestion';
+interface AIInsight {
+  id: string;
+  type: 'motivation' | 'performance' | 'nutrition' | 'recovery';
   title: string;
   message: string;
-  icon: any;
-  color: string;
-  bgColor: string;
+  priority: 'high' | 'medium' | 'low';
+  actionable: boolean;
 }
 
 interface AICoachInsightCardProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  insights?: AIInsight[];
+  onCompleteWorkout?: () => void;
   className?: string;
-  insights?: Insight[];
-  onChatWithCoach?: () => void;
 }
 
 export function AICoachInsightCard({ 
   isCollapsed = false, 
   onToggleCollapse,
-  className,
   insights = [],
-  onChatWithCoach
+  onCompleteWorkout,
+  className
 }: AICoachInsightCardProps) {
   const [localCollapsed, setLocalCollapsed] = useState(isCollapsed);
   
@@ -42,16 +41,35 @@ export function AICoachInsightCard({
   };
   
   const collapsed = onToggleCollapse ? isCollapsed : localCollapsed;
+  
+  const getInsightIcon = (type: AIInsight['type']) => {
+    switch (type) {
+      case 'motivation': return '💪';
+      case 'performance': return '📈';
+      case 'nutrition': return '🍎';
+      case 'recovery': return '😴';
+      default: return '💡';
+    }
+  };
+  
+  const getPriorityColor = (priority: AIInsight['priority']) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
-    <Card className={cn("transition-all duration-300", className)}>
+    <Card className={cn("transition-all duration-300 animate-fade-in", className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="p-2 bg-purple-100 rounded-lg">
               <Brain className="h-4 w-4 text-purple-600" />
             </div>
-            <CardTitle className="text-lg">AI Coach Insights</CardTitle>
+            <CardTitle className="text-lg">🧠 AI Coach Insights</CardTitle>
           </div>
           <Button
             variant="ghost"
@@ -65,50 +83,46 @@ export function AICoachInsightCard({
       </CardHeader>
       
       {!collapsed && (
-        <CardContent className="space-y-3">
-          {insights.length > 0 ? (
-            <>
+        <CardContent className="space-y-4">
+          {insights.length === 0 ? (
+            <div className="text-center py-8">
+              <Sparkles size={48} className="mx-auto mb-4 opacity-20 text-purple-500" />
+              <p className="text-muted-foreground mb-3">
+                Complete your next workout to unlock custom coaching from me 🧠
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="hover:bg-purple-50 hover:border-purple-300"
+                onClick={onCompleteWorkout}
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Start Workout
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
               {insights.map((insight) => (
-                <div key={insight.id} className={`p-3 rounded-lg border ${insight.bgColor}`}>
-                  <div className="flex items-start space-x-3">
-                    <div className={`p-1 rounded-full ${insight.color}`}>
-                      <insight.icon className="h-4 w-4" />
+                <div key={insight.id} className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg">{getInsightIcon(insight.type)}</span>
+                      <h4 className="font-medium text-sm">{insight.title}</h4>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-semibold text-sm">{insight.title}</h4>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs ${insight.type === 'encouraging' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}
-                        >
-                          {insight.type === 'encouraging' ? 'Encouraging' : 'Tip'}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {insight.message}
-                      </p>
-                    </div>
+                    <Badge variant="secondary" className={cn("text-xs", getPriorityColor(insight.priority))}>
+                      {insight.priority}
+                    </Badge>
                   </div>
+                  <p className="text-sm text-muted-foreground">{insight.message}</p>
+                  {insight.actionable && (
+                    <Button variant="ghost" size="sm" className="mt-2 h-8 text-xs">
+                      Take Action
+                    </Button>
+                  )}
                 </div>
               ))}
-            </>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Brain size={48} className="mx-auto mb-4 opacity-20" />
-              <p>No insights available yet. Complete more workouts to get personalized coaching!</p>
             </div>
           )}
-          
-          <div className="pt-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={onChatWithCoach}
-            >
-              Chat with AI Coach
-            </Button>
-          </div>
         </CardContent>
       )}
     </Card>

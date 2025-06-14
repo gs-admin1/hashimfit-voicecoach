@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Award, Flame, Droplets, Moon, Heart } from "lucide-react";
+import { ChevronDown, ChevronUp, Award, Flame, Droplets, Moon, Heart, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Habit {
@@ -20,7 +20,7 @@ interface HabitStreakCardProps {
   onToggleCollapse?: () => void;
   className?: string;
   habits?: Habit[];
-  onLogHabits?: () => void;
+  onTrackHabits?: () => void;
 }
 
 export function HabitStreakCard({ 
@@ -28,7 +28,7 @@ export function HabitStreakCard({
   onToggleCollapse,
   className,
   habits = [],
-  onLogHabits
+  onTrackHabits
 }: HabitStreakCardProps) {
   const [localCollapsed, setLocalCollapsed] = useState(isCollapsed);
   
@@ -46,14 +46,14 @@ export function HabitStreakCard({
   const totalBadges = Math.floor(longestStreak / 7); // Badge every 7 days
 
   return (
-    <Card className={cn("transition-all duration-300", className)}>
+    <Card className={cn("transition-all duration-300 animate-fade-in", className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="p-2 bg-yellow-100 rounded-lg">
               <Flame className="h-4 w-4 text-yellow-600" />
             </div>
-            <CardTitle className="text-lg">Habit Streaks</CardTitle>
+            <CardTitle className="text-lg">🔥 Habit Streaks</CardTitle>
           </div>
           <Button
             variant="ghost"
@@ -68,7 +68,23 @@ export function HabitStreakCard({
       
       {!collapsed && (
         <CardContent className="space-y-4">
-          {habits.length > 0 ? (
+          {habits.length === 0 ? (
+            <div className="text-center py-8">
+              <Plus size={48} className="mx-auto mb-4 opacity-20 text-yellow-500" />
+              <p className="text-muted-foreground mb-3">
+                Every habit counts. What's one thing you did today?
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="hover:bg-yellow-50 hover:border-yellow-300"
+                onClick={onTrackHabits}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Track Habits
+              </Button>
+            </div>
+          ) : (
             <>
               {/* Streak Summary */}
               <div className="flex items-center justify-between p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg">
@@ -95,10 +111,10 @@ export function HabitStreakCard({
                         <p className="text-xs text-muted-foreground">{habit.streak} day streak</p>
                       </div>
                     </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                       habit.completed 
-                        ? 'bg-green-500 border-green-500' 
-                        : 'border-gray-300'
+                        ? 'bg-green-500 border-green-500 scale-110' 
+                        : 'border-gray-300 hover:border-green-300'
                     }`}>
                       {habit.completed && <span className="text-white text-xs">✓</span>}
                     </div>
@@ -106,15 +122,15 @@ export function HabitStreakCard({
                 ))}
               </div>
             </>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Flame size={48} className="mx-auto mb-4 opacity-20" />
-              <p>No habits tracked yet. Start building healthy habits!</p>
-            </div>
           )}
           
-          <Button variant="outline" size="sm" className="w-full" onClick={onLogHabits}>
-            Log Today's Habits
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full hover:bg-yellow-50" 
+            onClick={onTrackHabits}
+          >
+            {habits.length === 0 ? "Start Tracking Habits" : "Update Today's Habits"}
           </Button>
         </CardContent>
       )}
