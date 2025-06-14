@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -66,9 +65,38 @@ export default function ProgressPage() {
   });
 
   const [userGoals, setUserGoals] = useState([
-    { id: 1, type: 'workouts', label: 'Workouts per week', current: 3, target: 4, unit: 'workouts' },
-    { id: 2, type: 'protein', label: 'Daily Protein', current: 85, target: 150, unit: 'g' },
-    { id: 3, type: 'steps', label: 'Daily Steps', current: 6500, target: 8000, unit: 'steps' }
+    { 
+      type: 'workouts' as const, 
+      label: 'Workouts per week', 
+      current: 3, 
+      target: 4, 
+      unit: 'workouts',
+      color: 'bg-blue-50 border-blue-200 text-blue-700'
+    },
+    { 
+      type: 'protein' as const, 
+      label: 'Daily Protein', 
+      current: 85, 
+      target: 150, 
+      unit: 'g',
+      color: 'bg-green-50 border-green-200 text-green-700'
+    },
+    { 
+      type: 'calories' as const, 
+      label: 'Daily Calories', 
+      current: 1800, 
+      target: 2000, 
+      unit: 'cal',
+      color: 'bg-orange-50 border-orange-200 text-orange-700'
+    },
+    { 
+      type: 'sleep' as const, 
+      label: 'Sleep Hours', 
+      current: 6, 
+      target: 8, 
+      unit: 'hrs',
+      color: 'bg-purple-50 border-purple-200 text-purple-700'
+    }
   ]);
 
   const [hasData, setHasData] = useState(false);
@@ -116,10 +144,10 @@ export default function ProgressPage() {
     }
   }, [isAuthenticated, userId]);
 
-  const handleEditGoal = (goalId: number, newTarget: number) => {
+  const handleEditGoal = (goalType: string, newTarget: number) => {
     setUserGoals(prev => 
       prev.map(goal => 
-        goal.id === goalId ? { ...goal, target: newTarget } : goal
+        goal.type === goalType ? { ...goal, target: newTarget } : goal
       )
     );
     toast({
@@ -257,7 +285,7 @@ export default function ProgressPage() {
           {/* Interactive Goals */}
           <InteractiveGoalsCard
             goals={userGoals}
-            onEditGoal={handleEditGoal}
+            onUpdateGoal={handleEditGoal}
             className="animate-fade-in"
           />
 
