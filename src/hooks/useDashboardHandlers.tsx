@@ -111,7 +111,7 @@ export function useDashboardHandlers() {
   const handleSnapMeal = () => {
     console.log("Opening meal capture");
     toast({
-      title: "✅ Meal logged successfully!",
+      title: "✅ Meal logged successfully! +25 pts added 🔥",
       description: "Protein still a little low today 🍗 — keep it up!"
     });
   };
@@ -119,8 +119,8 @@ export function useDashboardHandlers() {
   const handleLogWorkoutVoice = () => {
     console.log("Opening voice workout logging");
     toast({
-      title: "✅ Workout complete!",
-      description: "🔥 AI Coach updated — awesome session today!"
+      title: "✅ Workout complete! +75 pts added 🔥",
+      description: "🧠 AI Coach updated — awesome session today!"
     });
   };
 

@@ -3,22 +3,12 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ChevronDown, ChevronUp, Utensils, Camera } from "lucide-react";
+import { ChevronDown, ChevronUp, Utensils } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface NutritionData {
-  calories: { consumed: number; target: number; };
-  protein: { consumed: number; target: number; };
-  carbs: { consumed: number; target: number; };
-  fat: { consumed: number; target: number; };
-  water: { consumed: number; target: number; };
-  lastMeal?: string;
-}
 
 interface NutritionProgressCardProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  nutritionData?: NutritionData;
   onLogMeal?: () => void;
   className?: string;
 }
@@ -26,7 +16,6 @@ interface NutritionProgressCardProps {
 export function NutritionProgressCard({ 
   isCollapsed = false, 
   onToggleCollapse,
-  nutritionData,
   onLogMeal,
   className
 }: NutritionProgressCardProps) {
@@ -41,19 +30,20 @@ export function NutritionProgressCard({
   };
   
   const collapsed = onToggleCollapse ? isCollapsed : localCollapsed;
-
-  // Mock data when no nutrition data is provided
-  const mockData: NutritionData = {
-    calories: { consumed: 1250, target: 2200 },
-    protein: { consumed: 85, target: 150 },
-    carbs: { consumed: 120, target: 250 },
-    fat: { consumed: 45, target: 75 },
-    water: { consumed: 1.8, target: 3.0 },
-    lastMeal: "Grilled chicken salad"
+  
+  // Mock nutrition data
+  const nutritionData = {
+    calories: { current: 1650, target: 2100 },
+    protein: { current: 102, target: 150 },
+    carbs: { current: 165, target: 210 },
+    fat: { current: 65, target: 75 }
   };
 
-  const data = nutritionData || mockData;
-  const hasData = nutritionData !== undefined;
+  const getProgressPercentage = (current: number, target: number) => {
+    return Math.min((current / target) * 100, 100);
+  };
+
+  const hasLoggedMeals = nutritionData.calories.current > 0;
 
   return (
     <Card className={cn("transition-all duration-300 animate-fade-in", className)}>
@@ -63,7 +53,7 @@ export function NutritionProgressCard({
             <div className="p-2 bg-green-100 rounded-lg">
               <Utensils className="h-4 w-4 text-green-600" />
             </div>
-            <CardTitle className="text-lg">🍎 Nutrition Today</CardTitle>
+            <CardTitle className="text-lg">🍗 Nutrition Today</CardTitle>
           </div>
           <Button
             variant="ghost"
@@ -78,11 +68,47 @@ export function NutritionProgressCard({
       
       {!collapsed && (
         <CardContent className="space-y-4">
-          {!hasData ? (
+          {hasLoggedMeals ? (
+            <>
+              {/* Calories */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Calories</span>
+                  <span className="font-medium">{nutritionData.calories.current}/{nutritionData.calories.target}</span>
+                </div>
+                <Progress value={getProgressPercentage(nutritionData.calories.current, nutritionData.calories.target)} className="h-2" />
+              </div>
+              
+              {/* Macros */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-2 bg-blue-50 rounded">
+                  <p className="text-lg font-bold text-blue-600">{nutritionData.protein.current}g</p>
+                  <p className="text-xs text-blue-700">Protein</p>
+                  <p className="text-xs text-muted-foreground">{nutritionData.protein.target}g goal</p>
+                </div>
+                <div className="text-center p-2 bg-orange-50 rounded">
+                  <p className="text-lg font-bold text-orange-600">{nutritionData.carbs.current}g</p>
+                  <p className="text-xs text-orange-700">Carbs</p>
+                  <p className="text-xs text-muted-foreground">{nutritionData.carbs.target}g goal</p>
+                </div>
+                <div className="text-center p-2 bg-purple-50 rounded">
+                  <p className="text-lg font-bold text-purple-600">{nutritionData.fat.current}g</p>
+                  <p className="text-xs text-purple-700">Fat</p>
+                  <p className="text-xs text-muted-foreground">{nutritionData.fat.target}g goal</p>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <Button variant="outline" size="sm" onClick={onLogMeal}>
+                  Log Another Meal
+                </Button>
+              </div>
+            </>
+          ) : (
             <div className="text-center py-6">
-              <Camera size={48} className="mx-auto mb-4 opacity-20 text-green-500" />
+              <Utensils size={48} className="mx-auto mb-4 opacity-20 text-green-500" />
               <p className="text-muted-foreground mb-3">
-                You haven't logged meals yet today — tap above to snap your snack and stay on track 💪
+                Need inspiration? Tap here to browse meal ideas 🍽️
               </p>
               <Button 
                 variant="outline" 
@@ -90,55 +116,8 @@ export function NutritionProgressCard({
                 className="hover:bg-green-50 hover:border-green-300"
                 onClick={onLogMeal}
               >
-                <Camera className="h-4 w-4 mr-2" />
-                Log Meals
+                📸 Log First Meal
               </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Last meal logged */}
-              {data.lastMeal && (
-                <div className="text-xs text-muted-foreground">
-                  🟢 Last logged: {data.lastMeal}
-                </div>
-              )}
-              
-              {/* Calories */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium">Calories</span>
-                  <span>{data.calories.consumed}/{data.calories.target} kcal</span>
-                </div>
-                <Progress value={(data.calories.consumed / data.calories.target) * 100} className="h-2" />
-              </div>
-              
-              {/* Macros */}
-              <div className="grid grid-cols-3 gap-3 text-xs">
-                <div className="text-center">
-                  <p className="font-medium text-blue-600">Protein</p>
-                  <p>{data.protein.consumed}g / {data.protein.target}g</p>
-                  <Progress value={(data.protein.consumed / data.protein.target) * 100} className="h-1 mt-1" />
-                </div>
-                <div className="text-center">
-                  <p className="font-medium text-orange-600">Carbs</p>
-                  <p>{data.carbs.consumed}g / {data.carbs.target}g</p>
-                  <Progress value={(data.carbs.consumed / data.carbs.target) * 100} className="h-1 mt-1" />
-                </div>
-                <div className="text-center">
-                  <p className="font-medium text-purple-600">Fat</p>
-                  <p>{data.fat.consumed}g / {data.fat.target}g</p>
-                  <Progress value={(data.fat.consumed / data.fat.target) * 100} className="h-1 mt-1" />
-                </div>
-              </div>
-              
-              {/* Water */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium">💧 Water</span>
-                  <span>{data.water.consumed}L / {data.water.target}L</span>
-                </div>
-                <Progress value={(data.water.consumed / data.water.target) * 100} className="h-2" />
-              </div>
             </div>
           )}
         </CardContent>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useUser } from "@/context/UserContext";
@@ -118,8 +117,8 @@ export function Dashboard() {
 
   return (
     <div className="max-w-lg mx-auto pb-20">
-      {/* 1. Daily Overview Card - Top Anchor */}
-      <div className="mb-3">
+      {/* 🧠 Daily Focus Block */}
+      <div className="mb-6">
         <DailyOverviewCard 
           userName={userName}
           todayWorkout={todayWorkoutData}
@@ -134,19 +133,18 @@ export function Dashboard() {
         />
       </div>
 
-      {/* 2. Quick Actions Widget */}
-      <div className="mb-3">
+      {/* 📥 Logging Actions Block */}
+      <div className="mb-6">
         <QuickActionsWidget 
           onLogWorkout={handleLogWorkoutVoice}
           onLogMeal={handleSnapMeal}
-          onManualEntry={handleManualEntry}
         />
       </div>
 
-      {/* 3. Dashboard Sections with reduced spacing */}
-      <div className="space-y-2.5">
-        {/* Workout Today Card */}
-        <div>
+      {/* 📊 Stats + Coaching Block */}
+      <div className="bg-gray-50/50 dark:bg-gray-900/20 rounded-xl p-4 mb-6">
+        <div className="space-y-3">
+          {/* Workout Today Card */}
           <DailyWorkoutSummaryCard 
             isCollapsed={cardStates.workoutSummary}
             onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
@@ -158,34 +156,34 @@ export function Dashboard() {
             onAddWorkout={() => setShowAddWorkout(true)}
             isLoading={isLoadingSelectedWorkout}
           />
+          
+          {/* Nutrition Today */}
+          <NutritionProgressCard 
+            isCollapsed={cardStates.nutrition}
+            onToggleCollapse={() => toggleCardCollapse('nutrition')}
+            onLogMeal={handleSnapMeal}
+          />
+          
+          {/* Energy Balance */}
+          <TDEEBalanceCard 
+            isCollapsed={cardStates.tdeeBalance}
+            onToggleCollapse={() => toggleCardCollapse('tdeeBalance')}
+          />
+          
+          {/* Habit Streaks */}
+          <HabitStreakCard 
+            isCollapsed={cardStates.habitStreak}
+            onToggleCollapse={() => toggleCardCollapse('habitStreak')}
+            onTrackHabits={handleViewHabits}
+          />
+          
+          {/* AI Coach Insights */}
+          <AICoachInsightCard 
+            isCollapsed={cardStates.aiInsights}
+            onToggleCollapse={() => toggleCardCollapse('aiInsights')}
+            onCompleteWorkout={() => selectedWorkout && handleStartWorkout(selectedWorkout)}
+          />
         </div>
-        
-        {/* Nutrition Today */}
-        <NutritionProgressCard 
-          isCollapsed={cardStates.nutrition}
-          onToggleCollapse={() => toggleCardCollapse('nutrition')}
-          onLogMeal={handleSnapMeal}
-        />
-        
-        {/* Habit Streaks */}
-        <HabitStreakCard 
-          isCollapsed={cardStates.habitStreak}
-          onToggleCollapse={() => toggleCardCollapse('habitStreak')}
-          onTrackHabits={handleViewHabits}
-        />
-        
-        {/* Energy Balance */}
-        <TDEEBalanceCard 
-          isCollapsed={cardStates.tdeeBalance}
-          onToggleCollapse={() => toggleCardCollapse('tdeeBalance')}
-        />
-        
-        {/* AI Coach Insights */}
-        <AICoachInsightCard 
-          isCollapsed={cardStates.aiInsights}
-          onToggleCollapse={() => toggleCardCollapse('aiInsights')}
-          onCompleteWorkout={() => selectedWorkout && handleStartWorkout(selectedWorkout)}
-        />
       </div>
       
       <AddWorkoutModal 

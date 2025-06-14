@@ -39,6 +39,7 @@ export function DailyOverviewCard({
   const overallProgress = ((mealsLogged / totalMeals) + (habitsCompleted / totalHabits) + (todayWorkout?.isCompleted ? 1 : 0)) / 3 * 100;
   
   const hasStreak = streakDays > 0;
+  const tasksRemaining = (todayWorkout?.isCompleted ? 0 : 1) + (totalMeals - mealsLogged) + (totalHabits - habitsCompleted);
 
   return (
     <Card className={cn("bg-gradient-to-br from-hashim-50 to-blue-50 border-hashim-200 animate-fade-in", className)}>
@@ -138,12 +139,19 @@ export function DailyOverviewCard({
         </div>
 
         {/* Daily Goal Progress */}
-        <div className="space-y-2">
+        <div className="space-y-2 mb-3">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium text-gray-700">🎯 Daily Goal Progress</span>
             <span className="text-gray-500">{Math.round(overallProgress)}%</span>
           </div>
           <Progress value={overallProgress} className="h-2" />
+        </div>
+
+        {/* Ready to Crush Message */}
+        <div className="text-center mt-4 p-3 bg-hashim-100 rounded-lg">
+          <p className="text-sm font-medium text-hashim-700">
+            Ready to crush today? You've got {tasksRemaining} core task{tasksRemaining !== 1 ? 's' : ''} left! 💪
+          </p>
         </div>
       </CardContent>
     </Card>

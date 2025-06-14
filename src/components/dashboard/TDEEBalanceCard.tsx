@@ -2,30 +2,18 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface TDEEData {
-  caloriesConsumed: number;
-  caloriesBurned: number;
-  tdee: number;
-  bmr: number;
-  exerciseCalories: number;
-}
 
 interface TDEEBalanceCardProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  tdeeData?: TDEEData;
   className?: string;
 }
 
 export function TDEEBalanceCard({ 
   isCollapsed = false, 
   onToggleCollapse,
-  tdeeData,
   className
 }: TDEEBalanceCardProps) {
   const [localCollapsed, setLocalCollapsed] = useState(isCollapsed);
@@ -39,46 +27,49 @@ export function TDEEBalanceCard({
   };
   
   const collapsed = onToggleCollapse ? isCollapsed : localCollapsed;
-
-  // Mock data when no TDEE data is provided
-  const mockData: TDEEData = {
-    caloriesConsumed: 1250,
-    caloriesBurned: 1850,
-    tdee: 2200,
-    bmr: 1600,
-    exerciseCalories: 350
+  
+  // Mock data for energy balance
+  const caloriesConsumed = 1650;
+  const caloriesBurned = 2100; // TDEE
+  const netBalance = caloriesConsumed - caloriesBurned;
+  const deficit = Math.abs(netBalance);
+  const bmr = 1750; // Base Metabolic Rate
+  
+  const getBalanceIcon = () => {
+    if (netBalance < -200) return <TrendingDown className="h-4 w-4 text-red-500" />;
+    if (netBalance > 200) return <TrendingUp className="h-4 w-4 text-green-500" />;
+    return <Minus className="h-4 w-4 text-yellow-500" />;
   };
-
-  const data = tdeeData || mockData;
-  const balance = data.caloriesConsumed - data.caloriesBurned;
-  const isDeficit = balance < 0;
-  const isSurplus = balance > 0;
+  
+  const getBalanceColor = () => {
+    if (netBalance < -200) return "text-red-600";
+    if (netBalance > 200) return "text-green-600";
+    return "text-yellow-600";
+  };
+  
+  const getCoachingFeedback = () => {
+    if (deficit > 500) {
+      return "You're in a solid deficit — expect 1–2 lbs/week fat loss 🔥";
+    } else if (caloriesConsumed < bmr) {
+      return "⚠️ You're below your BMR — recovery may suffer.";
+    } else if (Math.abs(netBalance) < 200) {
+      return "You're maintaining — perfect for muscle building.";
+    } else if (netBalance > 300) {
+      return "You're in a surplus — great for building muscle 💪";
+    } else {
+      return "Small deficit — steady progress without compromising recovery.";
+    }
+  };
 
   return (
     <Card className={cn("transition-all duration-300 animate-fade-in", className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              {isDeficit ? <TrendingDown className="h-4 w-4 text-blue-600" /> : 
-               isSurplus ? <TrendingUp className="h-4 w-4 text-blue-600" /> : 
-               <Minus className="h-4 w-4 text-blue-600" />}
+            <div className="p-2 bg-orange-100 rounded-lg">
+              {getBalanceIcon()}
             </div>
-            <div className="flex items-center space-x-1">
-              <CardTitle className="text-lg">⚡ Energy Balance</CardTitle>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
-                      <Info className="h-3 w-3 text-muted-foreground" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Compare calories consumed vs burned</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+            <CardTitle className="text-lg">⚡ Energy Balance</CardTitle>
           </div>
           <Button
             variant="ghost"
@@ -93,59 +84,37 @@ export function TDEEBalanceCard({
       
       {!collapsed && (
         <CardContent className="space-y-4">
-          {/* Balance Summary */}
-          <div className={`p-3 rounded-lg ${
-            isDeficit ? 'bg-green-50 border border-green-200' : 
-            isSurplus ? 'bg-orange-50 border border-orange-200' : 
-            'bg-gray-50 border border-gray-200'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-lg font-bold ${
-                  isDeficit ? 'text-green-600' : 
-                  isSurplus ? 'text-orange-600' : 
-                  'text-gray-600'
-                }`}>
-                  {isDeficit ? `-${Math.abs(balance)}` : isSurplus ? `+${balance}` : '0'} cal
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {isDeficit ? 'Calorie deficit' : isSurplus ? 'Calorie surplus' : 'Balanced'}
-                </p>
-              </div>
-              <div className="text-2xl">
-                {isDeficit ? '📉' : isSurplus ? '📈' : '⚖️'}
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <p className="text-2xl font-bold text-green-600">{caloriesConsumed}</p>
+              <p className="text-sm text-green-700">Consumed</p>
+            </div>
+            <div className="text-center p-3 bg-red-50 rounded-lg">
+              <p className="text-2xl font-bold text-red-600">{caloriesBurned}</p>
+              <p className="text-sm text-red-700">Burned (TDEE)</p>
             </div>
           </div>
           
-          {/* Breakdown */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Consumed</span>
-              <span className="text-sm">{data.caloriesConsumed} cal</span>
-            </div>
-            <Progress value={(data.caloriesConsumed / data.tdee) * 100} className="h-2" />
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Burned</span>
-              <span className="text-sm">{data.caloriesBurned} cal</span>
-            </div>
-            <Progress value={(data.caloriesBurned / data.tdee) * 100} className="h-2" />
-            
-            <div className="text-xs text-muted-foreground space-y-1">
-              <div className="flex justify-between">
-                <span>BMR (Base Metabolic Rate)</span>
-                <span>{data.bmr} cal</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Exercise</span>
-                <span>{data.exerciseCalories} cal</span>
-              </div>
-              <div className="flex justify-between font-medium">
-                <span>TDEE (Total Daily Energy)</span>
-                <span>{data.tdee} cal</span>
-              </div>
-            </div>
+          <div className="text-center p-4 bg-muted rounded-lg">
+            <p className={cn("text-xl font-bold", getBalanceColor())}>
+              {netBalance > 0 ? '+' : ''}{netBalance} cal
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {netBalance < 0 ? 'Deficit' : netBalance > 0 ? 'Surplus' : 'Balanced'}
+            </p>
+          </div>
+          
+          {/* Coaching Feedback */}
+          <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+            <p className="text-sm text-blue-700 font-medium">
+              {getCoachingFeedback()}
+            </p>
+          </div>
+          
+          <div className="text-center">
+            <Button variant="outline" size="sm">
+              Adjust Targets
+            </Button>
           </div>
         </CardContent>
       )}
