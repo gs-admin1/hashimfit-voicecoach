@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar } from "@/components/ui-components";
@@ -18,6 +19,8 @@ import { InteractiveAssistantPanel } from "@/components/InteractiveAssistantPane
 import { WeeklyTimelineView } from "@/components/WeeklyTimelineView";
 import { EnhancedDailySummaryCard } from "@/components/EnhancedDailySummaryCard";
 import { PrescriptiveWeeklySummary } from "@/components/PrescriptiveWeeklySummary";
+import { ComingUpPreview } from "@/components/ComingUpPreview";
+import { InteractiveGoalsCard } from "@/components/InteractiveGoalsCard";
 import { Plus } from "lucide-react";
 
 export default function PlannerPage() {

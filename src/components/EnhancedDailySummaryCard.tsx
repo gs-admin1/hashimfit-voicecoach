@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,10 +17,12 @@ import {
   Target,
   Flame,
   RefreshCw,
-  Zap
+  Zap,
+  Info
 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface WorkoutOption {
   type: 'strength' | 'cardio' | 'recovery' | 'rest';
@@ -66,6 +67,7 @@ export function EnhancedDailySummaryCard({
 }: EnhancedDailySummaryCardProps) {
   const [showWorkoutOptions, setShowWorkoutOptions] = useState(false);
   const [showMealSuggestions, setShowMealSuggestions] = useState(false);
+  const [showFormTip, setShowFormTip] = useState(false);
 
   const workoutOptions: WorkoutOption[] = [
     { type: 'strength', label: 'Strength', icon: <Dumbbell size={14} />, color: 'bg-red-100 text-red-700 border-red-200', emoji: '🏋️' },
@@ -120,11 +122,14 @@ export function EnhancedDailySummaryCard({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {/* Workout Section */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium">Workout</h3>
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Dumbbell size={16} className="text-blue-600" />
+              Workout
+            </h3>
             {!workout && (
               <Button
                 variant="ghost"
@@ -133,7 +138,7 @@ export function EnhancedDailySummaryCard({
                 className="text-hashim-600 hover:text-hashim-700 hover:bg-hashim-50"
               >
                 <Plus size={14} className="mr-1" />
-                Add Workout
+                Add
               </Button>
             )}
           </div>
@@ -241,8 +246,11 @@ export function EnhancedDailySummaryCard({
 
         {/* Nutrition Section */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium">Nutrition</h3>
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Utensils size={16} className="text-green-600" />
+              Nutrition
+            </h3>
             <span className="text-sm text-muted-foreground">{meals.length}/4 meals</span>
           </div>
 
@@ -334,16 +342,41 @@ export function EnhancedDailySummaryCard({
 
         {/* Habits Section */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium">Habits</h3>
-            <span className="text-sm text-muted-foreground">{completedHabits}/{habits.length}</span>
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Target size={16} className="text-purple-600" />
+              Habits
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{completedHabits}/{habits.length}</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowFormTip(!showFormTip)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Info size={12} className="text-muted-foreground" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">Consistency tip: Small daily actions create lasting change</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
 
           <div className="space-y-2">
             <Progress value={habitPercentage} className="h-2" />
             <div className="grid gap-2">
               {habits.slice(0, 3).map((habit, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                <div key={index} className={cn(
+                  "flex items-center justify-between p-2 rounded border transition-all",
+                  habit.isCompleted ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
+                )}>
                   <div className="flex items-center gap-2">
                     {habit.isCompleted ? (
                       <CheckCircle size={14} className="text-green-600" />
@@ -352,7 +385,9 @@ export function EnhancedDailySummaryCard({
                     )}
                     <span className="text-sm">{habit.name}</span>
                     {habit.name === 'Water Intake' && habit.isCompleted && (
-                      <Badge variant="secondary" className="text-xs">🔥 5-day streak</Badge>
+                      <Badge className="text-xs bg-orange-100 text-orange-700">
+                        🔥 5-day streak!
+                      </Badge>
                     )}
                   </div>
                   {habit.target && (

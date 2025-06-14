@@ -1,190 +1,147 @@
 
-import { useState } from "react";
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Target, Edit, Check, X } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Target, Edit3, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Goal {
-  id: number;
-  type: string;
+  type: 'workouts' | 'protein' | 'calories' | 'sleep';
   label: string;
   current: number;
   target: number;
-  unit: string;
+  unit?: string;
+  color: string;
 }
 
 interface InteractiveGoalsCardProps {
   goals: Goal[];
-  onEditGoal: (goalId: number, newTarget: number) => void;
+  onUpdateGoal: (type: string, newTarget: number) => void;
   className?: string;
 }
 
 export function InteractiveGoalsCard({ 
   goals, 
-  onEditGoal, 
+  onUpdateGoal, 
   className 
 }: InteractiveGoalsCardProps) {
-  const [editingGoal, setEditingGoal] = useState<number | null>(null);
-  const [newTarget, setNewTarget] = useState<string>("");
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [newTarget, setNewTarget] = useState<number>(0);
 
-  const handleStartEdit = (goal: Goal) => {
-    setEditingGoal(goal.id);
-    setNewTarget(goal.target.toString());
+  const handleEditGoal = (goal: Goal) => {
+    setEditingGoal(goal);
+    setNewTarget(goal.target);
   };
 
-  const handleSaveEdit = (goalId: number) => {
-    const target = parseInt(newTarget);
-    if (!isNaN(target) && target > 0) {
-      onEditGoal(goalId, target);
+  const handleSaveGoal = () => {
+    if (editingGoal) {
+      onUpdateGoal(editingGoal.type, newTarget);
+      setEditingGoal(null);
     }
-    setEditingGoal(null);
-    setNewTarget("");
   };
 
-  const handleCancelEdit = () => {
-    setEditingGoal(null);
-    setNewTarget("");
+  const getCompletionPercentage = (current: number, target: number) => {
+    return Math.min((current / target) * 100, 100);
   };
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage >= 80) return "text-green-600";
-    if (percentage >= 60) return "text-yellow-600";
-    return "text-red-600";
+  const getStatusEmoji = (percentage: number) => {
+    if (percentage >= 90) return '✅';
+    if (percentage >= 60) return '🟡';
+    return '🔴';
   };
-
-  const getProgressMessage = (percentage: number) => {
-    if (percentage >= 90) return "One more day to hit it! 🎯";
-    if (percentage >= 75) return "You're nearly there! 💪";
-    if (percentage >= 50) return "You're picking up steam 🔥";
-    if (percentage >= 25) return "Great start, keep going! ⭐";
-    return "Every step counts! 🌱";
-  };
-
-  const suggestedGoals = [
-    { type: 'workouts', label: '3 workouts/week', target: 3, unit: 'workouts' },
-    { type: 'protein', label: '120g protein', target: 120, unit: 'g' },
-    { type: 'steps', label: '8,000 steps/day', target: 8000, unit: 'steps' }
-  ];
 
   return (
-    <Card className={className}>
+    <Card className={cn("transition-all duration-300 animate-fade-in", className)}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Target className="h-5 w-5 text-hashim-600" />
-            <CardTitle className="text-lg">Goals</CardTitle>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <div className="p-2 bg-green-100 rounded-lg">
+            <Target className="h-4 w-4 text-green-600" />
           </div>
-          <Badge variant="secondary" className="text-xs">
-            Interactive
-          </Badge>
-        </div>
+          🎯 Weekly Goals
+        </CardTitle>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        {goals.length > 0 ? (
-          <div className="space-y-3">
-            {goals.map((goal) => {
-              const percentage = Math.round((goal.current / goal.target) * 100);
-              const isEditing = editingGoal === goal.id;
-              
-              return (
-                <div key={goal.id} className="p-3 bg-gray-50 rounded-lg animate-fade-in hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">{goal.label}</span>
-                    {!isEditing ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleStartEdit(goal)}
-                        className="p-1 h-auto hover:scale-110 transition-all"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    ) : (
-                      <div className="flex items-center space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSaveEdit(goal.id)}
-                          className="p-1 h-auto text-green-600 hover:scale-110 transition-all"
-                        >
-                          <Check className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleCancelEdit}
-                          className="p-1 h-auto text-red-600 hover:scale-110 transition-all"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          {goals.map((goal, index) => {
+            const percentage = getCompletionPercentage(goal.current, goal.target);
+            const emoji = getStatusEmoji(percentage);
+            
+            return (
+              <Dialog key={index}>
+                <DialogTrigger asChild>
+                  <div
+                    className={cn(
+                      "p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md",
+                      goal.color
                     )}
-                  </div>
-                  
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">
-                      Current: {goal.current} {goal.unit}
-                    </span>
-                    {!isEditing ? (
-                      <span className="text-xs text-muted-foreground">
-                        Target: {goal.target} {goal.unit}
-                      </span>
-                    ) : (
-                      <div className="flex items-center space-x-1">
-                        <span className="text-xs">Target:</span>
-                        <Input
-                          type="number"
-                          value={newTarget}
-                          onChange={(e) => setNewTarget(e.target.value)}
-                          className="w-16 h-6 text-xs p-1"
-                        />
-                        <span className="text-xs">{goal.unit}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <Progress value={Math.min(percentage, 100)} className="h-2" />
-                    <div className="flex justify-between items-center">
-                      <span className={cn("text-xs font-medium", getProgressColor(percentage))}>
-                        {percentage}% complete
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {getProgressMessage(percentage)}
-                      </span>
+                    onClick={() => handleEditGoal(goal)}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-lg">{emoji}</span>
+                      <Edit3 className="h-3 w-3 opacity-50" />
+                    </div>
+                    <p className="font-medium text-sm">{goal.label}</p>
+                    <p className="text-xs opacity-75">
+                      {goal.current} of {goal.target}{goal.unit && ` ${goal.unit}`}
+                    </p>
+                    <div className="w-full bg-white/50 rounded-full h-1 mt-2">
+                      <div 
+                        className="bg-current h-1 rounded-full transition-all duration-300" 
+                        style={{ width: `${percentage}%` }}
+                      />
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                </DialogTrigger>
+                
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Adjust {goal.label} Goal</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="target">Target {goal.unit && `(${goal.unit})`}</Label>
+                      <Input
+                        id="target"
+                        type="number"
+                        value={newTarget}
+                        onChange={(e) => setNewTarget(Number(e.target.value))}
+                        placeholder={`Enter new target`}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleSaveGoal} className="flex-1">
+                        Update Goal
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setEditingGoal(null)}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            );
+          })}
+        </div>
+
+        {/* Coach Insight */}
+        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="h-4 w-4 text-blue-600" />
+            <span className="font-medium text-blue-700 text-sm">Progress Insight</span>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="text-center py-4">
-              <Target size={32} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm font-medium mb-2">No goals set yet</p>
-              <p className="text-xs text-muted-foreground mb-4">
-                Try starting with these recommended goals:
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              {suggestedGoals.map((suggestion, index) => (
-                <div key={index} className="flex items-center justify-between p-2 border border-dashed border-gray-300 rounded-lg hover:border-hashim-300 hover:bg-hashim-50 transition-all">
-                  <span className="text-sm">{suggestion.label}</span>
-                  <Button size="sm" variant="outline" className="text-xs hover:scale-105 transition-all">
-                    Add Goal
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          <p className="text-blue-600 text-xs">
+            You're hitting 3/4 goals consistently — consider raising your targets next week!
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
