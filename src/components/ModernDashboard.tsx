@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useUser } from "@/context/UserContext";
@@ -136,24 +137,24 @@ export function ModernDashboard() {
           />
         </div>
 
-        {/* Daily Snapshot Ring - Visual progress indicator */}
+        {/* AI Insight Tile - Motivational coaching */}
         <div className="px-4 mb-4">
+          <AIInsightTile onAskCoach={handleAskCoach} />
+        </div>
+
+        {/* Two-column layout for completed items and metrics - SWAPPED POSITIONS */}
+        <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           <DailySnapshotRing 
             caloriesConsumed={1240}
             caloriesTarget={2100}
             proteinConsumed={85}
             proteinTarget={120}
           />
-        </div>
-
-        {/* AI Insight Tile - Motivational coaching */}
-        <div className="px-4 mb-4">
-          <AIInsightTile onAskCoach={handleAskCoach} />
-        </div>
-
-        {/* Two-column layout for completed items and metrics */}
-        <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           <CompletedItemsList items={completedItems} />
+        </div>
+
+        {/* Metrics Card - Moved below the swapped grid */}
+        <div className="px-4 mb-4">
           <MetricsMicroCard 
             currentWeight={75.2}
             weightTrend="+0.3"

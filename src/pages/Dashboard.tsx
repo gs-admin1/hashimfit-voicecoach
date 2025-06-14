@@ -41,8 +41,8 @@ export default function DashboardPage() {
       
       <NavigationBar />
       
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-28 left-0 right-0 z-40 flex justify-center">
+      {/* Floating Action Buttons - Highest Z-Index */}
+      <div className="fixed bottom-28 left-0 right-0 z-[100] flex justify-center">
         <div className="flex items-center justify-between w-64 px-4">
           {/* Log Workout Button */}
           <Button
