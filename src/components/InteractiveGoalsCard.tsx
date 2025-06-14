@@ -56,6 +56,14 @@ export function InteractiveGoalsCard({
     return "text-red-600";
   };
 
+  const getProgressMessage = (percentage: number) => {
+    if (percentage >= 90) return "One more day to hit it! 🎯";
+    if (percentage >= 75) return "You're nearly there! 💪";
+    if (percentage >= 50) return "You're picking up steam 🔥";
+    if (percentage >= 25) return "Great start, keep going! ⭐";
+    return "Every step counts! 🌱";
+  };
+
   const suggestedGoals = [
     { type: 'workouts', label: '3 workouts/week', target: 3, unit: 'workouts' },
     { type: 'protein', label: '120g protein', target: 120, unit: 'g' },
@@ -84,7 +92,7 @@ export function InteractiveGoalsCard({
               const isEditing = editingGoal === goal.id;
               
               return (
-                <div key={goal.id} className="p-3 bg-gray-50 rounded-lg">
+                <div key={goal.id} className="p-3 bg-gray-50 rounded-lg animate-fade-in hover:shadow-md transition-all">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">{goal.label}</span>
                     {!isEditing ? (
@@ -92,7 +100,7 @@ export function InteractiveGoalsCard({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleStartEdit(goal)}
-                        className="p-1 h-auto"
+                        className="p-1 h-auto hover:scale-110 transition-all"
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
@@ -102,7 +110,7 @@ export function InteractiveGoalsCard({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleSaveEdit(goal.id)}
-                          className="p-1 h-auto text-green-600"
+                          className="p-1 h-auto text-green-600 hover:scale-110 transition-all"
                         >
                           <Check className="h-3 w-3" />
                         </Button>
@@ -110,7 +118,7 @@ export function InteractiveGoalsCard({
                           variant="ghost"
                           size="sm"
                           onClick={handleCancelEdit}
-                          className="p-1 h-auto text-red-600"
+                          className="p-1 h-auto text-red-600 hover:scale-110 transition-all"
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -142,9 +150,14 @@ export function InteractiveGoalsCard({
                   
                   <div className="space-y-1">
                     <Progress value={Math.min(percentage, 100)} className="h-2" />
-                    <span className={cn("text-xs font-medium", getProgressColor(percentage))}>
-                      {percentage}% complete
-                    </span>
+                    <div className="flex justify-between items-center">
+                      <span className={cn("text-xs font-medium", getProgressColor(percentage))}>
+                        {percentage}% complete
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {getProgressMessage(percentage)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -162,9 +175,9 @@ export function InteractiveGoalsCard({
             
             <div className="space-y-2">
               {suggestedGoals.map((suggestion, index) => (
-                <div key={index} className="flex items-center justify-between p-2 border border-dashed border-gray-300 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-2 border border-dashed border-gray-300 rounded-lg hover:border-hashim-300 hover:bg-hashim-50 transition-all">
                   <span className="text-sm">{suggestion.label}</span>
-                  <Button size="sm" variant="outline" className="text-xs">
+                  <Button size="sm" variant="outline" className="text-xs hover:scale-105 transition-all">
                     Add Goal
                   </Button>
                 </div>

@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Minus, Target, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ interface WeeklyMomentumCardProps {
       protein: { avg: number; target: number };
     };
   };
+  onViewHabits?: () => void;
   className?: string;
 }
 
@@ -29,6 +31,7 @@ export function WeeklyMomentumCard({
   weeklyProgress, 
   isJustStarting, 
   stats, 
+  onViewHabits,
   className 
 }: WeeklyMomentumCardProps) {
   const getMomentumIcon = () => {
@@ -55,8 +58,28 @@ export function WeeklyMomentumCard({
     }
   };
 
+  const getProgressMessage = (percentage: number) => {
+    if (percentage >= 90) return "One more day to hit it! 🎯";
+    if (percentage >= 75) return "You're nearly there! 💪";
+    if (percentage >= 50) return "You're picking up steam 🔥";
+    if (percentage >= 25) return "Great start, keep going! ⭐";
+    return "Every step counts! 🌱";
+  };
+
+  const getHabitsProgress = () => {
+    const percentage = stats.totalHabits > 0 ? (stats.habitsCompleted / stats.totalHabits) * 100 : 0;
+    return percentage;
+  };
+
+  const getHabitsColor = () => {
+    const percentage = getHabitsProgress();
+    if (percentage >= 70) return 'bg-green-100 border-green-300 text-green-700';
+    if (percentage >= 40) return 'bg-yellow-100 border-yellow-300 text-yellow-700';
+    return 'bg-red-100 border-red-300 text-red-700';
+  };
+
   return (
-    <Card className={cn("border-l-4", getMomentumColor(), className)}>
+    <Card className={cn("border-l-4 animate-fade-in", getMomentumColor(), className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -83,13 +106,19 @@ export function WeeklyMomentumCard({
         ) : (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className="text-center p-3 bg-hashim-50 rounded-lg">
+              <div className="text-center p-3 bg-hashim-50 rounded-lg animate-scale-in">
                 <p className="text-2xl font-bold text-hashim-700">{stats.workoutCompletion}%</p>
                 <p className="text-xs text-muted-foreground">Workouts</p>
+                <p className="text-xs text-hashim-600 mt-1">
+                  {getProgressMessage(stats.workoutCompletion)}
+                </p>
               </div>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-center p-3 bg-blue-50 rounded-lg animate-scale-in">
                 <p className="text-2xl font-bold text-blue-700">{stats.nutritionCompliance}%</p>
                 <p className="text-xs text-muted-foreground">Nutrition</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  {getProgressMessage(stats.nutritionCompliance)}
+                </p>
               </div>
             </div>
             
@@ -98,7 +127,13 @@ export function WeeklyMomentumCard({
                 <span>Weekly Progress</span>
                 <span className="font-medium">{weeklyProgress}%</span>
               </div>
-              <Progress value={weeklyProgress} className="h-2" />
+              <Progress 
+                value={weeklyProgress} 
+                className="h-2 animate-slide-in-right" 
+              />
+              <p className="text-xs text-muted-foreground">
+                {getProgressMessage(weeklyProgress)}
+              </p>
             </div>
           </div>
         )}
@@ -112,34 +147,62 @@ export function WeeklyMomentumCard({
           <div className="space-y-2 text-xs">
             <div className="flex justify-between items-center">
               <span>Workouts: {stats.weeklyGoals.workouts.completed}/{stats.weeklyGoals.workouts.target}</span>
-              <Progress 
-                value={(stats.weeklyGoals.workouts.completed / stats.weeklyGoals.workouts.target) * 100} 
-                className="w-16 h-1.5" 
-              />
+              <div className="flex items-center space-x-2">
+                <Progress 
+                  value={(stats.weeklyGoals.workouts.completed / stats.weeklyGoals.workouts.target) * 100} 
+                  className="w-16 h-1.5" 
+                />
+                <span className="text-xs text-muted-foreground">
+                  {getProgressMessage((stats.weeklyGoals.workouts.completed / stats.weeklyGoals.workouts.target) * 100)}
+                </span>
+              </div>
             </div>
             <div className="flex justify-between items-center">
               <span>Avg Calories: {stats.weeklyGoals.calories.avg}/{stats.weeklyGoals.calories.target}</span>
-              <Progress 
-                value={(stats.weeklyGoals.calories.avg / stats.weeklyGoals.calories.target) * 100} 
-                className="w-16 h-1.5" 
-              />
+              <div className="flex items-center space-x-2">
+                <Progress 
+                  value={(stats.weeklyGoals.calories.avg / stats.weeklyGoals.calories.target) * 100} 
+                  className="w-16 h-1.5" 
+                />
+                <span className="text-xs text-muted-foreground">
+                  {getProgressMessage((stats.weeklyGoals.calories.avg / stats.weeklyGoals.calories.target) * 100)}
+                </span>
+              </div>
             </div>
             <div className="flex justify-between items-center">
               <span>Avg Protein: {stats.weeklyGoals.protein.avg}g/{stats.weeklyGoals.protein.target}g</span>
-              <Progress 
-                value={(stats.weeklyGoals.protein.avg / stats.weeklyGoals.protein.target) * 100} 
-                className="w-16 h-1.5" 
-              />
+              <div className="flex items-center space-x-2">
+                <Progress 
+                  value={(stats.weeklyGoals.protein.avg / stats.weeklyGoals.protein.target) * 100} 
+                  className="w-16 h-1.5" 
+                />
+                <span className="text-xs text-muted-foreground">
+                  {getProgressMessage((stats.weeklyGoals.protein.avg / stats.weeklyGoals.protein.target) * 100)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Habits */}
-        <div className="flex justify-between items-center p-2 bg-purple-50 rounded-lg">
-          <span className="text-sm">Daily Habits</span>
-          <span className="text-sm font-bold text-purple-700">
-            {stats.habitsCompleted}/{stats.totalHabits} this week
-          </span>
+        {/* Enhanced Habits Section */}
+        <div className={cn("p-3 rounded-lg border-2 transition-all hover:shadow-md cursor-pointer", getHabitsColor())} onClick={onViewHabits}>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium">Daily Habits</span>
+            <span className="text-sm font-bold">
+              {stats.habitsCompleted}/{stats.totalHabits} this week
+            </span>
+          </div>
+          <div className="space-y-1">
+            <Progress value={getHabitsProgress()} className="h-2" />
+            <div className="flex justify-between items-center">
+              <span className="text-xs">
+                {getProgressMessage(getHabitsProgress())}
+              </span>
+              <Button variant="ghost" size="sm" className="text-xs h-6 px-2">
+                → Track Habits
+              </Button>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

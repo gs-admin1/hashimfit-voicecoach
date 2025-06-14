@@ -135,6 +135,13 @@ export default function ProgressPage() {
     });
   };
 
+  const handleViewHabits = () => {
+    toast({
+      title: "Habits Tracker",
+      description: "Opening habits tracking...",
+    });
+  };
+
   const momentum = hasData ? 'up' : 'steady';
   const weeklyProgress = hasData ? 65 : 25;
 
@@ -159,7 +166,7 @@ export default function ProgressPage() {
             subtitle="Your fitness journey insights" 
           />
 
-          {/* AI Coach Reflections - Replaces "Optimize My Week" */}
+          {/* AI Coach Reflections */}
           <ProgressReflectionsCard
             reflections={weeklyReflections}
             onReviewHistory={handleReviewWorkoutHistory}
@@ -167,7 +174,7 @@ export default function ProgressPage() {
             className="animate-fade-in"
           />
 
-          {/* Weekly Summary with Momentum + Visuals */}
+          {/* Enhanced Weekly Summary with Momentum + Visuals */}
           <WeeklyMomentumCard
             momentum={momentum}
             weeklyProgress={weeklyProgress}
@@ -184,6 +191,7 @@ export default function ProgressPage() {
                 protein: { avg: hasData ? 120 : 0, target: 150 }
               }
             }}
+            onViewHabits={handleViewHabits}
             className="animate-fade-in"
           />
 
@@ -219,7 +227,7 @@ export default function ProgressPage() {
             />
           </div>
 
-          {/* Body Metrics Visualization */}
+          {/* Enhanced Body Metrics Visualization */}
           <BodyMetricsVisualizationCard
             data={bodyMetricsData}
             selectedMetric={selectedMetric}
@@ -230,7 +238,7 @@ export default function ProgressPage() {
             className="animate-fade-in"
           />
           
-          {/* Exercise Progress */}
+          {/* Enhanced Exercise Progress */}
           <ExerciseProgressCard
             data={exerciseData}
             timeRange={timeRange}

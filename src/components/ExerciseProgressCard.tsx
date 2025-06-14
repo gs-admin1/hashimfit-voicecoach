@@ -25,6 +25,8 @@ export function ExerciseProgressCard({
     { name: 'Deadlift', improvement: '+10kg', trend: 'up' }
   ] : [];
 
+  const mostLoggedExercise = hasData ? "Bench Press (6 sessions)" : null;
+
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
@@ -34,7 +36,7 @@ export function ExerciseProgressCard({
             <CardTitle className="text-lg">Exercise Progress</CardTitle>
           </div>
           {hasData && (
-            <Button variant="ghost" size="sm" className="text-hashim-600">
+            <Button variant="ghost" size="sm" className="text-hashim-600 hover:scale-105 transition-all">
               <Trophy className="h-4 w-4 mr-1" />
               View PRs
             </Button>
@@ -45,6 +47,14 @@ export function ExerciseProgressCard({
       <CardContent className="space-y-4">
         {hasData ? (
           <>
+            {/* Most Logged Exercise Preview */}
+            {mostLoggedExercise && (
+              <div className="p-3 bg-hashim-50 border border-hashim-200 rounded-lg animate-fade-in">
+                <h4 className="text-sm font-medium text-hashim-800 mb-1">🏆 Most logged exercise</h4>
+                <p className="text-xs text-hashim-600">{mostLoggedExercise}</p>
+              </div>
+            )}
+
             {/* Volume Chart */}
             <div className="h-48 overflow-hidden">
               <div className="mb-3">
@@ -54,7 +64,7 @@ export function ExerciseProgressCard({
               <ProgressChart
                 data={data.map(item => ({
                   date: item.date,
-                  volume: (item.benchPress + item.squat + item.deadlift) * 15 // Simulated volume
+                  volume: (item.benchPress + item.squat + item.deadlift) * 15
                 }))}
                 singleMetric="volume"
               />
@@ -68,7 +78,7 @@ export function ExerciseProgressCard({
               </h4>
               <div className="space-y-2">
                 {topImprovedExercises.map((exercise, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-2 bg-green-50 rounded-lg animate-fade-in hover:shadow-md transition-all">
                     <div className="flex items-center space-x-2">
                       <Badge className="bg-green-600 text-white text-xs">
                         #{index + 1}
@@ -95,9 +105,9 @@ export function ExerciseProgressCard({
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Dumbbell size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="text-sm font-medium mb-2">Track reps, sets, and volume over time 📊</p>
-            <p className="text-xs">Complete workouts to see your strength progression!</p>
-            <Button size="sm" className="mt-4" variant="outline">
+            <p className="text-sm font-medium mb-2">Every rep counts. Start logging workouts to see your strongest lifts over time 💪</p>
+            <p className="text-xs mb-4">Nothing logged yet? Let's change that this week.</p>
+            <Button size="sm" className="mt-4 hover:scale-105 transition-all" variant="outline">
               <Dumbbell className="h-4 w-4 mr-2" />
               Start Tracking
             </Button>

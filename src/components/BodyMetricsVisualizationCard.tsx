@@ -51,10 +51,11 @@ export function BodyMetricsVisualizationCard({
             <Button 
               variant="ghost" 
               size="sm"
-              className="text-hashim-600"
+              className="text-hashim-600 hover:bg-hashim-50 transition-all hover:scale-105"
+              title="See your weight and body stat trends once data is logged"
             >
               <TrendingUp className="h-4 w-4 mr-1" />
-              Trends
+              📈 Trends
             </Button>
           </div>
         </div>
@@ -71,7 +72,7 @@ export function BodyMetricsVisualizationCard({
                   size="sm"
                   variant={selectedMetric === metric.key ? "default" : "outline"}
                   onClick={() => onMetricSelect(metric.key)}
-                  className="capitalize flex-shrink-0"
+                  className="capitalize flex-shrink-0 transition-all hover:scale-105"
                 >
                   {metric.label}
                 </Button>
@@ -94,7 +95,7 @@ export function BodyMetricsVisualizationCard({
 
             {/* Latest Measurement */}
             {data.length > 0 && (
-              <div className="p-3 bg-hashim-50 rounded-lg">
+              <div className="p-3 bg-hashim-50 rounded-lg animate-fade-in">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Latest {metrics.find(m => m.key === selectedMetric)?.label}</span>
                   <span className="text-lg font-bold text-hashim-700">
@@ -110,13 +111,14 @@ export function BodyMetricsVisualizationCard({
         ) : (
           <div className="text-center py-8">
             <Weight size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="text-sm font-medium mb-2">No data yet — log your measurements to see trends over time 📈</p>
+            <p className="text-sm font-medium mb-2">No data yet — log your weight to see trends over time 📈</p>
+            <p className="text-xs text-muted-foreground mb-4">Start tracking to unlock visual progress insights!</p>
             <div className="flex justify-center space-x-2 mt-4">
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" className="hover:scale-105 transition-all">
                 <Weight className="h-4 w-4 mr-2" />
                 Log Weight
               </Button>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" className="hover:scale-105 transition-all">
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Photo
               </Button>
@@ -124,19 +126,46 @@ export function BodyMetricsVisualizationCard({
           </div>
         )}
 
-        {/* Body Measurements Section */}
+        {/* Enhanced Progress Photos Section */}
         <div className="pt-4 border-t">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium">Progress Photos</h4>
-            <Button size="sm" variant="outline">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="hover:scale-105 transition-all"
+              title="Upload at least 2 photos to compare visually"
+            >
               <Camera className="h-4 w-4 mr-2" />
               Compare
             </Button>
           </div>
-          <div className="text-center py-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-            <Camera size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-xs text-muted-foreground mb-2">Upload progress photos</p>
-            <p className="text-xs text-muted-foreground">Compare side-by-side (1st week vs latest)</p>
+          
+          {/* Enhanced Comparison UI */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="text-center py-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+              <div className="w-16 h-20 mx-auto mb-2 bg-gray-200 rounded-lg opacity-30"></div>
+              <p className="text-xs font-medium text-muted-foreground">Week 1</p>
+              <p className="text-xs text-muted-foreground">Starting photo</p>
+            </div>
+            <div className="text-center py-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+              <div className="w-16 h-20 mx-auto mb-2 bg-gray-200 rounded-lg opacity-30"></div>
+              <p className="text-xs font-medium text-muted-foreground">Latest</p>
+              <p className="text-xs text-muted-foreground">Current progress</p>
+            </div>
+          </div>
+          
+          <div className="text-center space-y-2">
+            <p className="text-xs text-muted-foreground">
+              💡 Upload at least 2 photos to unlock visual comparison
+            </p>
+            <p className="text-xs text-hashim-600">
+              📅 Best results if logged every 2–4 weeks
+            </p>
+            <Button size="sm" className="w-full hover:scale-105 transition-all">
+              <Camera className="h-4 w-4 mr-2" />
+              Upload Progress Photo
+            </Button>
           </div>
         </div>
       </CardContent>
