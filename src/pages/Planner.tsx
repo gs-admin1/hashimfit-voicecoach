@@ -49,7 +49,7 @@ export default function PlannerPage() {
   ]);
 
   const [weeklyTheme, setWeeklyTheme] = useState<string>('Consistency');
-  const [momentumState, setMomentumState<'up' | 'steady' | 'down'>('up');
+  const [momentumState, setMomentumState] = useState<'up' | 'steady' | 'down'>('up');
 
   // Load weekly data
   useEffect(() => {
