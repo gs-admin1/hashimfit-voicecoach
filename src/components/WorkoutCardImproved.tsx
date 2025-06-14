@@ -258,11 +258,11 @@ export function WorkoutCardImproved({
                     <Mic size={14} className="mr-2" />
                     {voiceModeEnabled ? "Disable" : "Enable"} Voice Mode
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onSaveAsFavorite}>
+                  <DropdownMenuItem onClick={() => onSaveAsFavorite?.()}>
                     <Heart size={14} className="mr-2" />
                     Save as Favorite
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onEdit}>
+                  <DropdownMenuItem onClick={() => onEdit?.(workout)}>
                     <Save size={14} className="mr-2" />
                     Save as Template
                   </DropdownMenuItem>
@@ -447,7 +447,7 @@ export function WorkoutCardImproved({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={onAskCoach}
+                    onClick={() => onAskCoach?.()}
                     className="flex-1 text-muted-foreground hover:text-foreground transition-colors hover:bg-purple-50"
                   >
                     <MessageCircle size={14} className="mr-1" />
@@ -464,7 +464,7 @@ export function WorkoutCardImproved({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={onReplaceWorkout}
+                    onClick={() => onReplaceWorkout?.()}
                     className="flex-1 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <Dumbbell size={14} className="mr-1" />
