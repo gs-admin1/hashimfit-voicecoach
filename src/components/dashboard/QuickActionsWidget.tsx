@@ -32,7 +32,7 @@ export function QuickActionsWidget({
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-lg mb-1">Log Workout</h3>
-              <p className="text-white/90 text-sm mb-3">Talk to log your sets & reps</p>
+              <p className="text-white/90 text-sm mb-3">Use voice recording to log your exercises</p>
             </div>
             <Button 
               className="bg-white/20 hover:bg-white/30 text-white border-0 w-full text-sm font-medium transition-all duration-200 gap-1"
@@ -41,7 +41,7 @@ export function QuickActionsWidget({
                 onLogWorkout?.();
               }}
             >
-              🎤 Start Logging
+              🎤 Start Recording
             </Button>
           </div>
 
@@ -58,7 +58,7 @@ export function QuickActionsWidget({
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-lg mb-1">Log Meal</h3>
-              <p className="text-white text-sm mb-3">Snap a photo for instant nutrition</p>
+              <p className="text-white text-sm mb-3">Take a photo to analyze nutrition</p>
             </div>
             <Button 
               className="bg-white/20 hover:bg-white/30 text-white border-0 w-full text-sm font-medium transition-all duration-200 gap-1"
