@@ -4,17 +4,18 @@ import { format, startOfWeek, addDays } from "date-fns";
 import { useUser } from "@/context/UserContext";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 
-// Import existing components (removing QuickActionsWidget)
+// Import existing components
 import { WeeklyTimelineView } from "@/components/WeeklyTimelineView";
 
-// Import new modern components
-import { UserGreeting } from "@/components/dashboard/modern/UserGreeting";
-import { HeroCTACard } from "@/components/dashboard/modern/HeroCTACard";
-import { DailySnapshotRing } from "@/components/dashboard/modern/DailySnapshotRing";
-import { StreakMomentumBadge } from "@/components/dashboard/modern/StreakMomentumBadge";
-import { AIInsightTile } from "@/components/dashboard/modern/AIInsightTile";
-import { CompletedItemsList } from "@/components/dashboard/modern/CompletedItemsList";
-import { MetricsMicroCard } from "@/components/dashboard/modern/MetricsMicroCard";
+// Import redesigned modern components
+import { HeroWorkoutCard } from "@/components/dashboard/modern/HeroWorkoutCard";
+import { QuickStatsBar } from "@/components/dashboard/modern/QuickStatsBar";
+import { MealProgressCard } from "@/components/dashboard/modern/MealProgressCard";
+import { WeeklyStreakCard } from "@/components/dashboard/modern/WeeklyStreakCard";
+import { AIMotivationBlock } from "@/components/dashboard/modern/AIMotivationBlock";
+import { CommunityFeedPreview } from "@/components/dashboard/modern/CommunityFeedPreview";
+import { GamificationHighlights } from "@/components/dashboard/modern/GamificationHighlights";
+import { TodaysSummaryGrid } from "@/components/dashboard/modern/TodaysSummaryGrid";
 
 // Import custom hooks (existing)
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -98,75 +99,113 @@ export function ModernDashboard() {
   // Get user name from profile
   const userName = user?.name || "Alex";
 
-  // Mock data for new components (you can connect to real data later)
-  const weeklyData = weekDates.map((date, index) => ({
-    date,
-    workoutTitle: index === 0 ? "Push Day" : index === 2 ? "Pull Day" : undefined,
-    workoutType: index === 0 ? 'strength' as const : index === 2 ? 'cardio' as const : 'rest' as const,
-    mealsLogged: Math.floor(Math.random() * 4) + 1,
-    mealGoal: 4,
-    habitCompletion: Math.floor(Math.random() * 100),
-    isToday: format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
-  }));
+  // Mock data for new components (connect to real data later)
+  const userStats = {
+    currentStreak: 5,
+    weeklyGoal: 5,
+    completedThisWeek: 3,
+    xpPoints: 2840,
+    level: 8,
+    nextLevelXP: 3000
+  };
 
-  const completedItems = [
-    { type: 'workout' as const, name: 'Morning Push Workout', time: '8:30 AM', completed: true },
-    { type: 'meal' as const, name: 'Protein Smoothie', time: '9:15 AM', completed: true },
-    { type: 'meal' as const, name: 'Chicken Salad', time: '1:00 PM', completed: true },
-  ];
+  const mealData = {
+    mealsLogged: 2,
+    mealGoal: 4,
+    caloriesConsumed: 1240,
+    caloriesTarget: 2100,
+    proteinConsumed: 85,
+    proteinTarget: 120
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900">
-      {/* Modern gradient background with enhanced pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.15),transparent),radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.15),transparent)]" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900">
+      {/* Enhanced gradient background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent),radial-gradient(circle_at_70%_80%,rgba(139,92,246,0.1),transparent)]" />
       
-      <div className="relative max-w-lg mx-auto pb-20">
-        {/* User Greeting - Top of screen */}
-        <div className="px-4 pt-6 pb-3">
-          <UserGreeting userName={userName} />
-          <StreakMomentumBadge streakDays={3} />
+      <div className="relative max-w-lg mx-auto pb-32">
+        {/* Quick Stats Bar - Always visible at top */}
+        <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/20 dark:border-slate-700/20">
+          <QuickStatsBar 
+            userName={userName}
+            streak={userStats.currentStreak}
+            xpPoints={userStats.xpPoints}
+            level={userStats.level}
+            nextLevelXP={userStats.nextLevelXP}
+          />
         </div>
 
-        {/* Hero CTA - Primary action above the fold */}
-        <div className="px-4 mb-4">
-          <HeroCTACard 
+        {/* Hero Workout Card - Primary CTA above the fold */}
+        <div className="px-4 pt-4 pb-3">
+          <HeroWorkoutCard 
             workout={selectedWorkout}
             onStartWorkout={() => selectedWorkout && handleStartWorkout(selectedWorkout)}
             onAddWorkout={() => setShowAddWorkout(true)}
+            onGenerateWorkout={handleGenerateWorkout}
             isLoading={isLoadingSelectedWorkout}
           />
         </div>
 
-        {/* AI Insight Tile - Motivational coaching */}
+        {/* Today's Summary Grid - Key metrics without scrolling */}
         <div className="px-4 mb-4">
-          <AIInsightTile onAskCoach={handleAskCoach} />
-        </div>
-
-        {/* Two-column layout for completed items and metrics - SWAPPED: CompletedItemsList first, DailySnapshotRing second */}
-        <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <CompletedItemsList items={completedItems} />
-          <DailySnapshotRing 
-            caloriesConsumed={1240}
-            caloriesTarget={2100}
-            proteinConsumed={85}
-            proteinTarget={120}
+          <TodaysSummaryGrid 
+            mealData={mealData}
+            streakData={userStats}
+            onLogMeal={handleSnapMeal}
+            onViewHabits={handleViewHabits}
           />
         </div>
 
-        {/* Metrics Card - Moved below the swapped grid */}
+        {/* AI Motivation Block - Personalized coaching */}
         <div className="px-4 mb-4">
-          <MetricsMicroCard 
-            currentWeight={75.2}
-            weightTrend="+0.3"
-            lastLogDate="Today"
+          <AIMotivationBlock 
+            userName={userName}
+            streakDays={userStats.currentStreak}
+            weeklyProgress={userStats.completedThisWeek}
+            weeklyGoal={userStats.weeklyGoal}
+            onAskCoach={handleAskCoach}
           />
         </div>
 
-        {/* Weekly Overview - Keep existing WeeklyTimelineView */}
+        {/* Gamification Highlights - Badges and achievements */}
+        <div className="px-4 mb-4">
+          <GamificationHighlights 
+            recentBadges={['🔥 5-Day Streak', '💪 Push Day Pro', '📸 Meal Logger']}
+            weeklyChallenge="30-Day Burn Challenge"
+            onJoinChallenge={() => console.log('Join challenge')}
+            onInviteFriends={() => console.log('Invite friends')}
+          />
+        </div>
+
+        {/* Community Feed Preview - Social engagement */}
+        <div className="px-4 mb-4">
+          <CommunityFeedPreview 
+            groupActivity="Your group is crushing it! 🔥"
+            recentPosts={[
+              { user: "Sarah M.", activity: "completed Push Day workout", time: "2h ago" },
+              { user: "Mike R.", activity: "hit 5-day streak", time: "4h ago" }
+            ]}
+            onViewCommunity={() => console.log('View community')}
+          />
+        </div>
+
+        {/* Weekly Timeline - Visual progress tracking */}
         <div className="px-4 mb-4">
           <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/40 dark:border-slate-700/40 overflow-hidden">
+            <div className="p-4 border-b border-slate-200/20 dark:border-slate-700/20">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">This Week's Journey</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300">Track your consistency</p>
+            </div>
             <WeeklyTimelineView
-              weekData={weeklyData}
+              weekData={weekDates.map((date, index) => ({
+                date,
+                workoutTitle: index === 0 ? "Push Day" : index === 2 ? "Pull Day" : undefined,
+                workoutType: index === 0 ? 'strength' as const : index === 2 ? 'cardio' as const : 'rest' as const,
+                mealsLogged: Math.floor(Math.random() * 4) + 1,
+                mealGoal: 4,
+                habitCompletion: Math.floor(Math.random() * 100),
+                isToday: format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
+              }))}
               selectedDate={selectedDate}
               onDaySelect={(date) => {
                 const dayName = format(date, 'EEEE');
