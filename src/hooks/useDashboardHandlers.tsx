@@ -107,7 +107,7 @@ export function useDashboardHandlers() {
     }
   };
 
-  // Enhanced handlers with improved feedback toasts and mini insights
+  // Enhanced handlers with improved feedback toasts and celebration
   const handleSnapMeal = () => {
     console.log("Opening meal capture");
     toast({
@@ -119,7 +119,7 @@ export function useDashboardHandlers() {
   const handleLogWorkoutVoice = () => {
     console.log("Opening voice workout logging");
     toast({
-      title: "✅ Workout complete! +75 pts added 🔥",
+      title: "✅ Workout Logged! +75 XP added 🔥",
       description: "🧠 AI Coach updated — awesome session today!"
     });
   };

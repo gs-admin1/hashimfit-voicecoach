@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useUser } from "@/context/UserContext";
@@ -8,9 +9,8 @@ import { DailyOverviewCard } from "@/components/dashboard/DailyOverviewCard";
 import { QuickActionsWidget } from "@/components/dashboard/QuickActionsWidget";
 import { DailyWorkoutSummaryCard } from "@/components/dashboard/DailyWorkoutSummaryCard";
 import { NutritionProgressCard } from "@/components/dashboard/NutritionProgressCard";
-import { TDEEBalanceCard } from "@/components/dashboard/TDEEBalanceCard";
-import { HabitStreakCard } from "@/components/dashboard/HabitStreakCard";
-import { AICoachInsightCard } from "@/components/dashboard/AICoachInsightCard";
+import { AICoachTipCard } from "@/components/dashboard/AICoachTipCard";
+import { WeeklyMomentumCard } from "@/components/dashboard/WeeklyMomentumCard";
 
 // Import custom hooks
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -23,10 +23,7 @@ export function Dashboard() {
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [cardStates, setCardStates] = useState({
     workoutSummary: false,
-    nutrition: false,
-    tdeeBalance: false,
-    habitStreak: false,
-    aiInsights: false
+    nutrition: false
   });
   
   const { user } = useUser();
@@ -105,6 +102,11 @@ export function Dashboard() {
     }));
   };
 
+  const handleSeeMoreTips = () => {
+    console.log("Opening AI coach tips");
+    // This would navigate to coach chat or tips modal
+  };
+
   // Get today's workout data for the overview card
   const todayWorkoutData = selectedWorkout ? {
     title: selectedWorkout.title,
@@ -141,6 +143,16 @@ export function Dashboard() {
         />
       </div>
 
+      {/* 🧠 AI Coach Tip - Today's Focus */}
+      <div className="mb-6">
+        <AICoachTipCard onSeeMoreTips={handleSeeMoreTips} />
+      </div>
+
+      {/* 📈 Weekly Momentum Tracker */}
+      <div className="mb-6">
+        <WeeklyMomentumCard />
+      </div>
+
       {/* 📊 Stats + Coaching Block */}
       <div className="bg-gray-50/50 dark:bg-gray-900/20 rounded-xl p-4 mb-6">
         <div className="space-y-3">
@@ -162,26 +174,6 @@ export function Dashboard() {
             isCollapsed={cardStates.nutrition}
             onToggleCollapse={() => toggleCardCollapse('nutrition')}
             onLogMeal={handleSnapMeal}
-          />
-          
-          {/* Energy Balance */}
-          <TDEEBalanceCard 
-            isCollapsed={cardStates.tdeeBalance}
-            onToggleCollapse={() => toggleCardCollapse('tdeeBalance')}
-          />
-          
-          {/* Habit Streaks */}
-          <HabitStreakCard 
-            isCollapsed={cardStates.habitStreak}
-            onToggleCollapse={() => toggleCardCollapse('habitStreak')}
-            onTrackHabits={handleViewHabits}
-          />
-          
-          {/* AI Coach Insights */}
-          <AICoachInsightCard 
-            isCollapsed={cardStates.aiInsights}
-            onToggleCollapse={() => toggleCardCollapse('aiInsights')}
-            onCompleteWorkout={() => selectedWorkout && handleStartWorkout(selectedWorkout)}
           />
         </div>
       </div>
