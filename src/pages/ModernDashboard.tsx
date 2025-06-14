@@ -9,7 +9,7 @@ import { Settings, User } from "lucide-react";
 import { useState } from "react";
 import { UserStatsModal } from "@/components/UserStatsModal";
 
-export default function DashboardPage() {
+export default function ModernDashboardPage() {
   const [showStatsModal, setShowStatsModal] = useState(false);
 
   return (
