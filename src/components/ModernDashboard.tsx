@@ -1,0 +1,201 @@
+import { useState } from "react";
+import { format, startOfWeek, addDays } from "date-fns";
+import { useUser } from "@/context/UserContext";
+import { AddWorkoutModal } from "@/components/AddWorkoutModal";
+
+// Import existing components that we'll keep
+import { QuickActionsWidget } from "@/components/dashboard/QuickActionsWidget";
+import { WeeklyTimelineView } from "@/components/WeeklyTimelineView";
+
+// Import new modern components
+import { UserGreeting } from "@/components/dashboard/modern/UserGreeting";
+import { HeroCTACard } from "@/components/dashboard/modern/HeroCTACard";
+import { DailySnapshotRing } from "@/components/dashboard/modern/DailySnapshotRing";
+import { StreakMomentumBadge } from "@/components/dashboard/modern/StreakMomentumBadge";
+import { AIInsightTile } from "@/components/dashboard/modern/AIInsightTile";
+import { CompletedItemsList } from "@/components/dashboard/modern/CompletedItemsList";
+import { MetricsMicroCard } from "@/components/dashboard/modern/MetricsMicroCard";
+
+// Import custom hooks (existing)
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { useSelectedWorkout } from "@/hooks/useSelectedWorkout";
+import { useDashboardMutations } from "@/hooks/useDashboardMutations";
+import { useDashboardHandlers } from "@/hooks/useDashboardHandlers";
+
+export function ModernDashboard() {
+  const [selectedDay, setSelectedDay] = useState(format(new Date(), 'EEEE'));
+  const [showAddWorkout, setShowAddWorkout] = useState(false);
+  
+  const { user } = useUser();
+  
+  // Custom hooks for data and functionality (existing)
+  const { 
+    weeklyWorkouts, 
+    workoutSchedules, 
+    isLoadingSchedules, 
+    startOfCurrentWeek, 
+    today 
+  } = useDashboardData();
+  
+  const { scheduleWorkoutMutation, completeExerciseMutation } = useDashboardMutations();
+  
+  const {
+    handleWorkoutUpdated,
+    handleStartWorkout,
+    handleContinueWorkout,
+    handleEditWorkout,
+    handleAskCoach,
+    handleReplaceWorkout,
+    handleUpdateWorkout,
+    handleSnapMeal,
+    handleLogWorkoutVoice,
+    handleManualEntry,
+    handleViewHabits,
+    handleGenerateWorkout
+  } = useDashboardHandlers();
+  
+  // Get the current week dates
+  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i));
+  
+  // Get the selected date
+  const selectedDateIndex = weekDates.findIndex(date => 
+    format(date, 'EEEE').toLowerCase() === selectedDay.toLowerCase()
+  );
+  const selectedDate = selectedDateIndex !== -1 ? weekDates[selectedDateIndex] : today;
+  const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
+
+  const { selectedWorkout, isLoadingSelectedWorkout } = useSelectedWorkout(selectedDateString, workoutSchedules || []);
+
+  const handleWorkoutSelected = (workout: any) => {
+    if (!workout || !workout.id) {
+      return;
+    }
+    
+    console.log(`Selected workout: ${workout.id}`);
+    scheduleWorkoutMutation.mutate({
+      workout_plan_id: workout.id,
+      scheduled_date: selectedDateString
+    });
+    
+    setShowAddWorkout(false);
+  };
+
+  const handleCompleteExercise = (exerciseId: string, exerciseName: string, completed: boolean) => {
+    if (!selectedWorkout || !selectedWorkout.schedule_id) {
+      return;
+    }
+
+    completeExerciseMutation.mutate({
+      scheduleId: selectedWorkout.schedule_id,
+      exerciseId,
+      exerciseName,
+      completed,
+      allExercises: selectedWorkout.exercises,
+      workoutSchedules: workoutSchedules || []
+    });
+  };
+
+  // Get user name from profile
+  const userName = user?.name || "Alex";
+
+  // Mock data for new components (you can connect to real data later)
+  const weeklyData = weekDates.map((date, index) => ({
+    date,
+    workoutTitle: index === 0 ? "Push Day" : index === 2 ? "Pull Day" : undefined,
+    workoutType: index === 0 ? 'strength' as const : index === 2 ? 'cardio' as const : 'rest' as const,
+    mealsLogged: Math.floor(Math.random() * 4) + 1,
+    mealGoal: 4,
+    habitCompletion: Math.floor(Math.random() * 100),
+    isToday: format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
+  }));
+
+  const completedItems = [
+    { type: 'workout', name: 'Morning Push Workout', time: '8:30 AM', completed: true },
+    { type: 'meal', name: 'Protein Smoothie', time: '9:15 AM', completed: true },
+    { type: 'meal', name: 'Chicken Salad', time: '1:00 PM', completed: true },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-emerald-50 to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      {/* Modern gradient background with subtle pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(59,130,246,0.1),transparent),radial-gradient(circle_at_80%_20%,rgba(16,185,129,0.1),transparent)]" />
+      
+      <div className="relative max-w-lg mx-auto pb-20">
+        {/* User Greeting - Top of screen */}
+        <div className="px-4 pt-6 pb-3">
+          <UserGreeting userName={userName} />
+          <StreakMomentumBadge streakDays={3} />
+        </div>
+
+        {/* Hero CTA - Primary action above the fold */}
+        <div className="px-4 mb-4">
+          <HeroCTACard 
+            workout={selectedWorkout}
+            onStartWorkout={() => selectedWorkout && handleStartWorkout(selectedWorkout)}
+            onAddWorkout={() => setShowAddWorkout(true)}
+            isLoading={isLoadingSelectedWorkout}
+          />
+        </div>
+
+        {/* Daily Snapshot Ring - Visual progress indicator */}
+        <div className="px-4 mb-4">
+          <DailySnapshotRing 
+            caloriesConsumed={1240}
+            caloriesTarget={2100}
+            proteinConsumed={85}
+            proteinTarget={120}
+          />
+        </div>
+
+        {/* Quick Logging Hub - Keep existing functionality with new colors */}
+        <div className="px-4 mb-4">
+          <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl p-1 shadow-lg border border-white/20">
+            <QuickActionsWidget 
+              onLogWorkout={handleLogWorkoutVoice}
+              onLogMeal={handleSnapMeal}
+              className="border-0 bg-transparent shadow-none"
+            />
+          </div>
+        </div>
+
+        {/* AI Insight Tile - Motivational coaching */}
+        <div className="px-4 mb-4">
+          <AIInsightTile onAskCoach={handleAskCoach} />
+        </div>
+
+        {/* Two-column layout for completed items and metrics */}
+        <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CompletedItemsList items={completedItems} />
+          <MetricsMicroCard 
+            currentWeight={75.2}
+            weightTrend="+0.3"
+            lastLogDate="Today"
+          />
+        </div>
+
+        {/* Weekly Overview - Keep existing WeeklyTimelineView */}
+        <div className="px-4 mb-4">
+          <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl shadow-lg border border-white/20 overflow-hidden">
+            <WeeklyTimelineView
+              weekData={weeklyData}
+              selectedDate={selectedDate}
+              onDaySelect={(date) => {
+                const dayName = format(date, 'EEEE');
+                setSelectedDay(dayName);
+              }}
+              onAddWorkout={() => setShowAddWorkout(true)}
+              className="border-0 bg-transparent shadow-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      <AddWorkoutModal 
+        isOpen={showAddWorkout} 
+        onClose={() => setShowAddWorkout(false)}
+        onAddWorkout={handleWorkoutSelected}
+        selectedDay={selectedDay}
+      />
+    </div>
+  );
+}

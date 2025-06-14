@@ -1,5 +1,5 @@
 
-import { Dashboard } from "@/components/Dashboard";
+import { ModernDashboard } from "@/components/ModernDashboard";
 import { Logo } from "@/components/Logo";
 import { NavigationBar } from "@/components/ui-components";
 import { ChatFAB } from "@/components/ChatFAB";
@@ -13,7 +13,7 @@ export default function DashboardPage() {
   const [showStatsModal, setShowStatsModal] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-emerald-50 to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
         <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
           <Logo />
@@ -32,8 +32,8 @@ export default function DashboardPage() {
         </div>
       </header>
       
-      <main className="pt-2 px-4 animate-fade-in">
-        <Dashboard />
+      <main className="animate-fade-in">
+        <ModernDashboard />
       </main>
       
       <NavigationBar />
