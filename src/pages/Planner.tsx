@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar } from "@/components/ui-components";
@@ -14,6 +13,10 @@ import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { NutritionService } from "@/lib/supabase/services/NutritionService";
 import { format, startOfWeek, endOfWeek, addDays, parseISO, isSameDay } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import { InteractiveAssistantPanel } from "@/components/InteractiveAssistantPanel";
+import { WeeklyTimelineView } from "@/components/WeeklyTimelineView";
+import { EnhancedDailySummaryCard } from "@/components/EnhancedDailySummaryCard";
+import { PrescriptiveWeeklySummary } from "@/components/PrescriptiveWeeklySummary";
 
 export default function PlannerPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -25,6 +28,24 @@ export default function PlannerPage() {
   const { toast } = useToast();
   const { userId } = useAuth();
   
+  const [workoutDistribution, setWorkoutDistribution] = useState({
+    upper: 2,
+    lower: 1,
+    cardio: 1,
+    recovery: 0
+  });
+  
+  const [suggestions, setSuggestions] = useState([
+    { day: "Friday", title: "HIIT Day Friday", type: "cardio", reason: "Balance upper body focus" },
+    { day: "Saturday", title: "Recovery Yoga", type: "recovery", reason: "Active recovery needed" }
+  ]);
+
+  const [weeklyGoals, setWeeklyGoals] = useState([
+    { type: 'workouts' as const, label: 'Workouts', current: 3, target: 4 },
+    { type: 'protein' as const, label: 'Protein Goal', current: 85, target: 120, unit: 'g/day' },
+    { type: 'calories' as const, label: 'Daily Calories', current: 1800, target: 2000, unit: 'cal/day' }
+  ]);
+
   // Load weekly data
   useEffect(() => {
     if (!userId) return;
@@ -168,9 +189,65 @@ export default function PlannerPage() {
       description: "Analyzing your week and generating personalized recommendations...",
     });
     
-    // TODO: Implement AI optimization logic
+    // Simulate AI analysis
+    setTimeout(() => {
+      setSuggestions([
+        { day: "Thursday", title: "Lower Body Strength", type: "strength", reason: "Balance upper body focus" },
+        { day: "Friday", title: "Active Recovery Walk", type: "recovery", reason: "Prevent overtraining" },
+        { day: "Sunday", title: "HIIT Cardio", type: "cardio", reason: "Boost weekly cardio" }
+      ]);
+    }, 2000);
   };
   
+  const handleApplySuggestions = (appliedSuggestions: any[]) => {
+    toast({
+      title: "Week Optimized!",
+      description: `Applied ${appliedSuggestions.length} workout suggestions to your schedule.`,
+    });
+    // TODO: Apply suggestions to actual schedule
+  };
+
+  const handleSwapDay = (type: string) => {
+    toast({
+      title: "Workout Type Selected",
+      description: `${type} workout will be added to ${format(selectedDate, 'MMM d')}.`,
+    });
+    // TODO: Implement workout type assignment
+  };
+
+  const handleUpdateGoal = (type: string, newTarget: number) => {
+    setWeeklyGoals(prev => 
+      prev.map(goal => 
+        goal.type === type ? { ...goal, target: newTarget } : goal
+      )
+    );
+    toast({
+      title: "Goal Updated",
+      description: `Updated ${type} target to ${newTarget}.`,
+    });
+  };
+
+  const handleScanPlate = () => {
+    toast({
+      title: "Meal Scanning",
+      description: "Camera feature coming soon!",
+    });
+  };
+
+  const handleUseTemplate = () => {
+    toast({
+      title: "Meal Templates",
+      description: "Template selection coming soon!",
+    });
+  };
+
+  const handleAskCoach = () => {
+    toast({
+      title: "AI Coach",
+      description: "Coach consultation feature coming soon!",
+    });
+  };
+
   const handleDismissInsight = (index: number) => {
     setAIInsights(prev => prev.filter((_, i) => i !== index));
   };
@@ -197,55 +274,112 @@ export default function PlannerPage() {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border-b border-border sticky top-0 z-30">
-        <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
+      {/* Compressed header */}
+      <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border-b border-border">
+        <div className="max-w-lg mx-auto px-4 py-3 flex justify-between items-center">
           <Logo />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Weekly Planner</h1>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">Weekly Planner</h1>
         </div>
       </header>
       
-      <WeeklyCalendarStrip
-        selectedDate={selectedDate}
-        onDateSelect={setSelectedDate}
-        weekData={weekData}
-      />
+      {/* Compressed calendar */}
+      <div className="bg-white/80 backdrop-blur-lg border-b border-border">
+        <WeeklyCalendarStrip
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
+          weekData={weekData}
+        />
+      </div>
       
-      <main className="pt-4 px-4 pb-32 max-w-lg mx-auto space-y-6">
-        {/* AI Coach Banner */}
-        <AICoachBanner
-          insights={aiInsights}
+      <main className="pt-4 px-4 pb-32 max-w-lg mx-auto space-y-4">
+        {/* Interactive AI Assistant Panel */}
+        <InteractiveAssistantPanel
+          workoutDistribution={workoutDistribution}
+          suggestions={suggestions}
           onOptimizeWeek={handleOptimizeWeek}
-          onDismissInsight={handleDismissInsight}
+          onApplySuggestions={handleApplySuggestions}
         />
         
-        {/* Daily Summary */}
+        {/* Weekly Timeline View */}
+        <WeeklyTimelineView
+          weekData={weekData.map(day => ({
+            date: day.date,
+            workoutTitle: day.hasWorkout ? "Upper Body Strength" : undefined,
+            workoutType: day.hasWorkout ? 'strength' : 'rest',
+            mealsLogged: day.hasMeals ? 3 : 0,
+            mealGoal: 4,
+            habitCompletion: Math.floor(Math.random() * 100),
+            isToday: day.date.toDateString() === new Date().toDateString()
+          }))}
+          selectedDate={selectedDate}
+          onDaySelect={setSelectedDate}
+          onAddWorkout={handleAddWorkout}
+        />
+        
+        {/* Enhanced Daily Summary */}
         {selectedDayData && (
-          <DailySummaryCard
+          <EnhancedDailySummaryCard
             date={selectedDate}
             workout={selectedDayData.workout}
             meals={selectedDayData.meals}
             habits={selectedDayData.habits}
             onAddWorkout={handleAddWorkout}
-            onAddMeal={handleAddNutrition}
             onEditWorkout={(workout) => {
               toast({
                 title: "Edit Workout",
                 description: "Workout editing feature coming soon!",
               });
             }}
+            onAddMeal={handleAddNutrition}
+            onScanPlate={handleScanPlate}
+            onUseTemplate={handleUseTemplate}
+            onAskCoach={handleAskCoach}
+            onSwapDay={handleSwapDay}
           />
         )}
         
-        {/* Weekly Analytics */}
+        {/* Prescriptive Weekly Summary */}
         {weeklyStats && (
-          <WeeklyAnalytics stats={weeklyStats} />
+          <PrescriptiveWeeklySummary
+            coachMessage="Your nutrition slipped this week. Let's aim for 3 of 4 meals tomorrow."
+            weeklyGoals={weeklyGoals}
+            mostConsistentHabit="Water Intake"
+            calorieBalance={-200}
+            onUpdateGoal={handleUpdateGoal}
+          />
         )}
       </main>
       
-      <PlanningFAB
-        onAddWorkout={handleAddWorkout}
-        onAddNutrition={handleAddNutrition}
-      />
+      {/* Sticky bottom bar */}
+      <div className="fixed bottom-16 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-border p-4 z-40">
+        <div className="max-w-lg mx-auto flex gap-2">
+          <Button
+            onClick={handleAddWorkout}
+            className="flex-1 bg-hashim-600 hover:bg-hashim-700"
+            size="sm"
+          >
+            <Plus size={14} className="mr-1" />
+            Add Workout
+          </Button>
+          <Button
+            onClick={handleAddNutrition}
+            variant="outline"
+            className="flex-1"
+            size="sm"
+          >
+            <Plus size={14} className="mr-1" />
+            Add Meal
+          </Button>
+          <Button
+            onClick={handleAskCoach}
+            variant="outline"
+            className="px-3"
+            size="sm"
+          >
+            Ask Coach
+          </Button>
+        </div>
+      </div>
       
       <NavigationBar />
       <ChatFAB />
