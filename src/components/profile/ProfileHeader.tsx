@@ -34,13 +34,31 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
   };
 
   const getStatusBadge = () => {
-    const statuses = [
-      { label: "🔥 On Track", color: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400" },
-      { label: "🧠 AI Updated", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400" },
-      { label: "⚡ Accelerating", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400" }
-    ];
+    // Mock logic - could be based on actual workout completion data
+    const workoutsThisWeek = 3;
+    const targetWorkouts = 4;
+    const proteinCompliance = 72; // percentage
     
-    return statuses[0]; // Default to "On Track"
+    if (workoutsThisWeek >= targetWorkouts && proteinCompliance >= 80) {
+      return { label: "🔥 On Fire", color: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400" };
+    } else if (workoutsThisWeek >= targetWorkouts * 0.75) {
+      return { label: "🎯 Focused", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400" };
+    } else {
+      return { label: "🏁 Restarting", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400" };
+    }
+  };
+
+  const getStatusMessage = () => {
+    const workoutsThisWeek = 3;
+    const targetWorkouts = 4;
+    
+    if (workoutsThisWeek >= targetWorkouts) {
+      return "4 of 4 workouts done — you're crushing it! 💪";
+    } else if (workoutsThisWeek >= 2) {
+      return `${workoutsThisWeek} of ${targetWorkouts} workouts done — you're on pace 💪`;
+    } else {
+      return "You've missed 2 workouts — let's bounce back today ⚡";
+    }
   };
 
   const progressPercentage = getProgressPercentage();
@@ -72,7 +90,7 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
                 fill="transparent"
                 strokeDasharray={`${2 * Math.PI * 45}`}
                 strokeDashoffset={`${2 * Math.PI * 45 * (1 - progressPercentage / 100)}`}
-                className="text-hashim-600 transition-all duration-1000 ease-out"
+                className="text-hashim-600 transition-all duration-1000 ease-out animate-pulse"
                 strokeLinecap="round"
               />
             </svg>
@@ -90,7 +108,7 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-white dark:bg-gray-800 border shadow-sm"
+            className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-white dark:bg-gray-800 border shadow-sm hover:scale-110 transition-transform"
             onClick={() => setIsEditingAvatar(true)}
           >
             <Camera size={10} />
@@ -113,6 +131,10 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
               {progressPercentage}% complete
             </span>
           </div>
+          
+          <p className="text-sm text-muted-foreground italic">
+            {getStatusMessage()}
+          </p>
         </div>
       </div>
     </div>

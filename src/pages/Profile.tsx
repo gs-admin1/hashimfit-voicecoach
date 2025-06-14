@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useUser } from "@/context/UserContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { FitnessSnapshotCard } from "@/components/profile/FitnessSnapshotCard";
+import { CoachSuggestionCard } from "@/components/profile/CoachSuggestionCard";
 import { FitnessJourneyTimeline } from "@/components/profile/FitnessJourneyTimeline";
 import { GoalsSummaryBlock } from "@/components/profile/GoalsSummaryBlock";
 import { EnhancedAICoachCard } from "@/components/profile/EnhancedAICoachCard";
@@ -95,6 +95,29 @@ export default function ProfilePage() {
     });
   };
 
+  const handleApplyTip = () => {
+    navigate('/assessment');
+    toast({
+      title: "Opening Goal Settings",
+      description: "Adjust your goals based on AI recommendations.",
+    });
+  };
+
+  const handleAdjustPlan = () => {
+    toast({
+      title: "Plan Adjustment",
+      description: "Redirecting to plan customization...",
+    });
+  };
+
+  const handleMessageCoach = () => {
+    navigate('/chat');
+    toast({
+      title: "Coach Chat",
+      description: "Opening chat with your AI coach.",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
@@ -125,22 +148,31 @@ export default function ProfilePage() {
       <main className="pt-6 px-4 pb-24 animate-fade-in max-w-lg mx-auto">
         <SectionTitle title="Profile" subtitle="Your fitness control center" />
         
-        {/* Profile Header with Progress Ring */}
+        {/* Enhanced Profile Header with Progress Ring */}
         <ProfileHeader user={user} />
         
         {/* Fitness Snapshot */}
         <FitnessSnapshotCard />
         
-        {/* AI Coach Assistant */}
+        {/* Coach Suggestion Card (Conditional) */}
+        <CoachSuggestionCard 
+          proteinCompliance={58}
+          workoutsThisWeek={1}
+          onAdjustPlan={handleAdjustPlan}
+          onMessageCoach={handleMessageCoach}
+        />
+        
+        {/* Enhanced AI Coach Assistant */}
         <EnhancedAICoachCard 
           onReassess={handleReassess}
+          onApplyTip={handleApplyTip}
           isOverdue={false}
         />
         
-        {/* Fitness Journey Timeline */}
+        {/* Enhanced Fitness Journey Timeline */}
         <FitnessJourneyTimeline onAddMilestone={handleAddMilestone} />
         
-        {/* Goals Summary */}
+        {/* Enhanced Goals Summary */}
         <GoalsSummaryBlock onUpdateGoals={handleUpdateGoals} />
         
         {/* Quick Actions */}
@@ -152,31 +184,55 @@ export default function ProfilePage() {
           onNutritionSettings={handleNutritionSettings}
         />
         
-        {/* Detailed Settings in Accordion */}
+        {/* Enhanced Detailed Settings in Accordion */}
         <Accordion type="single" collapsible className="mb-6">
           <AccordionItem value="body-metrics">
-            <AccordionTrigger>Body Metrics</AccordionTrigger>
+            <AccordionTrigger className="hover:no-underline">
+              <div className="flex items-center space-x-2">
+                <span>📏</span>
+                <span>Body Metrics</span>
+                <span className="text-sm text-muted-foreground ml-auto">Current: 73.2kg | ⬇️1.8kg</span>
+              </div>
+            </AccordionTrigger>
             <AccordionContent>
               <BodyMetricsCard user={user} updateUser={updateUser} />
             </AccordionContent>
           </AccordionItem>
           
           <AccordionItem value="fitness-preferences">
-            <AccordionTrigger>Fitness Preferences</AccordionTrigger>
+            <AccordionTrigger className="hover:no-underline">
+              <div className="flex items-center space-x-2">
+                <span>🏋️</span>
+                <span>Fitness Preferences</span>
+                <span className="text-sm text-muted-foreground ml-auto">5x/week – Muscle Gain</span>
+              </div>
+            </AccordionTrigger>
             <AccordionContent>
               <FitnessPreferencesCard user={user} updateUser={updateUser} />
             </AccordionContent>
           </AccordionItem>
           
           <AccordionItem value="nutrition-preferences">
-            <AccordionTrigger>Nutrition Preferences</AccordionTrigger>
+            <AccordionTrigger className="hover:no-underline">
+              <div className="flex items-center space-x-2">
+                <span>🍽️</span>
+                <span>Nutrition Preferences</span>
+                <span className="text-sm text-muted-foreground ml-auto">Standard Diet</span>
+              </div>
+            </AccordionTrigger>
             <AccordionContent>
               <NutritionPreferencesCard user={user} updateUser={updateUser} />
             </AccordionContent>
           </AccordionItem>
           
           <AccordionItem value="app-settings">
-            <AccordionTrigger>App Settings</AccordionTrigger>
+            <AccordionTrigger className="hover:no-underline">
+              <div className="flex items-center space-x-2">
+                <span>⚙️</span>
+                <span>App Settings</span>
+                <span className="text-sm text-muted-foreground ml-auto">Notifications On</span>
+              </div>
+            </AccordionTrigger>
             <AccordionContent>
               <AppSettingsCard />
             </AccordionContent>
