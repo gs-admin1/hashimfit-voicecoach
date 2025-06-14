@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
@@ -10,7 +11,10 @@ import { RestTimerOverlay } from "@/components/RestTimerOverlay";
 import { Button } from "@/components/ui/button";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 import { ChatFAB } from "@/components/ChatFAB";
-import { Plus, MessageCircle } from "lucide-react";
+import { AICoachBanner } from "@/components/AICoachBanner";
+import { PostWorkoutFeedbackModal } from "@/components/PostWorkoutFeedbackModal";
+import { WorkoutCardImproved } from "@/components/WorkoutCardImproved";
+import { Plus, MessageCircle, Dumbbell } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
