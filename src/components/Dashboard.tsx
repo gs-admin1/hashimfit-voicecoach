@@ -1,20 +1,13 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
-import { useAuth } from "@/hooks/useAuth";
 import { useUser } from "@/context/UserContext";
-import { MealCaptureCard } from "@/components/MealCaptureCard";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
-import { VoiceInput } from "@/components/VoiceInput";
 import { Button } from "@/components/ui/button";
 import { DayTab } from "@/components/DayTab";
 import { AnimatedCard } from "@/components/ui-components";
 import { Plus } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import { WorkoutService, WorkoutSchedule, WorkoutLog, ExerciseLog } from "@/lib/supabase/services/WorkoutService";
-import { AssessmentService } from "@/lib/supabase/services/AssessmentService";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 
 // Import new dashboard components
 import { DailyOverviewCard } from "@/components/dashboard/DailyOverviewCard";
@@ -24,6 +17,12 @@ import { NutritionProgressCard } from "@/components/dashboard/NutritionProgressC
 import { TDEEBalanceCard } from "@/components/dashboard/TDEEBalanceCard";
 import { HabitStreakCard } from "@/components/dashboard/HabitStreakCard";
 import { AICoachInsightCard } from "@/components/dashboard/AICoachInsightCard";
+
+// Import custom hooks
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { useSelectedWorkout } from "@/hooks/useSelectedWorkout";
+import { useDashboardMutations } from "@/hooks/useDashboardMutations";
+import { useDashboardHandlers } from "@/hooks/useDashboardHandlers";
 
 export function Dashboard() {
   const [selectedDay, setSelectedDay] = useState(format(new Date(), 'EEEE'));
@@ -36,16 +35,34 @@ export function Dashboard() {
     aiInsights: false
   });
   
-  const { isAuthenticated, userId } = useAuth();
   const { user } = useUser();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
   
-  const today = new Date();
-  const dateString = format(today, 'yyyy-MM-dd');
+  // Custom hooks for data and functionality
+  const { 
+    weeklyWorkouts, 
+    workoutSchedules, 
+    isLoadingSchedules, 
+    startOfCurrentWeek, 
+    today 
+  } = useDashboardData();
+  
+  const { scheduleWorkoutMutation, completeExerciseMutation } = useDashboardMutations();
+  
+  const {
+    handleWorkoutUpdated,
+    handleStartWorkout,
+    handleContinueWorkout,
+    handleEditWorkout,
+    handleAskCoach,
+    handleReplaceWorkout,
+    handleUpdateWorkout,
+    handleSnapMeal,
+    handleLogWorkoutVoice,
+    handleManualEntry,
+    handleViewHabits
+  } = useDashboardHandlers();
   
   // Get the current week dates
-  const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i));
   
   // Get the selected date
@@ -55,256 +72,7 @@ export function Dashboard() {
   const selectedDate = selectedDateIndex !== -1 ? weekDates[selectedDateIndex] : today;
   const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
 
-  // Query for weekly workout schedules - this will run when component mounts and when userId changes
-  const { data: weeklyWorkouts, isLoading: isLoadingWeekly } = useQuery({
-    queryKey: ['weeklyWorkouts', userId],
-    queryFn: async () => {
-      if (!userId) return {};
-      console.log("Fetching weekly workouts for user:", userId);
-      return await AssessmentService.getWeeklyWorkouts(userId);
-    },
-    enabled: !!userId,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // Query for workout schedules
-  const { data: workoutSchedules, isLoading: isLoadingSchedules } = useQuery({
-    queryKey: ['workoutSchedules', userId, format(startOfCurrentWeek, 'yyyy-MM-dd'), format(addDays(startOfCurrentWeek, 6), 'yyyy-MM-dd')],
-    queryFn: async () => {
-      if (!userId) return [];
-      console.log("Fetching workout schedules");
-      return await WorkoutService.getWorkoutSchedule(
-        userId,
-        format(startOfCurrentWeek, 'yyyy-MM-dd'),
-        format(addDays(startOfCurrentWeek, 6), 'yyyy-MM-dd')
-      );
-    },
-    enabled: !!userId,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // Query for the selected day workout details
-  const { data: selectedWorkout, isLoading: isLoadingSelectedWorkout } = useQuery({
-    queryKey: ['selectedWorkout', selectedDateString, userId],
-    queryFn: async () => {
-      if (!userId || !workoutSchedules) return null;
-      
-      console.log(`Finding workout for ${selectedDateString}`);
-      const scheduledWorkout = workoutSchedules.find(schedule => 
-        schedule.scheduled_date === selectedDateString
-      );
-      
-      if (!scheduledWorkout || !scheduledWorkout.workout_plan_id) {
-        console.log("No scheduled workout found for selected date");
-        return null;
-      }
-      
-      console.log(`Found scheduled workout: ${scheduledWorkout.id}`);
-      const workoutPlan = await WorkoutService.getWorkoutPlanById(scheduledWorkout.workout_plan_id);
-      if (!workoutPlan) {
-        console.log("Could not find workout plan");
-        return null;
-      }
-      
-      console.log(`Found workout plan: ${workoutPlan.title}`);
-      const exercises = await WorkoutService.getWorkoutExercises(workoutPlan.id!);
-      
-      let completedExercises: Record<string, boolean> = {};
-      let allExerciseLogs: any[] = [];
-      
-      if (scheduledWorkout.is_completed && scheduledWorkout.workout_log_id) {
-        const exerciseLogs = await WorkoutService.getExerciseLogs(scheduledWorkout.workout_log_id);
-        allExerciseLogs = exerciseLogs;
-        completedExercises = exerciseLogs.reduce((acc, log) => {
-          acc[log.exercise_name] = true;
-          return acc;
-        }, {} as Record<string, boolean>);
-      }
-      
-      // Combine planned exercises with logged exercises (including voice-logged ones)
-      const plannedExercises = exercises.map(ex => ({
-        id: ex.id!,
-        name: ex.name,
-        sets: ex.sets,
-        reps: ex.reps,
-        weight: ex.weight || 'bodyweight',
-        completed: completedExercises[ex.name] || false,
-        source: 'planned' as const,
-        rest_seconds: 60,
-        superset_group_id: ex.notes?.includes('Superset:') ? ex.notes.split('Superset: ')[1] : null,
-        position_in_workout: exercises.findIndex(e => e.id === ex.id)
-      }));
-
-      // Add voice-logged exercises that aren't in the plan
-      const voiceLoggedExercises = allExerciseLogs
-        .filter(log => !exercises.some(ex => ex.name === log.exercise_name))
-        .map(log => ({
-          id: `voice-${log.id}`,
-          name: log.exercise_name,
-          sets: log.sets_completed,
-          reps: log.reps_completed,
-          weight: log.weight_used || 'bodyweight',
-          completed: true,
-          source: 'voice' as const,
-          rest_seconds: 60,
-          superset_group_id: log.superset_group_id || null,
-          position_in_workout: allExerciseLogs.findIndex(l => l.id === log.id)
-        }));
-      
-      return {
-        schedule_id: scheduledWorkout.id,
-        id: workoutPlan.id,
-        title: workoutPlan.title,
-        exercises: [...plannedExercises, ...voiceLoggedExercises],
-        is_completed: scheduledWorkout.is_completed || false,
-        workout_log_id: scheduledWorkout.workout_log_id
-      };
-    },
-    enabled: !!userId && !!workoutSchedules,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // Mutation to schedule a workout
-  const scheduleWorkoutMutation = useMutation({
-    mutationFn: async ({ workout_plan_id, scheduled_date }: { workout_plan_id: string, scheduled_date: string }) => {
-      if (!userId) throw new Error("User not authenticated");
-      
-      console.log(`Scheduling workout ${workout_plan_id} for ${scheduled_date}`);
-      
-      const schedule: WorkoutSchedule = {
-        user_id: userId,
-        workout_plan_id,
-        scheduled_date,
-        is_completed: false
-      };
-      
-      return await WorkoutService.scheduleWorkout(schedule);
-    },
-    onSuccess: () => {
-      console.log("Successfully scheduled workout");
-      queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
-      queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
-      queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
-      
-      toast({
-        title: "Workout Scheduled",
-        description: `Your workout has been scheduled for ${selectedDay}.`
-      });
-    },
-    onError: (error) => {
-      console.error("Error scheduling workout:", error);
-      toast({
-        title: "Error",
-        description: "Failed to schedule workout. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Mutation to complete or uncomplete exercise
-  const completeExerciseMutation = useMutation({
-    mutationFn: async ({
-      scheduleId,
-      exerciseId,
-      exerciseName,
-      completed,
-      allExercises
-    }: {
-      scheduleId: string,
-      exerciseId: string,
-      exerciseName: string,
-      completed: boolean,
-      allExercises: any[]
-    }) => {
-      if (!userId) throw new Error("User not authenticated");
-      
-      const schedule = workoutSchedules?.find(s => s.id === scheduleId);
-      if (!schedule) throw new Error("Workout schedule not found");
-      
-      console.log(`Updating exercise completion for ${exerciseName} to ${completed}`);
-      
-      const updatedCompletedExercises = allExercises
-        .filter(ex => ex.id === exerciseId ? completed : !!ex.completed)
-        .map((ex, index) => ({
-          exercise_name: ex.name,
-          sets_completed: ex.sets,
-          reps_completed: ex.reps,
-          weight_used: ex.weight,
-          order_index: index,
-          superset_group_id: ex.superset_group_id || null
-        } as Omit<ExerciseLog, 'workout_log_id'>));
-      
-      if (schedule.workout_log_id) {
-        if (updatedCompletedExercises.length === 0) {
-          await WorkoutService.deleteWorkoutLog(schedule.workout_log_id);
-          await WorkoutService.updateScheduledWorkout(scheduleId, {
-            is_completed: false,
-            workout_log_id: null,
-            completion_date: null
-          });
-          return scheduleId;
-        } else {
-          await WorkoutService.deleteExerciseLogs(schedule.workout_log_id);
-          await WorkoutService.addExerciseLogs(
-            schedule.workout_log_id, 
-            updatedCompletedExercises
-          );
-          
-          const isStillCompleted = updatedCompletedExercises.length > 0;
-          if (isStillCompleted !== schedule.is_completed) {
-            await WorkoutService.updateScheduledWorkout(scheduleId, {
-              is_completed: isStillCompleted
-            });
-          }
-          
-          return scheduleId;
-        }
-      } else if (updatedCompletedExercises.length > 0) {
-        const log: WorkoutLog = {
-          user_id: userId,
-          workout_plan_id: schedule.workout_plan_id,
-          start_time: new Date().toISOString(),
-          end_time: new Date().toISOString(),
-        };
-        
-        const logId = await WorkoutService.logWorkout(log, updatedCompletedExercises);
-        
-        if (logId) {
-          console.log(`Created workout log ${logId} and updating schedule ${scheduleId}`);
-          await WorkoutService.completeScheduledWorkout(scheduleId, logId);
-          return scheduleId;
-        }
-      }
-      
-      return scheduleId;
-    },
-    onSuccess: () => {
-      console.log("Successfully updated exercise completion");
-      queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
-      queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
-      queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
-      
-      toast({
-        title: "Progress Updated",
-        description: "Your workout progress has been saved."
-      });
-    },
-    onError: (error) => {
-      console.error("Error updating exercise completion:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update exercise completion. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Function to refresh workout data after voice logging
-  const handleWorkoutUpdated = () => {
-    queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
-    queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
-    queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
-  };
+  const { selectedWorkout, isLoadingSelectedWorkout } = useSelectedWorkout(selectedDateString, workoutSchedules || []);
 
   const handleDaySelect = (day: string) => {
     console.log(`Selected day: ${day}`);
@@ -313,11 +81,6 @@ export function Dashboard() {
 
   const handleWorkoutSelected = (workout: any) => {
     if (!workout || !workout.id) {
-      toast({
-        title: "Error",
-        description: "Please select a valid workout.",
-        variant: "destructive"
-      });
       return;
     }
     
@@ -330,31 +93,8 @@ export function Dashboard() {
     setShowAddWorkout(false);
   };
 
-  const handleStartWorkout = (workout: any) => {
-    console.log("Starting workout:", workout);
-    navigate('/workouts');
-    toast({
-      title: "Starting Workout",
-      description: `Navigate to workouts page to start ${workout.title}...`
-    });
-  };
-
-  const handleContinueWorkout = (workout: any) => {
-    console.log("Continuing workout:", workout);
-    navigate('/workouts');
-    toast({
-      title: "Continue Workout",
-      description: `Navigate to workouts page to continue ${workout.title}...`
-    });
-  };
-
   const handleCompleteExercise = (exerciseId: string, exerciseName: string, completed: boolean) => {
     if (!selectedWorkout || !selectedWorkout.schedule_id) {
-      toast({
-        title: "Error",
-        description: "No workout selected.",
-        variant: "destructive"
-      });
       return;
     }
 
@@ -363,119 +103,16 @@ export function Dashboard() {
       exerciseId,
       exerciseName,
       completed,
-      allExercises: selectedWorkout.exercises
+      allExercises: selectedWorkout.exercises,
+      workoutSchedules: workoutSchedules || []
     });
   };
 
-  const handleEditWorkout = (workout: any) => {
-    console.log("Editing workout:", workout);
-    // Handle edit logic if needed
-  };
-
-  const handleAskCoach = () => {
-    console.log("Opening AI coach");
-    // Handle AI coach interaction
-    toast({
-      title: "AI Coach",
-      description: "AI coach feature will be available soon!"
-    });
-  };
-
-  const handleReplaceWorkout = () => {
-    console.log("Replacing workout");
-    setShowAddWorkout(true);
-  };
-
-  const handleUpdateWorkout = async (updatedWorkout: any, applyToAll: boolean = false) => {
-    if (!selectedWorkout || !selectedWorkout.schedule_id) return;
-    
-    try {
-      console.log("Updating workout:", updatedWorkout);
-      console.log("Apply to all:", applyToAll);
-      
-      if (applyToAll) {
-        // Update the workout plan template - this affects all future workouts
-        const success = await WorkoutService.updateWorkoutPlanWithExercises(updatedWorkout.id, updatedWorkout.exercises);
-        if (!success) throw new Error("Failed to update workout plan");
-        
-        // For template updates, invalidate ALL workout-related queries to ensure
-        // that future occurrences of this workout show the updated exercises
-        console.log("Invalidating all workout queries for template update");
-        queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
-        queryClient.invalidateQueries({ queryKey: ['weeklyWorkouts'] });
-        queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
-        queryClient.invalidateQueries({ queryKey: ['workoutPlan'] });
-        queryClient.invalidateQueries({ queryKey: ['workoutExercises'] });
-        queryClient.invalidateQueries({ queryKey: ['allWorkoutPlans'] });
-        
-        // Also remove all cached workout plan data to force fresh fetches
-        queryClient.removeQueries({ queryKey: ['workoutPlan'] });
-        queryClient.removeQueries({ queryKey: ['workoutExercises'] });
-        
-        console.log("Updated workout plan template for all future workouts");
-      } else {
-        // Create a copy of the workout plan for this specific instance
-        const newPlan = await WorkoutService.createWorkoutPlanCopy(updatedWorkout.id, updatedWorkout.exercises);
-        if (newPlan) {
-          // Update the schedule to use the new plan
-          await WorkoutService.updateScheduledWorkout(selectedWorkout.schedule_id, {
-            workout_plan_id: newPlan.id
-          });
-          console.log("Created workout plan copy for today only");
-        }
-        
-        // Only invalidate current date queries for copy creation
-        queryClient.invalidateQueries({ queryKey: ['selectedWorkout'] });
-        queryClient.invalidateQueries({ queryKey: ['workoutSchedules'] });
-      }
-      
-      toast({
-        title: "Workout Updated",
-        description: applyToAll 
-          ? "Your workout has been updated for all future sessions."
-          : "Your workout has been updated for today only."
-      });
-    } catch (error) {
-      console.error("Error updating workout:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update workout. Please try again.",
-        variant: "destructive"
-      });
+  const handleReplaceWorkoutClick = () => {
+    const shouldOpenModal = handleReplaceWorkout();
+    if (shouldOpenModal) {
+      setShowAddWorkout(true);
     }
-  };
-
-  // New handlers for the redesigned components
-  const handleSnapMeal = () => {
-    console.log("Opening meal capture");
-    toast({
-      title: "Meal Capture",
-      description: "Opening camera to capture your meal..."
-    });
-  };
-
-  const handleLogWorkoutVoice = () => {
-    console.log("Opening voice workout logging");
-    toast({
-      title: "Voice Logging",
-      description: "Workout logged ✅ — View/Edit"
-    });
-  };
-
-  const handleManualEntry = () => {
-    console.log("Opening manual entry");
-    toast({
-      title: "Manual Entry",
-      description: "Opening manual workout entry..."
-    });
-  };
-
-  const handleViewHabits = () => {
-    console.log("Opening habits view");
-    toast({
-      title: "Habits",
-      description: "Opening habits tracking..."
-    });
   };
 
   const toggleCardCollapse = (cardKey: keyof typeof cardStates) => {
@@ -497,14 +134,14 @@ export function Dashboard() {
       {/* 1. Daily Overview Card - Top Anchor */}
       <div className="mb-4">
         <DailyOverviewCard 
-          userName={user?.first_name || "Alex"}
+          userName={user?.name || "Alex"}
           todayWorkout={todayWorkoutData}
           mealsLogged={1}
           totalMeals={4}
           habitsCompleted={1}
           totalHabits={3}
           streakDays={3}
-          onStartWorkout={handleStartWorkout}
+          onStartWorkout={() => handleStartWorkout(selectedWorkout)}
           onSnapMeal={handleSnapMeal}
           onViewHabits={handleViewHabits}
         />
@@ -528,7 +165,7 @@ export function Dashboard() {
             onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
             workoutData={selectedWorkout}
             onContinueWorkout={handleContinueWorkout}
-            onStartWorkout={handleStartWorkout}
+            onStartWorkout={() => handleStartWorkout(selectedWorkout)}
             onCompleteExercise={handleCompleteExercise}
             isLoading={isLoadingSelectedWorkout}
           />
@@ -558,7 +195,7 @@ export function Dashboard() {
         <AICoachInsightCard 
           isCollapsed={cardStates.aiInsights}
           onToggleCollapse={() => toggleCardCollapse('aiInsights')}
-          onCompleteWorkout={handleStartWorkout}
+          onCompleteWorkout={() => handleStartWorkout(selectedWorkout)}
         />
       </div>
       
@@ -613,10 +250,10 @@ export function Dashboard() {
         ) : selectedWorkout ? (
           <WorkoutCard 
             workout={selectedWorkout} 
-            onStart={handleStartWorkout}
+            onStart={() => handleStartWorkout(selectedWorkout)}
             onEdit={handleEditWorkout}
             onAskCoach={handleAskCoach}
-            onReplaceWorkout={handleReplaceWorkout}
+            onReplaceWorkout={handleReplaceWorkoutClick}
             onUpdateWorkout={handleUpdateWorkout}
           />
         ) : (
