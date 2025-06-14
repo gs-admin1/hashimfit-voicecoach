@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -12,6 +13,11 @@ import { AchievementsGamificationCard } from "@/components/AchievementsGamificat
 import { InteractiveGoalsCard } from "@/components/InteractiveGoalsCard";
 import { BodyMetricsVisualizationCard } from "@/components/BodyMetricsVisualizationCard";
 import { ExerciseProgressCard } from "@/components/ExerciseProgressCard";
+import { FitnessJourneyCard } from "@/components/FitnessJourneyCard";
+import { AIForecastCard } from "@/components/AIForecastCard";
+import { WeeklyWinCard } from "@/components/WeeklyWinCard";
+import { GoalStreakCard } from "@/components/GoalStreakCard";
+import { WeeklyReflectionModal } from "@/components/WeeklyReflectionModal";
 import { 
   Activity, 
   Weight, 
@@ -68,6 +74,7 @@ export default function ProgressPage() {
   const [hasData, setHasData] = useState(false);
   const [bodyMetricsData, setBodyMetricsData] = useState([]);
   const [exerciseData, setExerciseData] = useState([]);
+  const [userReflections, setUserReflections] = useState([]);
 
   const fetchProgressData = async (range: string) => {
     setIsLoading(true);
@@ -142,6 +149,21 @@ export default function ProgressPage() {
     });
   };
 
+  const handleAddMilestone = () => {
+    toast({
+      title: "Add Milestone",
+      description: "Milestone creation coming soon!",
+    });
+  };
+
+  const handleSaveReflection = (reflections: any[]) => {
+    setUserReflections(reflections);
+    toast({
+      title: "Reflection Saved",
+      description: "Your weekly reflection has been saved!",
+    });
+  };
+
   const momentum = hasData ? 'up' : 'steady';
   const weeklyProgress = hasData ? 65 : 25;
 
@@ -166,11 +188,36 @@ export default function ProgressPage() {
             subtitle="Your fitness journey insights" 
           />
 
+          {/* Weekly Win */}
+          <WeeklyWinCard
+            hasData={hasData}
+            className="animate-fade-in"
+          />
+
           {/* AI Coach Reflections */}
           <ProgressReflectionsCard
             reflections={weeklyReflections}
             onReviewHistory={handleReviewWorkoutHistory}
             onAskCoach={handleAskCoachFeedback}
+            className="animate-fade-in"
+          >
+            <div className="mt-3">
+              <WeeklyReflectionModal
+                reflections={userReflections}
+                onSaveReflection={handleSaveReflection}
+              />
+            </div>
+          </ProgressReflectionsCard>
+
+          {/* AI Forecast */}
+          <AIForecastCard
+            hasData={hasData}
+            className="animate-fade-in"
+          />
+
+          {/* Fitness Journey Timeline */}
+          <FitnessJourneyCard
+            onAddMilestone={handleAddMilestone}
             className="animate-fade-in"
           />
 
@@ -192,6 +239,12 @@ export default function ProgressPage() {
               }
             }}
             onViewHabits={handleViewHabits}
+            className="animate-fade-in"
+          />
+
+          {/* Goal Streaks */}
+          <GoalStreakCard
+            hasData={hasData}
             className="animate-fade-in"
           />
 

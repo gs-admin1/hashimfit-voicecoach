@@ -16,13 +16,15 @@ interface ProgressReflectionsCardProps {
   onReviewHistory: () => void;
   onAskCoach: () => void;
   className?: string;
+  children?: React.ReactNode;
 }
 
 export function ProgressReflectionsCard({ 
   reflections, 
   onReviewHistory, 
   onAskCoach, 
-  className 
+  className,
+  children
 }: ProgressReflectionsCardProps) {
   const getReflectionStyle = (type: string) => {
     switch (type) {
@@ -91,11 +93,14 @@ export function ProgressReflectionsCard({
                 Ask Coach
               </Button>
             </div>
+
+            {children}
           </>
         ) : (
           <div className="text-center py-6 text-muted-foreground">
             <Sparkles size={48} className="mx-auto mb-4 opacity-20" />
             <p className="text-sm">Complete a few workouts to see your personalized insights!</p>
+            {children}
           </div>
         )}
       </CardContent>
