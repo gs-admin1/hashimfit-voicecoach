@@ -13,7 +13,7 @@ import { ChatFAB } from "@/components/ChatFAB";
 import { AICoachBanner } from "@/components/AICoachBanner";
 import { PostWorkoutFeedbackModal } from "@/components/PostWorkoutFeedbackModal";
 import { WorkoutCardImproved } from "@/components/WorkoutCardImproved";
-import { Plus, MessageCircle, Dumbbell, ArrowUpDown, Play } from "lucide-react";
+import { Plus, MessageCircle, Dumbbell, ArrowUpDown, Play, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
@@ -57,7 +57,6 @@ export default function WorkoutsPage() {
     return null;
   };
   
-  // Query for scheduled workouts for the selected date WITH voice-logged exercises
   const { data: scheduledWorkouts = [], isLoading: isLoadingScheduled } = useQuery({
     queryKey: ['scheduledWorkouts', userId, format(selectedDate, 'yyyy-MM-dd')],
     queryFn: async () => {
@@ -194,7 +193,6 @@ export default function WorkoutsPage() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // Mutation for scheduling a workout
   const scheduleWorkoutMutation = useMutation({
     mutationFn: async ({ workoutPlanId, scheduledDate }: { workoutPlanId: string, scheduledDate: string }) => {
       if (!userId) throw new Error("User not authenticated");
@@ -229,7 +227,6 @@ export default function WorkoutsPage() {
     }
   });
 
-  // Mutation for updating workout exercises
   const updateWorkoutMutation = useMutation({
     mutationFn: async ({ workoutPlanId, exercises, applyToAll }: { workoutPlanId: string, exercises: any[], applyToAll: boolean }) => {
       if (!userId) throw new Error("User not authenticated");
@@ -451,13 +448,13 @@ export default function WorkoutsPage() {
   // Completion view
   if (view === "completion" && selectedWorkout) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
-        <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-indigo-50 to-slate-50 dark:from-gray-900 dark:via-indigo-900/20 dark:to-gray-800">
+        <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-violet-200/30 dark:border-violet-700/30 sticky top-0 z-10 animate-fade-in">
           <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
             <Button 
               variant="ghost" 
               onClick={() => setView("list")}
-              className="flex items-center"
+              className="flex items-center text-violet-700 hover:text-violet-800 hover:bg-violet-50"
             >
               ← Back to Workouts
             </Button>
@@ -509,13 +506,13 @@ export default function WorkoutsPage() {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
-        <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-indigo-50 to-slate-50 dark:from-gray-900 dark:via-indigo-900/20 dark:to-gray-800">
+        <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-violet-200/30 dark:border-violet-700/30 sticky top-0 z-10 animate-fade-in">
           <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
             <Button 
               variant="ghost" 
               onClick={() => setView("list")}
-              className="flex items-center"
+              className="flex items-center text-violet-700 hover:text-violet-800 hover:bg-violet-50"
             >
               ← Back to Workouts
             </Button>
@@ -544,22 +541,22 @@ export default function WorkoutsPage() {
 
   // Main workout list view
   return (
-    <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-indigo-50 to-slate-50 dark:from-gray-900 dark:via-indigo-900/20 dark:to-gray-800">
+      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-violet-200/30 dark:border-violet-700/30 sticky top-0 z-10 animate-fade-in">
         <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
           <Logo />
           <div className="flex items-center space-x-2">
             <Button 
               size="sm" 
               variant="ghost"
-              className="flex items-center"
+              className="flex items-center text-violet-700 hover:text-violet-800 hover:bg-violet-50"
             >
               <MessageCircle size={16} className="mr-1" />
               Ask Coach
             </Button>
             <Button 
               size="sm" 
-              className="flex items-center bg-hashim-600 hover:bg-hashim-700 text-white"
+              className="flex items-center bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg"
               onClick={() => setShowAddWorkout(true)}
             >
               <Plus size={16} className="mr-1" />
@@ -574,12 +571,17 @@ export default function WorkoutsPage() {
         />
       </header>
       
-      <main className="pt-4 px-4 animate-fade-in pb-20">
+      <main className="pt-6 px-4 animate-fade-in pb-20">
         <div className="max-w-lg mx-auto space-y-6">
-          <SectionTitle 
-            title={`Workouts for ${format(selectedDate, "MMM d")}`}
-            subtitle="Your scheduled training for today"
-          />
+          {/* Modern Section Header */}
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-700 to-indigo-700 bg-clip-text text-transparent">
+              {format(selectedDate, "EEEE, MMM d")}
+            </h1>
+            <p className="text-slate-600 dark:text-slate-300 text-sm">
+              Your training schedule
+            </p>
+          </div>
           
           <WorkoutFilters
             activeFilters={activeFilters}
@@ -588,17 +590,29 @@ export default function WorkoutsPage() {
 
           {/* AI Coach Banner - positioned above workouts */}
           {filteredWorkouts.length > 0 && (
-            <AICoachBanner
-              workoutType={filteredWorkouts[0]?.title || "Full Body"}
-              difficulty={filteredWorkouts[0]?.difficulty || 3}
-              targetMuscles={filteredWorkouts[0]?.targetMuscles || ["Full Body"]}
-              className="animate-fade-in"
-            />
+            <div className="bg-gradient-to-r from-indigo-100 to-violet-100 dark:from-indigo-900/50 dark:to-violet-900/50 backdrop-blur-xl border border-indigo-200/50 dark:border-indigo-700/50 rounded-2xl p-4 shadow-lg animate-fade-in">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-full flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-indigo-800 dark:text-indigo-200 text-sm">
+                    AI Coach Insight
+                  </h4>
+                  <p className="text-indigo-700 dark:text-indigo-300 text-xs">
+                    {filteredWorkouts[0]?.difficulty > 6 
+                      ? "High intensity session ahead! Stay hydrated and focus on form."
+                      : "Perfect training intensity for steady progress. You've got this! 💪"
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
           
           {isLoadingScheduled ? (
             <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hashim-600"></div>
+              <div className="w-8 h-8 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -615,22 +629,33 @@ export default function WorkoutsPage() {
                   />
                 ))
               ) : (
-                <AnimatedCard className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">
+                <AnimatedCard className="text-center py-12 bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-white/40 dark:border-slate-700/40 shadow-lg">
+                  <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/50 dark:to-indigo-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Dumbbell className="h-10 w-10 text-violet-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
                     {activeFilters.length > 0 
-                      ? "No workouts found for the selected filters"
-                      : `No workouts scheduled for ${format(selectedDate, "MMM d")}`
+                      ? "No workouts match your filters"
+                      : `No workouts for ${format(selectedDate, "MMM d")}`
+                    }
+                  </h3>
+                  <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm">
+                    {activeFilters.length > 0 
+                      ? "Try adjusting your filters or add a new workout"
+                      : "Ready to plan your next training session?"
                     }
                   </p>
                   <Button 
                     variant="outline" 
                     onClick={() => activeFilters.length > 0 ? setActiveFilters([]) : setShowAddWorkout(true)}
-                    className="flex items-center mx-auto"
+                    className="border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-600 dark:text-violet-300 dark:hover:bg-violet-900/30"
                   >
-                    {activeFilters.length > 0 ? "Clear Filters" : (
+                    {activeFilters.length > 0 ? (
+                      "Clear Filters"
+                    ) : (
                       <>
-                        <Plus size={16} className="mr-1" />
-                        Schedule a workout
+                        <Plus size={16} className="mr-2" />
+                        Schedule Workout
                       </>
                     )}
                   </Button>
@@ -640,13 +665,13 @@ export default function WorkoutsPage() {
           )}
 
           {/* Mobile Action Bar - Fixed at bottom on mobile */}
-          <div className="fixed bottom-20 left-0 right-0 md:hidden bg-white/90 backdrop-blur-lg border-t border-border p-4 z-20">
+          <div className="fixed bottom-20 left-0 right-0 md:hidden bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border-t border-violet-200/30 dark:border-violet-700/30 p-4 z-20">
             <div className="max-w-lg mx-auto flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {}}
-                className="flex-1"
+                className="flex-1 border-violet-300 text-violet-700 hover:bg-violet-50"
               >
                 <MessageCircle size={14} className="mr-1" />
                 Ask Coach
@@ -655,7 +680,7 @@ export default function WorkoutsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {}}
-                className="flex-1"
+                className="flex-1 border-violet-300 text-violet-700 hover:bg-violet-50"
               >
                 <ArrowUpDown size={14} className="mr-1" />
                 Replace
@@ -664,7 +689,7 @@ export default function WorkoutsPage() {
                 <Button
                   size="sm"
                   onClick={() => startWorkoutSession(filteredWorkouts[0])}
-                  className="flex-1 bg-hashim-600 hover:bg-hashim-700"
+                  className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white"
                 >
                   <Play size={14} className="mr-1" />
                   Start

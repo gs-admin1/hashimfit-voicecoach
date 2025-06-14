@@ -106,10 +106,10 @@ export function WorkoutCardImproved({
 
   // Get difficulty info
   const getDifficultyInfo = (difficulty?: number) => {
-    if (!difficulty) return { label: "Intermediate", color: "bg-yellow-100 text-yellow-700", emoji: "🟡", bar: "bg-yellow-400" };
-    if (difficulty <= 3) return { label: "Easy", color: "bg-green-100 text-green-700", emoji: "🟢", bar: "bg-green-400" };
-    if (difficulty <= 6) return { label: "Intermediate", color: "bg-yellow-100 text-yellow-700", emoji: "🟡", bar: "bg-yellow-400" };
-    return { label: "Hard", color: "bg-red-100 text-red-700", emoji: "🔴", bar: "bg-red-400" };
+    if (!difficulty) return { label: "Intermediate", color: "bg-amber-100 text-amber-700", emoji: "🟡", bar: "bg-gradient-to-r from-amber-400 to-orange-400" };
+    if (difficulty <= 3) return { label: "Easy", color: "bg-emerald-100 text-emerald-700", emoji: "🟢", bar: "bg-gradient-to-r from-emerald-400 to-green-400" };
+    if (difficulty <= 6) return { label: "Intermediate", color: "bg-amber-100 text-amber-700", emoji: "🟡", bar: "bg-gradient-to-r from-amber-400 to-orange-400" };
+    return { label: "Hard", color: "bg-red-100 text-red-700", emoji: "🔴", bar: "bg-gradient-to-r from-red-400 to-pink-400" };
   };
 
   const difficultyInfo = getDifficultyInfo(workout.difficulty);
@@ -124,7 +124,7 @@ export function WorkoutCardImproved({
   // Add emoji to workout title
   const getWorkoutTitleWithEmoji = () => {
     const title = workout.title;
-    if (title.toLowerCase().includes('pull') || title.toLowerCase().includes('back')) return `Pull & Core Day 💪`;
+    if (title.toLowerCase().includes('pull') || title.toLowerCase().includes('back')) return `${title} 💪`;
     if (title.toLowerCase().includes('push') || title.toLowerCase().includes('chest')) return `${title} 🔥`;
     if (title.toLowerCase().includes('leg') || title.toLowerCase().includes('squat')) return `${title} 🦵`;
     if (title.toLowerCase().includes('core') || title.toLowerCase().includes('abs')) return `${title} ⚡`;
@@ -152,19 +152,19 @@ export function WorkoutCardImproved({
   return (
     <TooltipProvider>
       <Card className={cn(
-        "w-full transition-all duration-300 hover:shadow-lg border-l-4 relative overflow-hidden",
-        "animate-fade-in hover:scale-[1.02]",
+        "w-full transition-all duration-300 hover:shadow-xl border-0 relative overflow-hidden backdrop-blur-xl",
+        "animate-fade-in hover:scale-[1.02] shadow-lg",
         workout.isCompleted 
-          ? "border-l-green-500 bg-green-50/30" 
-          : "border-l-hashim-500",
-        isToday && "ring-2 ring-hashim-300 ring-opacity-50 shadow-lg"
+          ? "bg-emerald-50/80 dark:bg-emerald-900/20 border-l-4 border-l-emerald-500" 
+          : "bg-white/70 dark:bg-slate-800/70 border-l-4 border-l-violet-500",
+        isToday && "ring-2 ring-violet-300 ring-opacity-50 shadow-xl"
       )}>
-        {/* Difficulty Color Bar */}
+        {/* Gradient Border Top */}
         <div className={cn("absolute top-0 left-0 right-0 h-1", difficultyInfo.bar)}></div>
 
         {/* Animated pulse for today's workout */}
         {isToday && !workout.isCompleted && (
-          <div className="absolute inset-0 bg-gradient-to-r from-hashim-500/5 to-purple-500/5 animate-pulse"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-indigo-500/5 animate-pulse"></div>
         )}
 
         {/* Top Section - Overview */}
@@ -173,26 +173,26 @@ export function WorkoutCardImproved({
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <h3 className={cn(
-                  "text-xl font-bold text-foreground",
-                  isToday && "animate-pulse"
+                  "text-xl font-bold text-slate-800 dark:text-white",
+                  isToday && "text-violet-800 dark:text-violet-200"
                 )}>
                   {getWorkoutTitleWithEmoji()}
                 </h3>
                 <div className="flex items-center gap-1">
                   {workout.aiGenerated && (
-                    <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 px-2 py-1">
+                    <Badge variant="secondary" className="text-xs bg-gradient-to-r from-violet-100 to-indigo-100 text-violet-700 px-2 py-1 border-0">
                       <Zap size={10} className="mr-1" />
-                      ✨ AI Recommended
+                      AI ✨
                     </Badge>
                   )}
                   {workout.streak && workout.streak > 0 && (
-                    <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 px-2 py-1">
+                    <Badge variant="secondary" className="text-xs bg-gradient-to-r from-orange-100 to-red-100 text-orange-700 px-2 py-1 border-0">
                       <Flame size={10} className="mr-1" />
                       {workout.streak}
                     </Badge>
                   )}
                   {voiceModeEnabled && (
-                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 px-2 py-1">
+                    <Badge variant="secondary" className="text-xs bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 px-2 py-1 border-0">
                       <Mic size={10} className="mr-1" />
                       Voice
                     </Badge>
@@ -201,25 +201,25 @@ export function WorkoutCardImproved({
               </div>
 
               {/* Metadata Row */}
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+              <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mb-2">
                 {workout.estimatedDuration && (
                   <div className="flex items-center gap-1">
-                    <Clock size={14} />
-                    <span>⏱ {workout.estimatedDuration} min</span>
+                    <Clock size={14} className="text-violet-500" />
+                    <span>{workout.estimatedDuration} min</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1">
-                  <Target size={14} />
+                  <Target size={14} className="text-indigo-500" />
                   <span>{totalExercises} exercises</span>
                 </div>
               </div>
 
               {/* Tags Row */}
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className={cn("text-xs px-2 py-1", difficultyInfo.color)}>
+                <Badge variant="outline" className={cn("text-xs px-2 py-1 border-0", difficultyInfo.color)}>
                   {difficultyInfo.emoji} {difficultyInfo.label}
                 </Badge>
-                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 px-2 py-1">
+                <Badge variant="outline" className="text-xs bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-2 py-1 border-0">
                   {getWorkoutType()}
                 </Badge>
               </div>
@@ -227,10 +227,10 @@ export function WorkoutCardImproved({
 
             <div className="flex items-center gap-2 ml-4">
               {workout.isFavorite && (
-                <Star size={20} className="text-yellow-500 fill-current" />
+                <Star size={20} className="text-amber-500 fill-current" />
               )}
               {workout.isCompleted && (
-                <div className="flex items-center text-green-600">
+                <div className="flex items-center text-emerald-600">
                   <CheckCircle size={20} />
                   <TrendingUp size={16} className="ml-1" />
                 </div>
@@ -238,11 +238,11 @@ export function WorkoutCardImproved({
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-violet-50 dark:hover:bg-violet-900/30">
                     <MoreHorizontal size={16} />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-violet-200/50">
                   <DropdownMenuItem onClick={() => setVoiceModeEnabled(!voiceModeEnabled)}>
                     <Mic size={14} className="mr-2" />
                     {voiceModeEnabled ? "Disable" : "Enable"} Voice Mode
@@ -264,16 +264,16 @@ export function WorkoutCardImproved({
         <CardContent className="pt-0 space-y-4 relative z-10">
           {/* Enhanced Exercise List */}
           {workout.exercises.length > 0 && (
-            <div className="bg-muted/30 rounded-lg p-3">
+            <div className="bg-slate-50/50 dark:bg-slate-700/30 rounded-xl p-3 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-muted-foreground">Exercise Preview</h4>
+                <h4 className="text-sm font-medium text-slate-600 dark:text-slate-300">Exercise Preview</h4>
                 
                 {totalExercises > 3 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowFullExercises(!showFullExercises)}
-                    className="h-6 px-2 text-xs hover:bg-gray-100"
+                    className="h-6 px-2 text-xs hover:bg-violet-50 dark:hover:bg-violet-900/30 text-violet-600"
                   >
                     {showFullExercises ? (
                       <>
@@ -297,7 +297,7 @@ export function WorkoutCardImproved({
 
               {!showFullExercises && totalExercises > 3 && (
                 <div className="text-center py-2 mt-3">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     +{totalExercises - 3} more exercises
                   </span>
                 </div>
@@ -314,13 +314,13 @@ export function WorkoutCardImproved({
           )}
 
           {/* Bottom CTA Section */}
-          <div className="space-y-2 pt-2">
+          <div className="space-y-3 pt-2">
             {workout.isCompleted ? (
               <Button 
                 variant="outline" 
                 size="lg"
                 onClick={() => onStart?.(workout)}
-                className="w-full text-green-600 border-green-200 hover:bg-green-50 transition-colors"
+                className="w-full text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/20 transition-all"
               >
                 <TrendingUp size={16} className="mr-2" />
                 View Results
@@ -329,8 +329,8 @@ export function WorkoutCardImproved({
               <Button 
                 onClick={() => setShowPreWorkoutModal(true)}
                 className={cn(
-                  "w-full bg-hashim-600 hover:bg-hashim-700 text-white transition-all hover:scale-[1.02]",
-                  shouldPulse && "animate-pulse"
+                  "w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white transition-all hover:scale-[1.02] shadow-lg",
+                  shouldPulse && "animate-pulse shadow-xl"
                 )}
                 size="lg"
               >
@@ -347,7 +347,7 @@ export function WorkoutCardImproved({
                     variant="outline"
                     size="sm"
                     onClick={() => onAskCoach?.()}
-                    className="flex-1 text-muted-foreground hover:text-foreground transition-colors hover:bg-purple-50 hover:shadow-sm"
+                    className="flex-1 border-violet-200 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-400 dark:hover:bg-violet-900/30 transition-all"
                   >
                     <MessageCircle size={14} className="mr-1" />
                     Ask Coach
@@ -364,7 +364,7 @@ export function WorkoutCardImproved({
                     variant="outline"
                     size="sm"
                     onClick={() => onReplaceWorkout?.()}
-                    className="flex-1 text-muted-foreground hover:text-foreground transition-colors hover:shadow-sm"
+                    className="flex-1 border-violet-200 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-400 dark:hover:bg-violet-900/30 transition-all"
                   >
                     <Dumbbell size={14} className="mr-1" />
                     Replace
@@ -379,7 +379,7 @@ export function WorkoutCardImproved({
 
           {/* Empty State */}
           {workout.exercises.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
               <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p className="text-sm">No exercises in this workout</p>
               <p className="text-xs mt-1">Add exercises to get started</p>
