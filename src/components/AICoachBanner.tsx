@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Brain, Lightbulb } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface AICoachBannerProps {
@@ -18,7 +19,9 @@ export function AICoachBanner({
   targetMuscles = [],
   className 
 }: AICoachBannerProps) {
-  // Generate contextual tips based on workout
+  const [showMoreTips, setShowMoreTips] = useState(false);
+
+  // Generate contextual tip based on workout
   const getContextualTip = () => {
     const tips = [
       {
@@ -35,7 +38,7 @@ export function AICoachBanner({
       },
       {
         condition: workoutType.toLowerCase().includes('core') || targetMuscles.some(m => m.toLowerCase().includes('core')),
-        tip: "🔥 Tip: Pair core moves with steady breathing for better stability and control"
+        tip: "Pair core moves with steady breathing for better stability and control 🧘"
       },
       {
         condition: difficulty >= 7,
@@ -51,29 +54,62 @@ export function AICoachBanner({
     return matchingTip?.tip || "Stay hydrated and listen to your body. Every rep counts! 💪";
   };
 
+  // Additional tips for the expanded section
+  const getAdditionalTips = () => [
+    "💡 Rest 60-90 seconds between sets for optimal recovery",
+    "🎯 Quality over quantity — perfect form prevents injury",
+    "⚡ Stay hydrated throughout your session",
+    "🔥 Push yourself, but listen to your body's signals"
+  ];
+
   return (
     <Card className={cn(
-      "bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 animate-fade-in",
+      "bg-gradient-to-r from-purple-50/80 to-blue-50/80 border-purple-200/50 animate-fade-in",
+      "backdrop-blur-sm",
       className
     )}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 p-2 bg-purple-100 rounded-lg">
+          <div className="flex-shrink-0 p-2 bg-purple-100/80 rounded-lg">
             <Brain className="h-4 w-4 text-purple-600" />
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-semibold text-purple-800">🧠 AI Coach Tip</h3>
-              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
-                Today's Focus
-              </Badge>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-purple-800 italic">🧠 Today's Focus</h3>
+              <Button
+                variant="ghost"
+                size="sm" 
+                onClick={() => setShowMoreTips(!showMoreTips)}
+                className="text-purple-600 hover:text-purple-700 hover:bg-purple-100/50 h-6 px-2"
+              >
+                {showMoreTips ? (
+                  <>
+                    <ChevronUp size={12} className="mr-1" />
+                    Less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={12} className="mr-1" />
+                    More Tips
+                  </>
+                )}
+              </Button>
             </div>
-            <p className="text-sm text-purple-700 leading-relaxed">
+            <p className="text-sm text-purple-700 leading-relaxed italic">
               {getContextualTip()}
             </p>
-          </div>
-          <div className="flex-shrink-0">
-            <Lightbulb className="h-4 w-4 text-purple-500 animate-pulse" />
+            
+            {showMoreTips && (
+              <div className="mt-3 pt-3 border-t border-purple-200/50 animate-fade-in">
+                <div className="space-y-2">
+                  {getAdditionalTips().map((tip, index) => (
+                    <p key={index} className="text-xs text-purple-600 leading-relaxed">
+                      {tip}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

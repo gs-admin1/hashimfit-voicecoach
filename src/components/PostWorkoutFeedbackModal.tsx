@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle, MessageCircle, Heart } from "lucide-react";
+import { CheckCircle, MessageCircle } from "lucide-react";
 
 interface PostWorkoutFeedbackModalProps {
   isOpen: boolean;
@@ -25,9 +24,8 @@ export function PostWorkoutFeedbackModal({
   const moods = [
     { value: 1, emoji: "😫", label: "Tough" },
     { value: 2, emoji: "😐", label: "Okay" },
-    { value: 3, emoji: "😊", label: "Good" },
-    { value: 4, emoji: "😄", label: "Great" },
-    { value: 5, emoji: "🔥", label: "Amazing" }
+    { value: 3, emoji: "🙂", label: "Good" },
+    { value: 4, emoji: "😄", label: "Great" }
   ];
 
   const handleSubmit = () => {
@@ -52,17 +50,20 @@ export function PostWorkoutFeedbackModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md mx-auto">
+      <DialogContent className="max-w-md mx-auto animate-scale-in">
         <DialogHeader>
-          <div className="text-center space-y-2">
-            <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+          <div className="text-center space-y-3">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center animate-bounce">
+              <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
             <DialogTitle className="text-xl font-bold">
-              Workout Complete! 🎉
+              🎉 Great job! Workout complete.
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
               {workoutTitle}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              How did it feel? Your coach will use this to tailor next sessions.
             </p>
           </div>
         </DialogHeader>
@@ -70,14 +71,13 @@ export function PostWorkoutFeedbackModal({
         <div className="space-y-6 py-4">
           {/* Mood Selection */}
           <div className="space-y-3">
-            <h3 className="font-medium text-center">How did it feel?</h3>
-            <div className="flex justify-center gap-2">
+            <div className="flex justify-center gap-3">
               {moods.map((mood) => (
                 <button
                   key={mood.value}
                   onClick={() => setSelectedMood(mood.value)}
                   className={`
-                    p-3 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                    p-4 rounded-xl border-2 transition-all duration-200 hover:scale-105 flex flex-col items-center min-w-16
                     ${selectedMood === mood.value 
                       ? getMoodColor(mood.value) 
                       : "border-gray-200 hover:border-gray-300"
@@ -94,45 +94,26 @@ export function PostWorkoutFeedbackModal({
           {/* Optional Notes */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
-              How did you feel? (optional)
+              Want to leave a quick note?
             </label>
             <Textarea
               placeholder="e.g., Felt strong on squats, need to work on form for lunges..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="min-h-20 text-sm"
+              className="min-h-16 text-sm"
             />
           </div>
 
-          {/* Quick Action Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <MessageCircle size={14} />
-              Recovery Tips
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Heart size={14} />
-              Log Soreness
-            </Button>
-          </div>
-
-          {/* Submit Button */}
+          {/* Action Buttons */}
           <div className="space-y-3">
             <Button 
               onClick={handleSubmit}
-              className="w-full bg-hashim-600 hover:bg-hashim-700"
+              className="w-full bg-hashim-600 hover:bg-hashim-700 transition-all hover:scale-[1.02]"
               disabled={!selectedMood}
               size="lg"
             >
-              Save Feedback
+              <MessageCircle size={16} className="mr-2" />
+              Send to Coach
             </Button>
             
             <Button 
@@ -141,7 +122,7 @@ export function PostWorkoutFeedbackModal({
               className="w-full"
               onClick={onClose}
             >
-              Skip for now
+              Skip
             </Button>
           </div>
         </div>

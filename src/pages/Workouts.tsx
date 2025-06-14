@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
@@ -14,7 +13,7 @@ import { ChatFAB } from "@/components/ChatFAB";
 import { AICoachBanner } from "@/components/AICoachBanner";
 import { PostWorkoutFeedbackModal } from "@/components/PostWorkoutFeedbackModal";
 import { WorkoutCardImproved } from "@/components/WorkoutCardImproved";
-import { Plus, MessageCircle, Dumbbell } from "lucide-react";
+import { Plus, MessageCircle, Dumbbell, ArrowUpDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
@@ -587,7 +586,7 @@ export default function WorkoutsPage() {
             onFiltersChange={setActiveFilters}
           />
 
-          {/* AI Coach Banner - shows when there are workouts */}
+          {/* AI Coach Banner - positioned above workouts */}
           {filteredWorkouts.length > 0 && (
             <AICoachBanner
               workoutType={filteredWorkouts[0]?.title || "Full Body"}
@@ -639,6 +638,40 @@ export default function WorkoutsPage() {
               )}
             </div>
           )}
+
+          {/* Mobile Action Bar - Fixed at bottom on mobile */}
+          <div className="fixed bottom-20 left-0 right-0 md:hidden bg-white/90 backdrop-blur-lg border-t border-border p-4 z-20">
+            <div className="max-w-lg mx-auto flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {}}
+                className="flex-1"
+              >
+                <MessageCircle size={14} className="mr-1" />
+                Ask Coach
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {}}
+                className="flex-1"
+              >
+                <ArrowUpDown size={14} className="mr-1" />
+                Replace
+              </Button>
+              {filteredWorkouts.length > 0 && !filteredWorkouts[0]?.isCompleted && (
+                <Button
+                  size="sm"
+                  onClick={() => startWorkoutSession(filteredWorkouts[0])}
+                  className="flex-1 bg-hashim-600 hover:bg-hashim-700"
+                >
+                  <Play size={14} className="mr-1" />
+                  Start
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </main>
       

@@ -1,14 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { 
   CheckCircle, 
-  Circle, 
   Clock, 
-  Dumbbell, 
   Play, 
   ChevronDown, 
   ChevronUp,
@@ -22,15 +19,14 @@ import {
   Mic,
   MoreHorizontal,
   Save,
-  Lightbulb,
   ArrowUpDown,
-  Info
+  Dumbbell
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PreWorkoutModalEnhanced } from "./PreWorkoutModalEnhanced";
-import { AICoachBubble } from "./AICoachBubble";
-import { InteractiveExerciseList } from "./InteractiveExerciseList";
-import { LiveProgressFeedback } from "./LiveProgressFeedback";
+import { EnhancedExerciseList } from "./EnhancedExerciseList";
+import { WorkoutProgressBar } from "./WorkoutProgressBar";
+import { PostWorkoutFeedbackModal } from "./PostWorkoutFeedbackModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -42,9 +38,6 @@ interface Exercise {
   weight: string;
   completed?: boolean;
   source?: 'planned' | 'voice';
-  equipment?: string;
-  bodyRegion?: string;
-  tip?: string;
 }
 
 interface Workout {
@@ -82,13 +75,34 @@ export function WorkoutCardImproved({
 }: WorkoutCardImprovedProps) {
   const [showFullExercises, setShowFullExercises] = useState(false);
   const [showPreWorkoutModal, setShowPreWorkoutModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
-  const [showCoachBubble, setShowCoachBubble] = useState(isToday);
+  const [shouldPulse, setShouldPulse] = useState(false);
 
   // Calculate progress
   const completedExercises = workout.exercises.filter(ex => ex.completed).length;
   const totalExercises = workout.exercises.length;
   const progress = totalExercises > 0 ? (completedExercises / totalExercises) * 100 : 0;
+
+  // Check if workout is complete and show feedback modal
+  useEffect(() => {
+    if (progress === 100 && !workout.isCompleted) {
+      const timer = setTimeout(() => {
+        setShowFeedbackModal(true);
+      }, 1000); // Delay to allow progress animation to complete
+      return () => clearTimeout(timer);
+    }
+  }, [progress, workout.isCompleted]);
+
+  // Pulse start button after 30 seconds of inactivity
+  useEffect(() => {
+    if (isToday && !workout.isCompleted && completedExercises === 0) {
+      const timer = setTimeout(() => {
+        setShouldPulse(true);
+      }, 30000);
+      return () => clearTimeout(timer);
+    }
+  }, [isToday, workout.isCompleted, completedExercises]);
 
   // Get difficulty info
   const getDifficultyInfo = (difficulty?: number) => {
@@ -120,40 +134,26 @@ export function WorkoutCardImproved({
 
   const handleStartWorkout = (options: { withAI: boolean; voiceMode: boolean }) => {
     setShowPreWorkoutModal(false);
+    setShouldPulse(false);
     onStart?.(workout, options);
   };
 
   const handleExerciseToggle = (exerciseId: string) => {
     console.log('Toggle exercise:', exerciseId);
+    // This would typically update the workout state
   };
 
-  const handleExerciseModify = (exerciseId: string, type: 'sets' | 'reps' | 'weight') => {
-    console.log('Modify exercise:', exerciseId, type);
-  };
-
-  const handleExerciseSwap = (exerciseId: string) => {
-    console.log('Swap exercise:', exerciseId);
-  };
-
-  const getFormTip = (exerciseName: string) => {
-    const tips: Record<string, string> = {
-      'squat': 'Add weight by using a backpack or jug of water 💡',
-      'pushup': 'Try incline pushups against a wall or chair if too challenging 💪',
-      'lunge': 'Hold the bottom position for 2 seconds for more muscle activation ⚡',
-      'plank': 'Focus on keeping your core tight and breathing steady 🔥'
-    };
-    
-    const exerciseKey = Object.keys(tips).find(key => 
-      exerciseName.toLowerCase().includes(key)
-    );
-    
-    return exerciseKey ? tips[exerciseKey] : 'Focus on controlled movement and proper form 💯';
+  const handleFeedbackSubmit = (feedback: { mood: number; notes: string }) => {
+    console.log('Workout feedback:', feedback);
+    // TODO: Send feedback to backend/AI coach
+    setShowFeedbackModal(false);
   };
 
   return (
     <TooltipProvider>
       <Card className={cn(
         "w-full transition-all duration-300 hover:shadow-lg border-l-4 relative overflow-hidden",
+        "animate-fade-in hover:scale-[1.02]",
         workout.isCompleted 
           ? "border-l-green-500 bg-green-50/30" 
           : "border-l-hashim-500",
@@ -165,17 +165,6 @@ export function WorkoutCardImproved({
         {/* Animated pulse for today's workout */}
         {isToday && !workout.isCompleted && (
           <div className="absolute inset-0 bg-gradient-to-r from-hashim-500/5 to-purple-500/5 animate-pulse"></div>
-        )}
-
-        {/* AI Coach Bubble */}
-        {showCoachBubble && isToday && !workout.isCompleted && (
-          <div className="relative z-10">
-            <AICoachBubble 
-              message="Focus on controlled movement — quality over speed today! 💪"
-              isVisible={true}
-              className="m-4 mb-0"
-            />
-          </div>
         )}
 
         {/* Top Section - Overview */}
@@ -193,7 +182,7 @@ export function WorkoutCardImproved({
                   {workout.aiGenerated && (
                     <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 px-2 py-1">
                       <Zap size={10} className="mr-1" />
-                      ✨ AI
+                      ✨ AI Recommended
                     </Badge>
                   )}
                   {workout.streak && workout.streak > 0 && (
@@ -278,109 +267,33 @@ export function WorkoutCardImproved({
             <div className="bg-muted/30 rounded-lg p-3">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-medium text-muted-foreground">Exercise Preview</h4>
-                <div className="flex items-center gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                        <Lightbulb size={12} className="mr-1" />
-                        Form Guide
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>View exercise form tips and modifications</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  
-                  {totalExercises > 3 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowFullExercises(!showFullExercises)}
-                      className="h-6 px-2 text-xs hover:bg-gray-100"
-                    >
-                      {showFullExercises ? (
-                        <>
-                          <ChevronUp size={12} className="mr-1" />
-                          Show Less
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown size={12} className="mr-1" />
-                          Show All
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
+                
+                {totalExercises > 3 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFullExercises(!showFullExercises)}
+                    className="h-6 px-2 text-xs hover:bg-gray-100"
+                  >
+                    {showFullExercises ? (
+                      <>
+                        <ChevronUp size={12} className="mr-1" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown size={12} className="mr-1" />
+                        Show All
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
 
-              {/* Enhanced Exercise Items */}
-              <div className="space-y-2">
-                {(showFullExercises ? workout.exercises : workout.exercises.slice(0, 3)).map((exercise, index) => (
-                  <div 
-                    key={exercise.id}
-                    className="flex items-center justify-between p-2 bg-white rounded border hover:shadow-sm transition-shadow"
-                  >
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => handleExerciseToggle(exercise.id)}
-                        className={cn(
-                          "w-5 h-5 rounded border-2 flex items-center justify-center transition-all hover:scale-105",
-                          exercise.completed 
-                            ? "bg-green-500 border-green-500" 
-                            : "border-gray-300 hover:border-green-400"
-                        )}
-                      >
-                        {exercise.completed && <CheckCircle className="w-3 h-3 text-white" />}
-                      </button>
-                      
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "text-sm font-medium",
-                            exercise.completed && "line-through text-muted-foreground"
-                          )}>
-                            {exercise.name}
-                          </span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info size={12} className="text-blue-500 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p className="text-xs">{getFormTip(exercise.name)}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {exercise.sets} sets × {exercise.reps} reps
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-6 w-6 p-0"
-                            onClick={() => handleExerciseModify(exercise.id, 'sets')}
-                          >
-                            <ArrowUpDown size={10} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Modify sets/reps</p>
-                        </TooltipContent>
-                      </Tooltip>
-                      
-                      <span className="text-xs text-muted-foreground ml-1">
-                        {exercise.weight}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <EnhancedExerciseList
+                exercises={showFullExercises ? workout.exercises : workout.exercises.slice(0, 3)}
+                onExerciseToggle={handleExerciseToggle}
+              />
 
               {!showFullExercises && totalExercises > 3 && (
                 <div className="text-center py-2 mt-3">
@@ -392,29 +305,12 @@ export function WorkoutCardImproved({
             </div>
           )}
 
-          {/* Live Progress Feedback - shown when workout is in progress */}
-          {!workout.isCompleted && completedExercises > 0 && (
-            <LiveProgressFeedback
+          {/* Enhanced Progress Bar */}
+          {totalExercises > 0 && (
+            <WorkoutProgressBar
               completedExercises={completedExercises}
               totalExercises={totalExercises}
-              onAskCoach={onAskCoach}
             />
-          )}
-
-          {/* Static Progress Section - shown when no exercises completed yet */}
-          {!workout.isCompleted && completedExercises === 0 && totalExercises > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground font-medium">Progress</span>
-                <span className="font-semibold">
-                  {completedExercises}/{totalExercises}
-                </span>
-              </div>
-              <Progress 
-                value={progress} 
-                className="h-2"
-              />
-            </div>
           )}
 
           {/* Bottom CTA Section */}
@@ -432,7 +328,10 @@ export function WorkoutCardImproved({
             ) : (
               <Button 
                 onClick={() => setShowPreWorkoutModal(true)}
-                className="w-full bg-hashim-600 hover:bg-hashim-700 text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className={cn(
+                  "w-full bg-hashim-600 hover:bg-hashim-700 text-white transition-all hover:scale-[1.02]",
+                  shouldPulse && "animate-pulse"
+                )}
                 size="lg"
               >
                 <Play size={16} className="mr-2" />
@@ -448,14 +347,14 @@ export function WorkoutCardImproved({
                     variant="outline"
                     size="sm"
                     onClick={() => onAskCoach?.()}
-                    className="flex-1 text-muted-foreground hover:text-foreground transition-colors hover:bg-purple-50"
+                    className="flex-1 text-muted-foreground hover:text-foreground transition-colors hover:bg-purple-50 hover:shadow-sm"
                   >
                     <MessageCircle size={14} className="mr-1" />
                     Ask Coach
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Need help with form, pacing, or alternatives?</p>
+                  <p>Need help adjusting difficulty or form?</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -465,7 +364,7 @@ export function WorkoutCardImproved({
                     variant="outline"
                     size="sm"
                     onClick={() => onReplaceWorkout?.()}
-                    className="flex-1 text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex-1 text-muted-foreground hover:text-foreground transition-colors hover:shadow-sm"
                   >
                     <Dumbbell size={14} className="mr-1" />
                     Replace
@@ -501,6 +400,14 @@ export function WorkoutCardImproved({
           difficulty: workout.difficulty,
           targetMuscles: workout.targetMuscles
         }}
+      />
+
+      {/* Post-Workout Feedback Modal */}
+      <PostWorkoutFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        onSubmitFeedback={handleFeedbackSubmit}
+        workoutTitle={workout.title}
       />
     </TooltipProvider>
   );
