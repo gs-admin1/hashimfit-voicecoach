@@ -192,7 +192,7 @@ export function ModernDashboard() {
           <AIInsightTile onAskCoach={handleAskCoach} />
         </div>
 
-        {/* Gamification Highlights Card - MOVED to where Today's Progress was */}
+        {/* Your Wins This Week - MOVED to where Today's Progress was */}
         <div className="px-4 mb-4">
           <GamificationCard
             streakDays={gamificationData.streakDays}
@@ -203,6 +203,17 @@ export function ModernDashboard() {
         </div>
 
         {/* Two-column layout for completed items and daily snapshot */}
+        <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CompletedItemsList items={completedItems} />
+          <DailySnapshotRing 
+            caloriesConsumed={1240}
+            caloriesTarget={2100}
+            proteinConsumed={85}
+            proteinTarget={120}
+          />
+        </div>
+
+        {/* Today's Progress - MOVED to where Your Wins This Week was */}
         <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           <CompletedItemsList items={completedItems} />
           <DailySnapshotRing 
