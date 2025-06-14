@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useUser } from "@/context/UserContext";
@@ -110,9 +111,9 @@ export function ModernDashboard() {
   }));
 
   const completedItems = [
-    { type: 'workout', name: 'Morning Push Workout', time: '8:30 AM', completed: true },
-    { type: 'meal', name: 'Protein Smoothie', time: '9:15 AM', completed: true },
-    { type: 'meal', name: 'Chicken Salad', time: '1:00 PM', completed: true },
+    { type: 'workout' as const, name: 'Morning Push Workout', time: '8:30 AM', completed: true },
+    { type: 'meal' as const, name: 'Protein Smoothie', time: '9:15 AM', completed: true },
+    { type: 'meal' as const, name: 'Chicken Salad', time: '1:00 PM', completed: true },
   ];
 
   return (
