@@ -134,6 +134,18 @@ export function WorkoutCardImproved({
     console.log('Toggle exercise:', exerciseId);
   };
 
+  const handleEditWorkout = () => {
+    onEdit?.(workout);
+  };
+
+  const handleToggleVoiceMode = () => {
+    setVoiceModeEnabled(!voiceModeEnabled);
+  };
+
+  const handleSaveAsFavorite = () => {
+    onSaveAsFavorite?.();
+  };
+
   return (
     <>
       <Card className={cn(
@@ -235,15 +247,15 @@ export function WorkoutCardImproved({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setVoiceModeEnabled(!voiceModeEnabled)}>
+                  <DropdownMenuItem onClick={handleToggleVoiceMode}>
                     <Mic size={14} className="mr-2" />
                     {voiceModeEnabled ? "Disable" : "Enable"} Voice Mode
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onSaveAsFavorite}>
+                  <DropdownMenuItem onClick={handleSaveAsFavorite}>
                     <Heart size={14} className="mr-2" />
                     Save as Favorite
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onEdit}>
+                  <DropdownMenuItem onClick={handleEditWorkout}>
                     <Save size={14} className="mr-2" />
                     Save as Template
                   </DropdownMenuItem>
@@ -375,7 +387,13 @@ export function WorkoutCardImproved({
         isOpen={showPreWorkoutModal}
         onClose={() => setShowPreWorkoutModal(false)}
         onStartWorkout={handleStartWorkout}
-        workout={workout}
+        workout={{
+          title: workout.title,
+          estimatedDuration: workout.estimatedDuration || 45,
+          exercises: workout.exercises,
+          difficulty: workout.difficulty,
+          targetMuscles: workout.targetMuscles
+        }}
       />
     </>
   );
