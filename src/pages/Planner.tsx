@@ -8,6 +8,7 @@ import { AICoachBanner } from "@/components/AICoachBanner";
 import { WeeklyAnalytics } from "@/components/WeeklyAnalytics";
 import { PlanningFAB } from "@/components/PlanningFAB";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { NutritionService } from "@/lib/supabase/services/NutritionService";
@@ -17,6 +18,7 @@ import { InteractiveAssistantPanel } from "@/components/InteractiveAssistantPane
 import { WeeklyTimelineView } from "@/components/WeeklyTimelineView";
 import { EnhancedDailySummaryCard } from "@/components/EnhancedDailySummaryCard";
 import { PrescriptiveWeeklySummary } from "@/components/PrescriptiveWeeklySummary";
+import { Plus } from "lucide-react";
 
 export default function PlannerPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
