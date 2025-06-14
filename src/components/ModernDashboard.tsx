@@ -3,8 +3,7 @@ import { format, startOfWeek, addDays } from "date-fns";
 import { useUser } from "@/context/UserContext";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 
-// Import existing components that we'll keep
-import { QuickActionsWidget } from "@/components/dashboard/QuickActionsWidget";
+// Import existing components (removing QuickActionsWidget)
 import { WeeklyTimelineView } from "@/components/WeeklyTimelineView";
 
 // Import new modern components
@@ -145,17 +144,6 @@ export function ModernDashboard() {
             proteinConsumed={85}
             proteinTarget={120}
           />
-        </div>
-
-        {/* Quick Logging Hub - Keep existing functionality with new colors */}
-        <div className="px-4 mb-4">
-          <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl p-1 shadow-lg border border-white/40 dark:border-slate-700/40">
-            <QuickActionsWidget 
-              onLogWorkout={handleLogWorkoutVoice}
-              onLogMeal={handleSnapMeal}
-              className="border-0 bg-transparent shadow-none"
-            />
-          </div>
         </div>
 
         {/* AI Insight Tile - Motivational coaching */}
