@@ -1,6 +1,5 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 
 interface DailySnapshotRingProps {
   caloriesConsumed: number;
@@ -19,9 +18,9 @@ export function DailySnapshotRing({
   const proteinProgress = Math.min((proteinConsumed / proteinTarget) * 100, 100);
 
   return (
-    <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-white/20 shadow-lg">
+    <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-white/40 dark:border-slate-700/40 shadow-lg">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+        <CardTitle className="text-lg font-bold text-slate-800 dark:text-white flex items-center">
           📊 Today's Progress
         </CardTitle>
       </CardHeader>
@@ -38,7 +37,7 @@ export function DailySnapshotRing({
                   stroke="currentColor"
                   strokeWidth="6"
                   fill="none"
-                  className="text-gray-200 dark:text-gray-700"
+                  className="text-slate-200 dark:text-slate-600"
                 />
                 <circle
                   cx="40"
@@ -48,7 +47,7 @@ export function DailySnapshotRing({
                   strokeWidth="6"
                   fill="none"
                   strokeLinecap="round"
-                  className="text-blue-500"
+                  className="text-violet-500"
                   style={{
                     strokeDasharray: `${2 * Math.PI * 32}`,
                     strokeDashoffset: `${2 * Math.PI * 32 * (1 - calorieProgress / 100)}`,
@@ -57,12 +56,12 @@ export function DailySnapshotRing({
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-900 dark:text-white">
+                <span className="text-lg font-bold text-slate-800 dark:text-white">
                   {Math.round(calorieProgress)}%
                 </span>
               </div>
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">
+            <div className="text-sm text-slate-600 dark:text-slate-300">
               🔥 {caloriesConsumed} / {caloriesTarget} cal
             </div>
           </div>
@@ -78,7 +77,7 @@ export function DailySnapshotRing({
                   stroke="currentColor"
                   strokeWidth="6"
                   fill="none"
-                  className="text-gray-200 dark:text-gray-700"
+                  className="text-slate-200 dark:text-slate-600"
                 />
                 <circle
                   cx="40"
@@ -88,7 +87,7 @@ export function DailySnapshotRing({
                   strokeWidth="6"
                   fill="none"
                   strokeLinecap="round"
-                  className="text-emerald-500"
+                  className="text-indigo-500"
                   style={{
                     strokeDasharray: `${2 * Math.PI * 32}`,
                     strokeDashoffset: `${2 * Math.PI * 32 * (1 - proteinProgress / 100)}`,
@@ -97,12 +96,12 @@ export function DailySnapshotRing({
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-900 dark:text-white">
+                <span className="text-lg font-bold text-slate-800 dark:text-white">
                   {Math.round(proteinProgress)}%
                 </span>
               </div>
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-300">
+            <div className="text-sm text-slate-600 dark:text-slate-300">
               💪 {proteinConsumed}g / {proteinTarget}g protein
             </div>
           </div>

@@ -14,7 +14,7 @@ interface HeroCTACardProps {
 export function HeroCTACard({ workout, onStartWorkout, onAddWorkout, isLoading }: HeroCTACardProps) {
   if (isLoading) {
     return (
-      <Card className="bg-gradient-to-r from-blue-600 to-emerald-600 border-0 shadow-xl">
+      <Card className="bg-gradient-to-r from-violet-600 to-indigo-600 border-0 shadow-xl">
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
             <Loader2 className="h-6 w-6 text-white animate-spin" />
@@ -27,21 +27,21 @@ export function HeroCTACard({ workout, onStartWorkout, onAddWorkout, isLoading }
 
   if (!workout) {
     return (
-      <Card className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 border-0 shadow-xl">
+      <Card className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 border-0 shadow-xl">
         <CardContent className="p-6">
           <div className="text-center">
-            <div className="w-16 h-16 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Plus className="h-8 w-8 text-gray-600 dark:text-gray-300" />
+            <div className="w-16 h-16 bg-slate-300 dark:bg-slate-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Plus className="h-8 w-8 text-slate-600 dark:text-slate-300" />
             </div>
-            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
               No Workout Scheduled
             </h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
+            <p className="text-slate-600 dark:text-slate-300 mb-4">
               Let's add a workout to keep your momentum going!
             </p>
             <Button 
               onClick={onAddWorkout}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl"
+              className="bg-violet-600 hover:bg-violet-700 text-white font-semibold px-6 py-3 rounded-xl"
             >
               <Plus className="h-5 w-5 mr-2" />
               Add Workout
@@ -53,7 +53,7 @@ export function HeroCTACard({ workout, onStartWorkout, onAddWorkout, isLoading }
   }
 
   return (
-    <Card className="bg-gradient-to-r from-blue-600 to-emerald-600 border-0 shadow-xl overflow-hidden">
+    <Card className="bg-gradient-to-r from-violet-600 to-indigo-600 border-0 shadow-xl overflow-hidden">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex-1">
@@ -69,7 +69,7 @@ export function HeroCTACard({ workout, onStartWorkout, onAddWorkout, isLoading }
             </p>
             <Button 
               onClick={onStartWorkout}
-              className="bg-white text-blue-600 hover:bg-white/90 font-bold px-6 py-3 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105"
+              className="bg-white text-violet-600 hover:bg-white/90 font-bold px-6 py-3 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105"
             >
               🚀 Start Workout
             </Button>

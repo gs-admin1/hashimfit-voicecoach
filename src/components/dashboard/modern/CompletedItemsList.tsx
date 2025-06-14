@@ -17,38 +17,38 @@ export function CompletedItemsList({ items }: CompletedItemsListProps) {
   const getIcon = (type: string) => {
     switch (type) {
       case 'workout':
-        return <Dumbbell className="h-4 w-4 text-blue-600" />;
+        return <Dumbbell className="h-4 w-4 text-violet-600" />;
       case 'meal':
-        return <UtensilsCrossed className="h-4 w-4 text-emerald-600" />;
+        return <UtensilsCrossed className="h-4 w-4 text-indigo-600" />;
       default:
-        return <CheckCircle className="h-4 w-4 text-gray-600" />;
+        return <CheckCircle className="h-4 w-4 text-slate-600" />;
     }
   };
 
   return (
-    <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-white/20 shadow-lg">
+    <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-white/40 dark:border-slate-700/40 shadow-lg">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+        <CardTitle className="text-lg font-bold text-slate-800 dark:text-white flex items-center">
           ✅ Completed Today
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-3">
           {items.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
+            <p className="text-slate-500 dark:text-slate-400 text-sm text-center py-4">
               Nothing completed yet today. Let's get started! 💪
             </p>
           ) : (
             items.map((item, index) => (
-              <div key={index} className="flex items-center space-x-3 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <div className="p-1 bg-white dark:bg-gray-700 rounded-full">
+              <div key={index} className="flex items-center space-x-3 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                <div className="p-1 bg-white dark:bg-slate-600 rounded-full">
                   {getIcon(item.type)}
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-gray-900 dark:text-white text-sm">
+                  <p className="font-medium text-slate-800 dark:text-white text-sm">
                     {item.name}
                   </p>
-                  <p className="text-gray-500 dark:text-gray-400 text-xs">
+                  <p className="text-slate-500 dark:text-slate-400 text-xs">
                     {item.time}
                   </p>
                 </div>

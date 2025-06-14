@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useUser } from "@/context/UserContext";
@@ -117,9 +116,9 @@ export function ModernDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-emerald-50 to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Modern gradient background with subtle pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(59,130,246,0.1),transparent),radial-gradient(circle_at_80%_20%,rgba(16,185,129,0.1),transparent)]" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900">
+      {/* Modern gradient background with enhanced pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.15),transparent),radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.15),transparent)]" />
       
       <div className="relative max-w-lg mx-auto pb-20">
         {/* User Greeting - Top of screen */}
@@ -150,7 +149,7 @@ export function ModernDashboard() {
 
         {/* Quick Logging Hub - Keep existing functionality with new colors */}
         <div className="px-4 mb-4">
-          <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl p-1 shadow-lg border border-white/20">
+          <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl p-1 shadow-lg border border-white/40 dark:border-slate-700/40">
             <QuickActionsWidget 
               onLogWorkout={handleLogWorkoutVoice}
               onLogMeal={handleSnapMeal}
@@ -176,7 +175,7 @@ export function ModernDashboard() {
 
         {/* Weekly Overview - Keep existing WeeklyTimelineView */}
         <div className="px-4 mb-4">
-          <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg rounded-2xl shadow-lg border border-white/20 overflow-hidden">
+          <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/40 dark:border-slate-700/40 overflow-hidden">
             <WeeklyTimelineView
               weekData={weeklyData}
               selectedDate={selectedDate}
