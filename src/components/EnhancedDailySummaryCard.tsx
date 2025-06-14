@@ -16,16 +16,19 @@ import {
   Circle,
   Clock,
   Target,
-  Flame
+  Flame,
+  RefreshCw,
+  Zap
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface WorkoutOption {
-  type: 'workout' | 'cardio' | 'recovery' | 'rest';
+  type: 'strength' | 'cardio' | 'recovery' | 'rest';
   label: string;
   icon: React.ReactNode;
   color: string;
+  emoji: string;
 }
 
 interface EnhancedDailySummaryCardProps {
@@ -40,6 +43,8 @@ interface EnhancedDailySummaryCardProps {
   onUseTemplate: () => void;
   onAskCoach: () => void;
   onSwapDay: (type: string) => void;
+  onAddAnotherSession?: () => void;
+  onPreLogMeal?: (date: Date) => void;
   className?: string;
 }
 
@@ -55,15 +60,24 @@ export function EnhancedDailySummaryCard({
   onUseTemplate,
   onAskCoach,
   onSwapDay,
+  onAddAnotherSession,
+  onPreLogMeal,
   className
 }: EnhancedDailySummaryCardProps) {
   const [showWorkoutOptions, setShowWorkoutOptions] = useState(false);
+  const [showMealSuggestions, setShowMealSuggestions] = useState(false);
 
   const workoutOptions: WorkoutOption[] = [
-    { type: 'workout', label: 'Strength', icon: <Dumbbell size={14} />, color: 'bg-red-100 text-red-700' },
-    { type: 'cardio', label: 'Cardio', icon: <Heart size={14} />, color: 'bg-green-100 text-green-700' },
-    { type: 'recovery', label: 'Recovery', icon: <Circle size={14} />, color: 'bg-purple-100 text-purple-700' },
-    { type: 'rest', label: 'Rest', icon: <Circle size={14} />, color: 'bg-gray-100 text-gray-700' },
+    { type: 'strength', label: 'Strength', icon: <Dumbbell size={14} />, color: 'bg-red-100 text-red-700 border-red-200', emoji: '🏋️' },
+    { type: 'cardio', label: 'Cardio', icon: <Heart size={14} />, color: 'bg-green-100 text-green-700 border-green-200', emoji: '🏃‍♂️' },
+    { type: 'recovery', label: 'Recovery', icon: <RefreshCw size={14} />, color: 'bg-purple-100 text-purple-700 border-purple-200', emoji: '🧘' },
+    { type: 'rest', label: 'Rest', icon: <Circle size={14} />, color: 'bg-gray-100 text-gray-700 border-gray-200', emoji: '💤' },
+  ];
+
+  const suggestedMeals = [
+    "🍗 Grilled Chicken Bowl (35g protein)",
+    "🐟 Salmon with Quinoa (32g protein)", 
+    "🥩 Lean Beef Stir-fry (40g protein)"
   ];
 
   const completedHabits = habits.filter(h => h.isCompleted).length;
@@ -72,7 +86,7 @@ export function EnhancedDailySummaryCard({
   const getMissingProteinMessage = () => {
     const totalProtein = meals.reduce((sum, meal) => sum + (meal.protein_g || 0), 0);
     if (totalProtein < 100) {
-      return "You've missed protein targets 3 days - want help planning tomorrow's food?";
+      return "You've missed protein targets 3 days — want help planning tomorrow's food?";
     }
     return null;
   };
@@ -84,13 +98,24 @@ export function EnhancedDailySummaryCard({
     return "Remember to maintain proper form throughout your workout";
   };
 
+  const getWorkoutSwapSuggestion = () => {
+    if (workout?.title?.includes('Upper')) {
+      return "Need a lighter day? Try: Recovery Mobility Flow 🧘";
+    }
+    return "Want to switch it up? Try a different workout style";
+  };
+
+  const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+  const isFuture = date > new Date();
+
   return (
-    <Card className={cn("", className)}>
+    <Card className={cn("transition-all duration-200", className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Calendar size={20} />
             {format(date, 'EEEE, MMM d')}
+            {isToday && <Badge className="bg-hashim-100 text-hashim-700">Today</Badge>}
           </CardTitle>
         </div>
       </CardHeader>
@@ -105,7 +130,7 @@ export function EnhancedDailySummaryCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowWorkoutOptions(!showWorkoutOptions)}
-                className="text-hashim-600 hover:text-hashim-700"
+                className="text-hashim-600 hover:text-hashim-700 hover:bg-hashim-50"
               >
                 <Plus size={14} className="mr-1" />
                 Add Workout
@@ -114,7 +139,7 @@ export function EnhancedDailySummaryCard({
           </div>
 
           {workout ? (
-            <div className="space-y-2">
+            <div className="space-y-3 animate-fade-in">
               <div className="flex items-center justify-between p-3 bg-hashim-50 rounded-lg border border-hashim-200">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-hashim-100 rounded">
@@ -134,19 +159,59 @@ export function EnhancedDailySummaryCard({
                     </div>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEditWorkout(workout)}
-                >
-                  Swap Day
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEditWorkout(workout)}
+                    className="text-xs"
+                  >
+                    Swap Day
+                  </Button>
+                </div>
               </div>
               
               {/* AI Coach Note */}
-              <div className="flex items-start gap-2 p-2 bg-purple-50 rounded text-xs">
+              <div className="flex items-start gap-2 p-2 bg-purple-50 rounded text-xs border border-purple-200">
                 <Brain size={12} className="text-purple-600 mt-0.5" />
                 <p className="text-purple-700">{getCoachNote()}</p>
+              </div>
+
+              {/* Workout Options */}
+              {isToday && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onAddAnotherSession}
+                    className="flex-1 text-xs"
+                  >
+                    <Plus size={12} className="mr-1" />
+                    Add Another Session
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowWorkoutOptions(true)}
+                    className="flex-1 text-xs"
+                  >
+                    <RefreshCw size={12} className="mr-1" />
+                    Convert to Cardio
+                  </Button>
+                </div>
+              )}
+
+              {/* Swap Suggestion */}
+              <div className="p-2 bg-blue-50 rounded border border-blue-200">
+                <p className="text-xs text-blue-700 mb-1">{getWorkoutSwapSuggestion()}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onSwapDay('recovery')}
+                  className="text-xs h-6"
+                >
+                  Swap Workout
+                </Button>
               </div>
             </div>
           ) : showWorkoutOptions ? (
@@ -155,20 +220,21 @@ export function EnhancedDailySummaryCard({
                 <Button
                   key={option.type}
                   variant="outline"
-                  className={cn("flex items-center gap-2 h-12", option.color)}
+                  className={cn("flex items-center gap-2 h-12 border", option.color)}
                   onClick={() => {
                     onSwapDay(option.type);
                     setShowWorkoutOptions(false);
                   }}
                 >
+                  <span className="text-sm">{option.emoji}</span>
                   {option.icon}
                   {option.label}
                 </Button>
               ))}
             </div>
           ) : (
-            <div className="text-center py-4 text-muted-foreground border border-dashed rounded-lg">
-              <p className="text-sm">Rest day planned</p>
+            <div className="text-center py-4 text-muted-foreground border border-dashed rounded-lg bg-gray-50">
+              <p className="text-sm">💤 Rest day planned</p>
             </div>
           )}
         </div>
@@ -183,7 +249,7 @@ export function EnhancedDailySummaryCard({
           {meals.length > 0 ? (
             <div className="space-y-2">
               {meals.slice(0, 2).map((meal, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
                   <span className="text-sm">{meal.meal_title || 'Meal'}</span>
                   <span className="text-xs text-muted-foreground">{meal.calories || 0} cal</span>
                 </div>
@@ -191,40 +257,74 @@ export function EnhancedDailySummaryCard({
               {meals.length > 2 && (
                 <p className="text-xs text-muted-foreground text-center">+{meals.length - 2} more meals</p>
               )}
+              
+              {isFuture && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onPreLogMeal?.(date)}
+                  className="w-full text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                >
+                  <Plus size={12} className="mr-1" />
+                  Pre-log meals for {format(date, 'MMM d')}
+                </Button>
+              )}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-fade-in">
               <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-700 mb-2">
+                <p className="text-sm text-blue-700 mb-3">
                   {getMissingProteinMessage() || "Still missing meals today — want help planning tomorrow's food?"}
                 </p>
+                
+                {showMealSuggestions ? (
+                  <div className="space-y-2 mb-3">
+                    <p className="text-xs text-blue-600 font-medium">Try these high-protein meals:</p>
+                    {suggestedMeals.map((meal, index) => (
+                      <div key={index} className="text-xs text-blue-700 p-1 bg-white rounded border">
+                        {meal}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowMealSuggestions(true)}
+                    className="mb-3 text-xs text-blue-600 hover:text-blue-700 h-6"
+                  >
+                    <Zap size={10} className="mr-1" />
+                    Show suggested meals
+                  </Button>
+                )}
+                
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={onScanPlate}
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs h-8"
                   >
                     <Camera size={12} className="mr-1" />
-                    Scan Plate
+                    📸 Scan Plate
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={onUseTemplate}
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs h-8"
                   >
                     <Utensils size={12} className="mr-1" />
-                    Use Template
+                    🍱 Use Template
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={onAskCoach}
-                    className="flex-1 text-xs"
+                    className="flex-1 text-xs h-8"
                   >
                     <Brain size={12} className="mr-1" />
-                    Ask Coach
+                    🧠 Ask Coach
                   </Button>
                 </div>
               </div>
@@ -243,7 +343,7 @@ export function EnhancedDailySummaryCard({
             <Progress value={habitPercentage} className="h-2" />
             <div className="grid gap-2">
               {habits.slice(0, 3).map((habit, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
                   <div className="flex items-center gap-2">
                     {habit.isCompleted ? (
                       <CheckCircle size={14} className="text-green-600" />
@@ -251,6 +351,9 @@ export function EnhancedDailySummaryCard({
                       <Circle size={14} className="text-gray-400" />
                     )}
                     <span className="text-sm">{habit.name}</span>
+                    {habit.name === 'Water Intake' && habit.isCompleted && (
+                      <Badge variant="secondary" className="text-xs">🔥 5-day streak</Badge>
+                    )}
                   </div>
                   {habit.target && (
                     <span className="text-xs text-muted-foreground">
@@ -264,7 +367,7 @@ export function EnhancedDailySummaryCard({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full text-xs text-muted-foreground"
+              className="w-full text-xs text-muted-foreground hover:text-hashim-600 hover:bg-hashim-50"
             >
               <Plus size={12} className="mr-1" />
               Add Custom Habit

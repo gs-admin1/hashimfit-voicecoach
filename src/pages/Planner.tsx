@@ -48,6 +48,9 @@ export default function PlannerPage() {
     { type: 'calories' as const, label: 'Daily Calories', current: 1800, target: 2000, unit: 'cal/day' }
   ]);
 
+  const [weeklyTheme, setWeeklyTheme] = useState<string>('Consistency');
+  const [momentumState, setMomentumState<'up' | 'steady' | 'down'>('up');
+
   // Load weekly data
   useEffect(() => {
     if (!userId) return;
@@ -184,7 +187,7 @@ export default function PlannerPage() {
     
     setAIInsights(insights);
   }, []);
-  
+
   const handleOptimizeWeek = async () => {
     toast({
       title: "AI Coach Optimization",
@@ -199,6 +202,21 @@ export default function PlannerPage() {
         { day: "Sunday", title: "HIIT Cardio", type: "cardio", reason: "Boost weekly cardio" }
       ]);
     }, 2000);
+  };
+
+  const handleAutoPlanWeek = async (difficulty: string) => {
+    toast({
+      title: "Auto-Planning Week",
+      description: `Generating a ${difficulty} 4-day plan based on your goals...`,
+    });
+    
+    // Simulate AI plan generation
+    setTimeout(() => {
+      toast({
+        title: "Week Auto-Planned!",
+        description: "Your personalized 4-day workout plan is ready.",
+      });
+    }, 3000);
   };
   
   const handleApplySuggestions = (appliedSuggestions: any[]) => {
@@ -226,6 +244,28 @@ export default function PlannerPage() {
     toast({
       title: "Goal Updated",
       description: `Updated ${type} target to ${newTarget}.`,
+    });
+  };
+
+  const handleSetWeeklyTheme = (theme: string) => {
+    setWeeklyTheme(theme);
+    toast({
+      title: "Weekly Focus Set",
+      description: `This week's theme: ${theme}`,
+    });
+  };
+
+  const handleAddAnotherSession = () => {
+    toast({
+      title: "Additional Session",
+      description: "Adding another workout session to your day!",
+    });
+  };
+
+  const handlePreLogMeal = (date: Date) => {
+    toast({
+      title: "Pre-logging Meals",
+      description: `Pre-logging meals for ${format(date, 'MMM d')}`,
     });
   };
 
@@ -278,7 +318,7 @@ export default function PlannerPage() {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* Compressed header */}
       <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border-b border-border">
-        <div className="max-w-lg mx-auto px-4 py-3 flex justify-between items-center">
+        <div className="max-w-lg mx-auto px-4 py-2 flex justify-between items-center">
           <Logo />
           <h1 className="text-lg font-bold text-gray-900 dark:text-white">Weekly Planner</h1>
         </div>
@@ -293,14 +333,18 @@ export default function PlannerPage() {
         />
       </div>
       
-      <main className="pt-4 px-4 pb-32 max-w-lg mx-auto space-y-4">
+      <main className="pt-4 px-4 pb-32 max-w-lg mx-auto space-y-6">
         {/* Interactive AI Assistant Panel */}
         <InteractiveAssistantPanel
           workoutDistribution={workoutDistribution}
           suggestions={suggestions}
           onOptimizeWeek={handleOptimizeWeek}
           onApplySuggestions={handleApplySuggestions}
+          onAutoPlanWeek={handleAutoPlanWeek}
         />
+        
+        {/* Section Separator */}
+        <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
         
         {/* Weekly Timeline View */}
         <WeeklyTimelineView
@@ -317,6 +361,9 @@ export default function PlannerPage() {
           onDaySelect={setSelectedDate}
           onAddWorkout={handleAddWorkout}
         />
+        
+        {/* Section Separator */}
+        <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
         
         {/* Enhanced Daily Summary */}
         {selectedDayData && (
@@ -337,8 +384,13 @@ export default function PlannerPage() {
             onUseTemplate={handleUseTemplate}
             onAskCoach={handleAskCoach}
             onSwapDay={handleSwapDay}
+            onAddAnotherSession={handleAddAnotherSession}
+            onPreLogMeal={handlePreLogMeal}
           />
         )}
+        
+        {/* Section Separator */}
+        <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
         
         {/* Prescriptive Weekly Summary */}
         {weeklyStats && (
@@ -347,7 +399,10 @@ export default function PlannerPage() {
             weeklyGoals={weeklyGoals}
             mostConsistentHabit="Water Intake"
             calorieBalance={-200}
+            momentumState={momentumState}
+            weeklyTheme={weeklyTheme}
             onUpdateGoal={handleUpdateGoal}
+            onSetWeeklyTheme={handleSetWeeklyTheme}
           />
         )}
       </main>
@@ -357,7 +412,7 @@ export default function PlannerPage() {
         <div className="max-w-lg mx-auto flex gap-2">
           <Button
             onClick={handleAddWorkout}
-            className="flex-1 bg-hashim-600 hover:bg-hashim-700"
+            className="flex-1 bg-hashim-600 hover:bg-hashim-700 transition-colors duration-200"
             size="sm"
           >
             <Plus size={14} className="mr-1" />
@@ -366,7 +421,7 @@ export default function PlannerPage() {
           <Button
             onClick={handleAddNutrition}
             variant="outline"
-            className="flex-1"
+            className="flex-1 hover:bg-hashim-50 transition-colors duration-200"
             size="sm"
           >
             <Plus size={14} className="mr-1" />
@@ -375,7 +430,7 @@ export default function PlannerPage() {
           <Button
             onClick={handleAskCoach}
             variant="outline"
-            className="px-3"
+            className="px-3 hover:bg-purple-50 transition-colors duration-200"
             size="sm"
           >
             Ask Coach

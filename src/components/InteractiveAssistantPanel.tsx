@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import { 
   Brain, 
   ChevronDown, 
@@ -12,7 +13,8 @@ import {
   TrendingUp,
   Calendar,
   CheckCircle,
-  Plus
+  Plus,
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +37,7 @@ interface InteractiveAssistantPanelProps {
   suggestions: SuggestedWorkout[];
   onOptimizeWeek: () => void;
   onApplySuggestions: (suggestions: SuggestedWorkout[]) => void;
+  onAutoPlanWeek?: (difficulty: string) => void;
   className?: string;
 }
 
@@ -43,11 +46,14 @@ export function InteractiveAssistantPanel({
   suggestions,
   onOptimizeWeek,
   onApplySuggestions,
+  onAutoPlanWeek,
   className
 }: InteractiveAssistantPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showAutoPlan, setShowAutoPlan] = useState(false);
+  const [difficulty, setDifficulty] = useState([2]); // 1=light, 2=balanced, 3=intense
 
   const getDominantWorkoutType = () => {
     const total = Object.values(workoutDistribution).reduce((sum, val) => sum + val, 0);
@@ -79,6 +85,17 @@ export function InteractiveAssistantPanel({
       setIsOptimizing(false);
       setShowSuggestions(true);
     }, 2000);
+  };
+
+  const handleAutoPlan = () => {
+    const difficultyMap = { 1: 'light', 2: 'balanced', 3: 'intense' };
+    onAutoPlanWeek?.(difficultyMap[difficulty[0] as keyof typeof difficultyMap]);
+    setShowAutoPlan(false);
+  };
+
+  const getDifficultyLabel = (value: number) => {
+    const labels = { 1: 'Light', 2: 'Balanced', 3: 'Intense' };
+    return labels[value as keyof typeof labels];
   };
 
   const totalWorkouts = Object.values(workoutDistribution).reduce((sum, val) => sum + val, 0);
@@ -141,24 +158,72 @@ export function InteractiveAssistantPanel({
 
         {isExpanded && (
           <div className="space-y-4 animate-fade-in">
-            {!showSuggestions ? (
-              <Button
-                onClick={handleOptimize}
-                disabled={isOptimizing}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              >
-                {isOptimizing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    Analyzing Your Week...
-                  </>
-                ) : (
-                  <>
-                    <Target size={16} className="mr-2" />
-                    Optimize My Week
-                  </>
-                )}
-              </Button>
+            {!showSuggestions && !showAutoPlan ? (
+              <div className="space-y-2">
+                <Button
+                  onClick={handleOptimize}
+                  disabled={isOptimizing}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
+                  {isOptimizing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                      Analyzing Your Week...
+                    </>
+                  ) : (
+                    <>
+                      <Target size={16} className="mr-2" />
+                      Optimize My Week
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={() => setShowAutoPlan(true)}
+                  variant="outline"
+                  className="w-full border-purple-300 text-purple-700 hover:bg-purple-50"
+                >
+                  <Zap size={16} className="mr-2" />
+                  🎯 Generate a 4-day plan based on my goals
+                </Button>
+              </div>
+            ) : showAutoPlan ? (
+              <div className="space-y-4 animate-fade-in">
+                <div className="space-y-3">
+                  <h3 className="font-medium text-purple-800">Workout Intensity</h3>
+                  <div className="space-y-2">
+                    <Slider
+                      value={difficulty}
+                      onValueChange={setDifficulty}
+                      max={3}
+                      min={1}
+                      step={1}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Light</span>
+                      <span className="font-medium text-purple-700">{getDifficultyLabel(difficulty[0])}</span>
+                      <span>Intense</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleAutoPlan}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  >
+                    Generate Plan
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAutoPlan(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             ) : (
               <div className="space-y-3 animate-fade-in">
                 <div className="flex items-center gap-2 mb-2">

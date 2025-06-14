@@ -9,7 +9,8 @@ import {
   Utensils, 
   Plus,
   CheckCircle,
-  Circle
+  Circle,
+  RefreshCw
 } from "lucide-react";
 import { format, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -40,21 +41,31 @@ export function WeeklyTimelineView({
   className
 }: WeeklyTimelineViewProps) {
   
-  const getWorkoutTypeColor = (type?: string) => {
-    const colors = {
+  const getWorkoutBadgeStyle = (type?: string) => {
+    const styles = {
       strength: "bg-red-100 text-red-700 border-red-200",
       cardio: "bg-green-100 text-green-700 border-green-200",
       recovery: "bg-purple-100 text-purple-700 border-purple-200",
-      rest: "bg-gray-100 text-gray-700 border-gray-200"
+      rest: "bg-gray-100 text-gray-500 border-gray-200"
     };
-    return colors[type as keyof typeof colors] || "bg-gray-100 text-gray-700 border-gray-200";
+    return styles[type as keyof typeof styles] || "bg-gray-100 text-gray-500 border-gray-200";
   };
 
   const getWorkoutIcon = (type?: string) => {
     switch (type) {
       case 'cardio': return <Heart size={12} />;
-      case 'recovery': return <Circle size={12} />;
-      default: return <Dumbbell size={12} />;
+      case 'recovery': return <RefreshCw size={12} />;
+      case 'strength': return <Dumbbell size={12} />;
+      default: return <Circle size={12} />;
+    }
+  };
+
+  const getWorkoutEmoji = (type?: string) => {
+    switch (type) {
+      case 'strength': return '🏋️';
+      case 'cardio': return '🏃‍♂️';
+      case 'recovery': return '🧘';
+      default: return '💤';
     }
   };
 
@@ -73,15 +84,15 @@ export function WeeklyTimelineView({
                 <div
                   key={index}
                   className={cn(
-                    "p-3 rounded-lg border transition-all cursor-pointer",
+                    "p-3 rounded-lg border transition-all duration-200 cursor-pointer hover:shadow-md",
                     isSelected 
-                      ? "border-hashim-300 bg-hashim-50" 
-                      : "border-gray-200 hover:border-gray-300",
+                      ? "border-hashim-300 bg-hashim-50 shadow-sm" 
+                      : "border-gray-200 hover:border-gray-300 bg-white",
                     isToday && "ring-2 ring-hashim-200"
                   )}
                   onClick={() => onDaySelect(day.date)}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "font-medium",
@@ -104,7 +115,7 @@ export function WeeklyTimelineView({
                         e.stopPropagation();
                         onAddWorkout(day.date);
                       }}
-                      className="h-6 w-6 p-0"
+                      className="h-6 w-6 p-0 hover:bg-hashim-100"
                     >
                       <Plus size={12} />
                     </Button>
@@ -113,24 +124,33 @@ export function WeeklyTimelineView({
                   {/* Workout Section */}
                   <div className="space-y-2">
                     {day.workoutTitle ? (
-                      <div className={cn(
-                        "flex items-center gap-2 p-2 rounded border text-xs",
-                        getWorkoutTypeColor(day.workoutType)
-                      )}>
-                        {getWorkoutIcon(day.workoutType)}
-                        <span className="font-medium">{day.workoutTitle}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          className={cn(
+                            "flex items-center gap-1 text-xs border",
+                            getWorkoutBadgeStyle(day.workoutType)
+                          )}
+                        >
+                          <span className="text-sm">{getWorkoutEmoji(day.workoutType)}</span>
+                          {getWorkoutIcon(day.workoutType)}
+                          <span className="font-medium">{day.workoutTitle}</span>
+                        </Badge>
                       </div>
                     ) : (
-                      <div className="text-xs text-muted-foreground italic p-2 border border-dashed rounded">
-                        Rest Day
+                      <div className="text-xs text-muted-foreground italic p-2 border border-dashed rounded bg-gray-50">
+                        💤 Rest Day
                       </div>
                     )}
                     
                     {/* Metrics Row */}
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1">
-                        <Utensils size={10} />
-                        <span>{day.mealsLogged}/{day.mealGoal} meals</span>
+                        <Utensils size={10} className="text-orange-500" />
+                        <span className={cn(
+                          day.mealsLogged >= day.mealGoal ? "text-green-600" : "text-orange-600"
+                        )}>
+                          {day.mealsLogged}/{day.mealGoal} meals
+                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         {day.habitCompletion >= 80 ? (
@@ -138,7 +158,12 @@ export function WeeklyTimelineView({
                         ) : (
                           <Circle size={10} className="text-gray-400" />
                         )}
-                        <span>{day.habitCompletion}% habits</span>
+                        <span className={cn(
+                          day.habitCompletion >= 80 ? "text-green-600" : 
+                          day.habitCompletion >= 60 ? "text-yellow-600" : "text-red-500"
+                        )}>
+                          {day.habitCompletion}% habits
+                        </span>
                       </div>
                     </div>
                   </div>
