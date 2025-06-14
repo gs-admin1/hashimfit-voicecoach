@@ -6,60 +6,87 @@ import { NavigationBar, AnimatedCard, SectionTitle, Chip } from "@/components/ui
 import { ProgressChart } from "@/components/ProgressChart";
 import { ChatFAB } from "@/components/ChatFAB";
 import { toast } from "@/hooks/use-toast";
-import { AICoachBanner } from "@/components/AICoachBanner";
 import { WeeklyAnalytics } from "@/components/WeeklyAnalytics";
-import { ProgressMetricCard } from "@/components/ProgressMetricCard";
-import { WeeklyReviewCard } from "@/components/WeeklyReviewCard";
-import { WorkoutHeatmap } from "@/components/WorkoutHeatmap";
-import { GoalTrackerCard } from "@/components/GoalTrackerCard";
+import { ProgressReflectionsCard } from "@/components/ProgressReflectionsCard";
+import { WeeklyMomentumCard } from "@/components/WeeklyMomentumCard";
+import { AchievementsGamificationCard } from "@/components/AchievementsGamificationCard";
+import { InteractiveGoalsCard } from "@/components/InteractiveGoalsCard";
+import { BodyMetricsVisualizationCard } from "@/components/BodyMetricsVisualizationCard";
+import { ExerciseProgressCard } from "@/components/ExerciseProgressCard";
 import { 
   Activity, 
   Weight, 
   Dumbbell,
-  ArrowUp,
-  ArrowDown,
-  Minus,
   Calendar,
   Target,
   TrendingUp,
-  TrendingDown,
-  Award
+  Award,
+  Edit
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 
 export default function ProgressPage() {
   const { isAuthenticated, userId } = useAuth();
   const [timeRange, setTimeRange] = useState("week");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<'weight' | 'waist' | 'chest' | 'arms' | 'hips'>('weight');
-  const [showAIInsights, setShowAIInsights] = useState(true);
 
-  // Toggle state for each metric
-  const [metrics, setMetrics] = useState({
-    weight: true,
-    calories: true,
-    protein: true,
-    carbs: true,
-    fat: true
+  // Mock data for demonstration
+  const [weeklyReflections] = useState([
+    {
+      type: 'positive',
+      message: "You trained 3x this week — strength focus. Keep it up 💪",
+      icon: '💪'
+    },
+    {
+      type: 'suggestion',
+      message: "Protein goal missed 4 days — want help adjusting meals?",
+      icon: '🥗'
+    }
+  ]);
+
+  const [achievements] = useState({
+    unlocked: [
+      { id: 1, title: "First Workout", icon: "🏃", description: "Completed your first workout" }
+    ],
+    upcoming: [
+      { id: 2, title: "3-Workout Streak", icon: "🔥", description: "Complete 3 workouts in a row", progress: 1, target: 3 },
+      { id: 3, title: "7-Day Habit", icon: "🏆", description: "Log habits for 7 consecutive days", progress: 3, target: 7 }
+    ]
   });
 
-  // Empty data for charts
-  const [multiMetricData, setMultiMetricData] = useState([]);
-  
-  const [showMultiMetric, setShowMultiMetric] = useState(false);
-  
+  const [userGoals, setUserGoals] = useState([
+    { id: 1, type: 'workouts', label: 'Workouts per week', current: 3, target: 4, unit: 'workouts' },
+    { id: 2, type: 'protein', label: 'Daily Protein', current: 85, target: 150, unit: 'g' },
+    { id: 3, type: 'steps', label: 'Daily Steps', current: 6500, target: 8000, unit: 'steps' }
+  ]);
+
+  const [hasData, setHasData] = useState(false);
+  const [bodyMetricsData, setBodyMetricsData] = useState([]);
+  const [exerciseData, setExerciseData] = useState([]);
+
   const fetchProgressData = async (range: string) => {
     setIsLoading(true);
     
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Set empty data arrays based on range
-      setMultiMetricData([]);
+      // Simulate some data for demonstration
+      if (range === "month") {
+        setHasData(true);
+        setBodyMetricsData([
+          { date: "2024-05-01", weight: 75, waist: 32, chest: 40 },
+          { date: "2024-05-15", weight: 74.5, waist: 31.5, chest: 40.2 },
+          { date: "2024-06-01", weight: 74, waist: 31, chest: 40.5 }
+        ]);
+        setExerciseData([
+          { date: "Week 1", benchPress: 80, squat: 100, deadlift: 120 },
+          { date: "Week 2", benchPress: 82.5, squat: 105, deadlift: 125 },
+          { date: "Week 3", benchPress: 85, squat: 107.5, deadlift: 127.5 }
+        ]);
+      }
+      
       setTimeRange(range);
     } catch (error) {
       console.error("Error fetching progress data:", error);
@@ -79,36 +106,46 @@ export default function ProgressPage() {
     }
   }, [isAuthenticated, userId]);
 
-  const handleOptimizeWeek = () => {
+  const handleEditGoal = (goalId: number, newTarget: number) => {
+    setUserGoals(prev => 
+      prev.map(goal => 
+        goal.id === goalId ? { ...goal, target: newTarget } : goal
+      )
+    );
     toast({
-      title: "AI Analysis",
-      description: "Analyzing your progress patterns...",
+      title: "Goal Updated",
+      description: "Your goal has been updated successfully!",
     });
   };
 
-  const handleDismissInsight = (index: number) => {
-    console.log("Dismissing insight:", index);
+  const handleReviewWorkoutHistory = () => {
+    toast({
+      title: "Workout History",
+      description: "Opening workout history...",
+    });
   };
 
-  const handleExplainTrends = () => {
+  const handleAskCoachFeedback = () => {
     toast({
       title: "AI Coach",
-      description: "Opening detailed trend analysis...",
+      description: "Coach feedback feature coming soon!",
     });
   };
 
-  const getSingleMetricData = () => {
-    return multiMetricData.map(item => ({
-      date: item.date,
-      value: item[selectedMetric === 'weight' ? 'weight' : selectedMetric === 'waist' ? 'calories' : selectedMetric === 'chest' ? 'protein' : selectedMetric === 'arms' ? 'carbs' : 'fat']
-    }));
-  };
+  const momentum = hasData ? 'up' : 'steady';
+  const weeklyProgress = hasData ? 65 : 25;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-hashim-50/50 to-white dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 animate-fade-in">
         <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
           <Logo />
+          <div className="flex items-center space-x-2">
+            <Badge variant="secondary" className="bg-hashim-100 text-hashim-700">
+              <TrendingUp size={12} className="mr-1" />
+              This Week
+            </Badge>
+          </div>
         </div>
       </header>
       
@@ -119,63 +156,46 @@ export default function ProgressPage() {
             subtitle="Your fitness journey insights" 
           />
 
-          {/* AI Coach Insights */}
-          {showAIInsights && (
-            <AICoachBanner
-              insights={[]}
-              onOptimizeWeek={handleOptimizeWeek}
-              onDismissInsight={handleDismissInsight}
-              className="animate-fade-in"
-            />
-          )}
+          {/* AI Coach Reflections - Replaces "Optimize My Week" */}
+          <ProgressReflectionsCard
+            reflections={weeklyReflections}
+            onReviewHistory={handleReviewWorkoutHistory}
+            onAskCoach={handleAskCoachFeedback}
+            className="animate-fade-in"
+          />
 
-          {/* Weekly Analytics Summary */}
-          <WeeklyAnalytics stats={{
-            workoutCompletion: 0,
-            nutritionCompliance: 0,
-            habitsCompleted: 0,
-            totalHabits: 0,
-            progressTrend: 'up' as const,
-            weeklyGoals: {
-              workouts: { completed: 0, target: 0 },
-              calories: { avg: 0, target: 0 },
-              protein: { avg: 0, target: 0 }
-            }
-          }} className="animate-fade-in" />
+          {/* Weekly Summary with Momentum + Visuals */}
+          <WeeklyMomentumCard
+            momentum={momentum}
+            weeklyProgress={weeklyProgress}
+            isJustStarting={!hasData}
+            stats={{
+              workoutCompletion: hasData ? 75 : 0,
+              nutritionCompliance: hasData ? 60 : 0,
+              habitsCompleted: hasData ? 12 : 0,
+              totalHabits: 21,
+              progressTrend: momentum,
+              weeklyGoals: {
+                workouts: { completed: hasData ? 3 : 0, target: 4 },
+                calories: { avg: hasData ? 1800 : 0, target: 2000 },
+                protein: { avg: hasData ? 120 : 0, target: 150 }
+              }
+            }}
+            className="animate-fade-in"
+          />
 
-          {/* Achievement Badges */}
-          <AnimatedCard delay={100}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Award className="h-5 w-5 text-hashim-600" />
-                <h3 className="font-semibold">Achievements</h3>
-              </div>
-              <Button variant="ghost" size="sm" className="text-hashim-600">
-                View All
-              </Button>
-            </div>
-            <div className="text-center py-8 text-muted-foreground">
-              <Award size={48} className="mx-auto mb-4 opacity-20" />
-              <p>Complete workouts to unlock achievements!</p>
-            </div>
-          </AnimatedCard>
+          {/* Gamified Achievements */}
+          <AchievementsGamificationCard
+            achievements={achievements}
+            className="animate-fade-in"
+          />
 
-          {/* Goals Tracker */}
-          <AnimatedCard delay={150}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Target className="h-5 w-5 text-hashim-600" />
-                <h3 className="font-semibold">Goals</h3>
-              </div>
-              <Button variant="ghost" size="sm" className="text-hashim-600">
-                Set Goal
-              </Button>
-            </div>
-            <div className="text-center py-8 text-muted-foreground">
-              <Target size={48} className="mx-auto mb-4 opacity-20" />
-              <p>Set your fitness goals to track progress!</p>
-            </div>
-          </AnimatedCard>
+          {/* Interactive Goals */}
+          <InteractiveGoalsCard
+            goals={userGoals}
+            onEditGoal={handleEditGoal}
+            className="animate-fade-in"
+          />
 
           {/* Time Range Selector */}
           <div className="flex space-x-3 mb-6 overflow-x-auto pb-2 scrollbar-none">
@@ -196,78 +216,24 @@ export default function ProgressPage() {
             />
           </div>
 
-          {/* Weight & Body Metrics Chart */}
-          <AnimatedCard delay={200}>
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center space-x-2">
-                <Weight className="h-5 w-5 text-hashim-600" />
-                <h3 className="font-semibold">Body Metrics</h3>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={handleExplainTrends}
-                  className="text-hashim-600"
-                >
-                  Explain Trends
-                </Button>
-              </div>
-            </div>
-            
-            <div className="flex space-x-2 mb-4 overflow-x-auto">
-              {(['weight', 'waist', 'chest', 'arms', 'hips'] as const).map((metric) => (
-                <Button
-                  key={metric}
-                  size="sm"
-                  variant={selectedMetric === metric ? "default" : "outline"}
-                  onClick={() => setSelectedMetric(metric)}
-                  className="capitalize flex-shrink-0"
-                >
-                  {metric}
-                </Button>
-              ))}
-            </div>
-            
-            <div className="h-48 overflow-hidden">
-              {isLoading ? (
-                <div className="flex justify-center items-center h-full">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hashim-600"></div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <div className="text-center">
-                    <Weight size={48} className="mx-auto mb-4 opacity-20" />
-                    <p>Start logging your measurements to see progress!</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </AnimatedCard>
+          {/* Body Metrics Visualization */}
+          <BodyMetricsVisualizationCard
+            data={bodyMetricsData}
+            selectedMetric={selectedMetric}
+            onMetricSelect={setSelectedMetric}
+            timeRange={timeRange}
+            isLoading={isLoading}
+            hasData={hasData}
+            className="animate-fade-in"
+          />
           
           {/* Exercise Progress */}
-          <AnimatedCard delay={250}>
-            <div className="flex items-center mb-4">
-              <Dumbbell className="mr-2 text-hashim-600" size={20} />
-              <h3 className="font-semibold">Exercise Progress</h3>
-            </div>
-            <div className="text-center py-8 text-muted-foreground">
-              <Dumbbell size={48} className="mx-auto mb-4 opacity-20" />
-              <p>Complete workouts to track your exercise progress!</p>
-            </div>
-          </AnimatedCard>
-          
-          {/* Body Measurements */}
-          <AnimatedCard delay={300}>
-            <div className="flex items-center mb-4">
-              <Activity className="mr-2 text-hashim-600" size={20} />
-              <h3 className="font-semibold">Body Measurements</h3>
-            </div>
-            <div className="text-center py-8 text-muted-foreground">
-              <Activity size={48} className="mx-auto mb-4 opacity-20" />
-              <p>Log your body measurements to track changes over time!</p>
-            </div>
-          </AnimatedCard>
+          <ExerciseProgressCard
+            data={exerciseData}
+            timeRange={timeRange}
+            hasData={hasData}
+            className="animate-fade-in"
+          />
         </div>
       </main>
       
