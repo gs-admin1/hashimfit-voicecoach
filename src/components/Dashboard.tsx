@@ -129,8 +129,8 @@ export function Dashboard() {
     isCompleted: selectedWorkout.is_completed
   } : undefined;
 
-  // Get user name from profile (handle both name and first_name)
-  const userName = user?.name || user?.first_name || "Alex";
+  // Get user name from profile
+  const userName = user?.name || "Alex";
 
   return (
     <div className="max-w-lg mx-auto pb-20">
