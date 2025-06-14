@@ -66,6 +66,8 @@ export function WeeklyTimelineView({
   };
 
   const getMostConsistentDay = () => {
+    if (weekData.length === 0) return null;
+    
     return weekData.reduce((best, current) => 
       current.habitCompletion > best.habitCompletion ? current : best
     );
@@ -99,7 +101,7 @@ export function WeeklyTimelineView({
         {weekData.map((day, index) => {
           const isSelected = format(day.date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
           const isPast = isBefore(day.date, new Date()) && !isToday(day.date);
-          const isMostConsistent = day.date.getTime() === mostConsistent.date.getTime();
+          const isMostConsistent = mostConsistent && day.date.getTime() === mostConsistent.date.getTime();
           
           // Hide past days if collapsed, but always show today and future
           if (!showPastDays && isPast) return null;
