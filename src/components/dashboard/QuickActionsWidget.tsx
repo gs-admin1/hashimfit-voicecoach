@@ -20,33 +20,85 @@ export function QuickActionsWidget({
   return (
     <Card className={cn("animate-fade-in", className)}>
       <CardContent className="p-5">
-        <div className="grid grid-cols-3 gap-4">
-          <Button
-            variant="outline"
-            className="flex flex-col items-center justify-center px-4 py-6 h-24 space-y-2 hover:bg-hashim-50 hover:border-hashim-300 transition-all duration-200"
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Log Workout Card */}
+          <div 
+            className="relative bg-gradient-to-br from-red-500 to-hashim-600 rounded-2xl p-5 text-white cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 min-h-[120px] flex flex-col justify-between"
             onClick={onLogWorkout}
           >
-            <Mic className="h-5 w-5 text-hashim-600" />
-            <span className="text-xs font-medium text-center leading-tight">Log Workout</span>
-          </Button>
-          
-          <Button
-            variant="outline"
-            className="flex flex-col items-center justify-center px-4 py-6 h-24 space-y-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+            <div className="flex items-start justify-between mb-3">
+              <div className="text-2xl">🎙️</div>
+              <div className="p-2 bg-white/20 rounded-full animate-pulse">
+                <Mic className="h-4 w-4 text-white" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg mb-1">Log Workout</h3>
+              <p className="text-white/80 text-sm mb-3">Talk to log your sets & reps</p>
+            </div>
+            <Button 
+              className="bg-white/20 hover:bg-white/30 text-white border-0 w-full text-sm font-medium transition-all duration-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLogWorkout?.();
+              }}
+            >
+              🎤 Start Logging
+            </Button>
+          </div>
+
+          {/* Log Meal Card */}
+          <div 
+            className="relative bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-5 text-white cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 min-h-[120px] flex flex-col justify-between"
             onClick={onLogMeal}
           >
-            <Camera className="h-5 w-5 text-green-600" />
-            <span className="text-xs font-medium text-center leading-tight">Log Meal</span>
-          </Button>
-          
-          <Button
-            variant="outline"
-            className="flex flex-col items-center justify-center px-4 py-6 h-24 space-y-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+            <div className="flex items-start justify-between mb-3">
+              <div className="text-2xl">📷</div>
+              <div className="p-2 bg-white/20 rounded-full">
+                <Camera className="h-4 w-4 text-white" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg mb-1">Log Meal</h3>
+              <p className="text-white/80 text-sm mb-3">Snap a photo for instant nutrition</p>
+            </div>
+            <Button 
+              className="bg-white/20 hover:bg-white/30 text-white border-0 w-full text-sm font-medium transition-all duration-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLogMeal?.();
+              }}
+            >
+              📸 Take Photo
+            </Button>
+          </div>
+
+          {/* Manual Entry Card */}
+          <div 
+            className="relative bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-2xl p-5 text-gray-800 dark:text-white cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 min-h-[120px] flex flex-col justify-between border border-gray-200 dark:border-gray-600"
             onClick={onManualEntry}
           >
-            <Edit className="h-5 w-5 text-blue-600" />
-            <span className="text-xs font-medium text-center leading-tight">Manual Entry</span>
-          </Button>
+            <div className="flex items-start justify-between mb-3">
+              <div className="text-2xl">✍️</div>
+              <div className="p-2 bg-gray-300/50 dark:bg-gray-600/50 rounded-full">
+                <Edit className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg mb-1">Manual Entry</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">Use keyboard to log manually</p>
+            </div>
+            <Button 
+              variant="outline"
+              className="bg-white/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-700 text-gray-800 dark:text-white border-gray-300 dark:border-gray-600 w-full text-sm font-medium transition-all duration-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                onManualEntry?.();
+              }}
+            >
+              ✏️ Enter Manually
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
