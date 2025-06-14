@@ -4,10 +4,10 @@ import { format, startOfWeek, addDays } from "date-fns";
 import { useUser } from "@/context/UserContext";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 
-// Import existing components (removing QuickActionsWidget)
+// Import existing components
 import { WeeklyTimelineView } from "@/components/WeeklyTimelineView";
 
-// Import new modern components
+// Import modern components
 import { UserGreeting } from "@/components/dashboard/modern/UserGreeting";
 import { HeroCTACard } from "@/components/dashboard/modern/HeroCTACard";
 import { DailySnapshotRing } from "@/components/dashboard/modern/DailySnapshotRing";
@@ -15,8 +15,10 @@ import { StreakMomentumBadge } from "@/components/dashboard/modern/StreakMomentu
 import { AIInsightTile } from "@/components/dashboard/modern/AIInsightTile";
 import { CompletedItemsList } from "@/components/dashboard/modern/CompletedItemsList";
 import { MetricsMicroCard } from "@/components/dashboard/modern/MetricsMicroCard";
+import { WeightProgressCard } from "@/components/dashboard/modern/WeightProgressCard";
+import { GamificationCard } from "@/components/dashboard/modern/GamificationCard";
 
-// Import custom hooks (existing)
+// Import custom hooks
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useSelectedWorkout } from "@/hooks/useSelectedWorkout";
 import { useDashboardMutations } from "@/hooks/useDashboardMutations";
@@ -28,7 +30,7 @@ export function ModernDashboard() {
   
   const { user } = useUser();
   
-  // Custom hooks for data and functionality (existing)
+  // Custom hooks for data and functionality
   const { 
     weeklyWorkouts, 
     workoutSchedules, 
@@ -98,7 +100,7 @@ export function ModernDashboard() {
   // Get user name from profile
   const userName = user?.name || "Alex";
 
-  // Mock data for new components (you can connect to real data later)
+  // Mock data for new components
   const weeklyData = weekDates.map((date, index) => ({
     date,
     workoutTitle: index === 0 ? "Push Day" : index === 2 ? "Pull Day" : undefined,
@@ -115,6 +117,32 @@ export function ModernDashboard() {
     { type: 'meal' as const, name: 'Chicken Salad', time: '1:00 PM', completed: true },
   ];
 
+  // Mock weight data
+  const weightData = [
+    { date: '2025-06-01', value: 77.0 },
+    { date: '2025-06-03', value: 76.8 },
+    { date: '2025-06-05', value: 76.5 },
+    { date: '2025-06-07', value: 76.2 },
+    { date: '2025-06-09', value: 75.9 },
+    { date: '2025-06-11', value: 75.6 },
+    { date: '2025-06-13', value: 75.2 },
+  ];
+
+  // Mock gamification data
+  const gamificationData = {
+    streakDays: 4,
+    latestBadge: {
+      name: "First Meal Tracked",
+      icon: "🍽️",
+      earned: true
+    },
+    xpProgress: {
+      current: 1240,
+      target: 2000,
+      level: 3
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900">
       {/* Modern gradient background with enhanced pattern */}
@@ -124,7 +152,16 @@ export function ModernDashboard() {
         {/* User Greeting - Top of screen */}
         <div className="px-4 pt-6 pb-3">
           <UserGreeting userName={userName} />
-          <StreakMomentumBadge streakDays={3} />
+          <div className="flex items-center justify-between">
+            <StreakMomentumBadge streakDays={gamificationData.streakDays} />
+            {/* Add streak fire icon to header */}
+            {gamificationData.streakDays > 0 && (
+              <div className="flex items-center space-x-1 text-orange-500">
+                <span className="animate-pulse">🔥</span>
+                <span className="text-sm font-medium">{gamificationData.streakDays}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Hero CTA - Primary action above the fold */}
@@ -142,7 +179,17 @@ export function ModernDashboard() {
           <AIInsightTile onAskCoach={handleAskCoach} />
         </div>
 
-        {/* Two-column layout for completed items and metrics - SWAPPED: CompletedItemsList first, DailySnapshotRing second */}
+        {/* Gamification Highlights Card - NEW */}
+        <div className="px-4 mb-4">
+          <GamificationCard
+            streakDays={gamificationData.streakDays}
+            latestBadge={gamificationData.latestBadge}
+            xpProgress={gamificationData.xpProgress}
+            onViewAchievements={() => console.log('View achievements')}
+          />
+        </div>
+
+        {/* Two-column layout for completed items and metrics */}
         <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           <CompletedItemsList items={completedItems} />
           <DailySnapshotRing 
@@ -153,11 +200,21 @@ export function ModernDashboard() {
           />
         </div>
 
-        {/* Metrics Card - Moved below the swapped grid */}
+        {/* Weight Progress Card - NEW */}
+        <div className="px-4 mb-4">
+          <WeightProgressCard
+            currentWeight={75.2}
+            startWeight={77.0}
+            weightData={weightData}
+            onAddWeight={() => console.log('Add weight modal')}
+          />
+        </div>
+
+        {/* Metrics Card */}
         <div className="px-4 mb-4">
           <MetricsMicroCard 
             currentWeight={75.2}
-            weightTrend="+0.3"
+            weightTrend="-1.8"
             lastLogDate="Today"
           />
         </div>
