@@ -117,7 +117,7 @@ export function ModernDashboard() {
     { type: 'meal' as const, name: 'Chicken Salad', time: '1:00 PM', completed: true },
   ];
 
-  // Mock weight data
+  // Mock weight data with nutrition context
   const weightData = [
     { date: '2025-06-01', value: 77.0 },
     { date: '2025-06-03', value: 76.8 },
@@ -127,6 +127,19 @@ export function ModernDashboard() {
     { date: '2025-06-11', value: 75.6 },
     { date: '2025-06-13', value: 75.2 },
   ];
+
+  // Mock nutrition data for context
+  const nutritionData = {
+    dailyCalories: 1850,
+    targetCalories: 2100,
+    protein: 125,
+    targetProtein: 140,
+    carbs: 180,
+    targetCarbs: 210,
+    fat: 65,
+    targetFat: 70,
+    trendReason: "Consistent calorie deficit & high protein intake"
+  };
 
   // Mock gamification data
   const gamificationData = {
@@ -179,7 +192,7 @@ export function ModernDashboard() {
           <AIInsightTile onAskCoach={handleAskCoach} />
         </div>
 
-        {/* Gamification Highlights Card - NEW */}
+        {/* Gamification Highlights Card - MOVED to where Today's Progress was */}
         <div className="px-4 mb-4">
           <GamificationCard
             streakDays={gamificationData.streakDays}
@@ -189,7 +202,7 @@ export function ModernDashboard() {
           />
         </div>
 
-        {/* Two-column layout for completed items and metrics */}
+        {/* Two-column layout for completed items and daily snapshot */}
         <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           <CompletedItemsList items={completedItems} />
           <DailySnapshotRing 
@@ -200,12 +213,13 @@ export function ModernDashboard() {
           />
         </div>
 
-        {/* Weight Progress Card - NEW */}
+        {/* Enhanced Weight Progress Card with Nutrition Context */}
         <div className="px-4 mb-4">
           <WeightProgressCard
             currentWeight={75.2}
             startWeight={77.0}
             weightData={weightData}
+            nutritionData={nutritionData}
             onAddWeight={() => console.log('Add weight modal')}
           />
         </div>

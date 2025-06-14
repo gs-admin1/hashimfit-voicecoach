@@ -9,6 +9,17 @@ interface WeightProgressCardProps {
   currentWeight?: number;
   startWeight?: number;
   weightData: { date: string; value: number }[];
+  nutritionData?: {
+    dailyCalories: number;
+    targetCalories: number;
+    protein: number;
+    targetProtein: number;
+    carbs: number;
+    targetCarbs: number;
+    fat: number;
+    targetFat: number;
+    trendReason: string;
+  };
   onAddWeight: () => void;
 }
 
@@ -16,6 +27,7 @@ export function WeightProgressCard({
   currentWeight, 
   startWeight, 
   weightData, 
+  nutritionData,
   onAddWeight 
 }: WeightProgressCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -76,14 +88,47 @@ export function WeightProgressCard({
           </div>
         )}
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 space-y-4">
         <div className={`transition-all duration-300 ${isExpanded ? 'h-48' : 'h-24'} overflow-hidden`}>
           <ProgressChart
             data={weightData}
             singleMetric="weight"
           />
         </div>
-        <div className="mt-3 text-center">
+        
+        {/* Trend Reason */}
+        {nutritionData && (
+          <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200/50 dark:border-blue-700/50">
+            <p className="text-sm font-semibold text-slate-800 dark:text-white mb-2">
+              Why this trend? 📊
+            </p>
+            <p className="text-xs text-slate-600 dark:text-slate-300 mb-3">
+              {nutritionData.trendReason}
+            </p>
+            
+            {/* Nutrition Summary */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Calories:</span>
+                <span className="font-medium">{nutritionData.dailyCalories}/{nutritionData.targetCalories}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Protein:</span>
+                <span className="font-medium">{nutritionData.protein}g/{nutritionData.targetProtein}g</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Carbs:</span>
+                <span className="font-medium">{nutritionData.carbs}g/{nutritionData.targetCarbs}g</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Fat:</span>
+                <span className="font-medium">{nutritionData.fat}g/{nutritionData.targetFat}g</span>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="text-center">
           <p className={`text-sm font-medium ${isImproving ? 'text-green-600' : 'text-orange-600'}`}>
             {isImproving ? 'Trending down – keep it up 💪' : 'Stay consistent – you got this! 💪'}
           </p>
