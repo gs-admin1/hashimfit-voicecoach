@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { useUser } from "@/context/UserContext";
@@ -10,8 +9,6 @@ import { WeeklyTimelineView } from "@/components/WeeklyTimelineView";
 // Import redesigned modern components
 import { HeroWorkoutCard } from "@/components/dashboard/modern/HeroWorkoutCard";
 import { QuickStatsBar } from "@/components/dashboard/modern/QuickStatsBar";
-import { MealProgressCard } from "@/components/dashboard/modern/MealProgressCard";
-import { WeeklyStreakCard } from "@/components/dashboard/modern/WeeklyStreakCard";
 import { AIMotivationBlock } from "@/components/dashboard/modern/AIMotivationBlock";
 import { CommunityFeedPreview } from "@/components/dashboard/modern/CommunityFeedPreview";
 import { GamificationHighlights } from "@/components/dashboard/modern/GamificationHighlights";
