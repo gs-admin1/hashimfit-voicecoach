@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
@@ -108,20 +107,20 @@ export function useDashboardHandlers() {
     }
   };
 
-  // Enhanced handlers with feedback toasts and mini insights
+  // Enhanced handlers with improved feedback toasts and mini insights
   const handleSnapMeal = () => {
     console.log("Opening meal capture");
     toast({
       title: "✅ Meal logged successfully!",
-      description: "Great nutrition tracking – you're building healthy habits!"
+      description: "Protein still a little low today 🍗 — keep it up!"
     });
   };
 
   const handleLogWorkoutVoice = () => {
     console.log("Opening voice workout logging");
     toast({
-      title: "✅ Workout logged via voice!",
-      description: "Awesome session – your consistency is paying off!"
+      title: "✅ Workout complete!",
+      description: "🔥 AI Coach updated — awesome session today!"
     });
   };
 
@@ -137,7 +136,7 @@ export function useDashboardHandlers() {
     console.log("Opening habits view");
     toast({
       title: "✅ Habit tracked!",
-      description: "Nice consistency this week – keep the momentum going!"
+      description: "1 of 3 habits done! Keep going 🟢"
     });
   };
 

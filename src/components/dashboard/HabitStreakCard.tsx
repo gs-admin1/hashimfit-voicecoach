@@ -44,6 +44,7 @@ export function HabitStreakCard({
   
   const longestStreak = habits.length > 0 ? Math.max(...habits.map(h => h.streak)) : 0;
   const totalBadges = Math.floor(longestStreak / 7); // Badge every 7 days
+  const lastCompletedHabit = habits.find(h => h.completed);
 
   return (
     <Card className={cn("transition-all duration-300 animate-fade-in", className)}>
@@ -53,7 +54,14 @@ export function HabitStreakCard({
             <div className="p-2 bg-yellow-100 rounded-lg">
               <Flame className="h-4 w-4 text-yellow-600" />
             </div>
-            <CardTitle className="text-lg">🔥 Habit Streaks</CardTitle>
+            <div className="flex items-center space-x-2">
+              <CardTitle className="text-lg">🔥 Habit Streaks</CardTitle>
+              {longestStreak > 0 && (
+                <Badge variant="secondary" className="bg-orange-100 text-orange-800 text-xs">
+                  🔥 {longestStreak} days
+                </Badge>
+              )}
+            </div>
           </div>
           <Button
             variant="ghost"
@@ -69,7 +77,7 @@ export function HabitStreakCard({
       {!collapsed && (
         <CardContent className="space-y-4">
           {habits.length === 0 ? (
-            <div className="text-center py-8">
+            <div className="text-center py-6">
               <Plus size={48} className="mx-auto mb-4 opacity-20 text-yellow-500" />
               <p className="text-muted-foreground mb-3">
                 Every habit counts. What's one thing you did today?
@@ -86,6 +94,13 @@ export function HabitStreakCard({
             </div>
           ) : (
             <>
+              {/* Last completed habit */}
+              {lastCompletedHabit && (
+                <div className="text-xs text-muted-foreground mb-2">
+                  🟢 Tracked: {lastCompletedHabit.name}
+                </div>
+              )}
+              
               {/* Streak Summary */}
               <div className="flex items-center justify-between p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg">
                 <div>

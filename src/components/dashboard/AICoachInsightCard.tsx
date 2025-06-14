@@ -66,8 +66,9 @@ export function AICoachInsightCard({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Brain className="h-4 w-4 text-purple-600" />
+            <div className="p-2 bg-purple-100 rounded-lg relative">
+              <Brain className="h-4 w-4 text-purple-600 animate-pulse" />
+              <div className="absolute inset-0 bg-purple-300 rounded-lg opacity-20 animate-ping"></div>
             </div>
             <CardTitle className="text-lg">🧠 AI Coach Insights</CardTitle>
           </div>
@@ -85,7 +86,7 @@ export function AICoachInsightCard({
       {!collapsed && (
         <CardContent className="space-y-4">
           {insights.length === 0 ? (
-            <div className="text-center py-8">
+            <div className="text-center py-6">
               <Sparkles size={48} className="mx-auto mb-4 opacity-20 text-purple-500" />
               <p className="text-muted-foreground mb-3">
                 Complete your next workout to unlock custom coaching from me 🧠

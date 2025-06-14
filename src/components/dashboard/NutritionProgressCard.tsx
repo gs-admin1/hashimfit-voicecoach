@@ -12,6 +12,7 @@ interface NutritionData {
   carbs: { consumed: number; target: number; };
   fat: { consumed: number; target: number; };
   water: { consumed: number; target: number; };
+  lastMeal?: string;
 }
 
 interface NutritionProgressCardProps {
@@ -47,7 +48,8 @@ export function NutritionProgressCard({
     protein: { consumed: 85, target: 150 },
     carbs: { consumed: 120, target: 250 },
     fat: { consumed: 45, target: 75 },
-    water: { consumed: 1.8, target: 3.0 }
+    water: { consumed: 1.8, target: 3.0 },
+    lastMeal: "Grilled chicken salad"
   };
 
   const data = nutritionData || mockData;
@@ -77,7 +79,7 @@ export function NutritionProgressCard({
       {!collapsed && (
         <CardContent className="space-y-4">
           {!hasData ? (
-            <div className="text-center py-8">
+            <div className="text-center py-6">
               <Camera size={48} className="mx-auto mb-4 opacity-20 text-green-500" />
               <p className="text-muted-foreground mb-3">
                 You haven't logged meals yet today — tap above to snap your snack and stay on track 💪
@@ -94,6 +96,13 @@ export function NutritionProgressCard({
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Last meal logged */}
+              {data.lastMeal && (
+                <div className="text-xs text-muted-foreground">
+                  🟢 Last logged: {data.lastMeal}
+                </div>
+              )}
+              
               {/* Calories */}
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
