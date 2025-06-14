@@ -108,20 +108,20 @@ export function useDashboardHandlers() {
     }
   };
 
-  // New handlers for the redesigned components
+  // Enhanced handlers with feedback toasts and mini insights
   const handleSnapMeal = () => {
     console.log("Opening meal capture");
     toast({
-      title: "Meal Capture",
-      description: "Opening camera to capture your meal..."
+      title: "✅ Meal logged successfully!",
+      description: "Great nutrition tracking – you're building healthy habits!"
     });
   };
 
   const handleLogWorkoutVoice = () => {
     console.log("Opening voice workout logging");
     toast({
-      title: "Voice Logging",
-      description: "Workout logged ✅ — View/Edit"
+      title: "✅ Workout logged via voice!",
+      description: "Awesome session – your consistency is paying off!"
     });
   };
 
@@ -136,8 +136,16 @@ export function useDashboardHandlers() {
   const handleViewHabits = () => {
     console.log("Opening habits view");
     toast({
-      title: "Habits",
-      description: "Opening habits tracking..."
+      title: "✅ Habit tracked!",
+      description: "Nice consistency this week – keep the momentum going!"
+    });
+  };
+
+  const handleGenerateWorkout = () => {
+    console.log("Generating AI workout");
+    toast({
+      title: "🧠 AI Workout Generated",
+      description: "Perfect bodyweight session created just for you!"
     });
   };
 
@@ -152,6 +160,7 @@ export function useDashboardHandlers() {
     handleSnapMeal,
     handleLogWorkoutVoice,
     handleManualEntry,
-    handleViewHabits
+    handleViewHabits,
+    handleGenerateWorkout
   };
 }

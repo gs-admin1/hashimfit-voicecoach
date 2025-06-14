@@ -19,33 +19,33 @@ export function QuickActionsWidget({
 }: QuickActionsWidgetProps) {
   return (
     <Card className={cn("animate-fade-in", className)}>
-      <CardContent className="p-4">
-        <div className="grid grid-cols-3 gap-3">
+      <CardContent className="p-5">
+        <div className="grid grid-cols-3 gap-4">
           <Button
             variant="outline"
-            className="flex flex-col items-center justify-center p-4 h-20 space-y-2 hover:bg-hashim-50 hover:border-hashim-300 transition-all duration-200"
+            className="flex flex-col items-center justify-center px-4 py-6 h-24 space-y-2 hover:bg-hashim-50 hover:border-hashim-300 transition-all duration-200"
             onClick={onLogWorkout}
           >
             <Mic className="h-5 w-5 text-hashim-600" />
-            <span className="text-xs font-medium">Log Workout</span>
+            <span className="text-xs font-medium text-center leading-tight">Log Workout</span>
           </Button>
           
           <Button
             variant="outline"
-            className="flex flex-col items-center justify-center p-4 h-20 space-y-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+            className="flex flex-col items-center justify-center px-4 py-6 h-24 space-y-2 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
             onClick={onLogMeal}
           >
             <Camera className="h-5 w-5 text-green-600" />
-            <span className="text-xs font-medium">Log Meal</span>
+            <span className="text-xs font-medium text-center leading-tight">Log Meal</span>
           </Button>
           
           <Button
             variant="outline"
-            className="flex flex-col items-center justify-center p-4 h-20 space-y-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+            className="flex flex-col items-center justify-center px-4 py-6 h-24 space-y-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
             onClick={onManualEntry}
           >
             <Edit className="h-5 w-5 text-blue-600" />
-            <span className="text-xs font-medium">Manual Entry</span>
+            <span className="text-xs font-medium text-center leading-tight">Manual Entry</span>
           </Button>
         </div>
       </CardContent>

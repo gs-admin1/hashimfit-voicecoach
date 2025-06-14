@@ -13,7 +13,9 @@ import {
   Target,
   TrendingUp,
   BarChart3,
-  Play
+  Play,
+  Brain,
+  Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -52,6 +54,8 @@ interface DailyWorkoutSummaryCardProps {
   onContinueWorkout?: (workout: WorkoutData) => void;
   onStartWorkout?: (workout: WorkoutData) => void;
   onCompleteExercise?: (exerciseId: string, exerciseName: string, completed: boolean) => void;
+  onGenerateWorkout?: () => void;
+  onAddWorkout?: () => void;
   isLoading?: boolean;
 }
 
@@ -63,6 +67,8 @@ export function DailyWorkoutSummaryCard({
   onContinueWorkout,
   onStartWorkout,
   onCompleteExercise,
+  onGenerateWorkout,
+  onAddWorkout,
   isLoading = false
 }: DailyWorkoutSummaryCardProps) {
   const navigate = useNavigate();
@@ -156,9 +162,30 @@ export function DailyWorkoutSummaryCard({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-6">
             <Dumbbell size={48} className="mx-auto mb-4 opacity-20" />
-            <p>No workout scheduled for today</p>
+            <p className="text-muted-foreground mb-4">
+              You haven't scheduled today's workout — try a quick bodyweight session?
+            </p>
+            <div className="flex space-x-3 justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onGenerateWorkout}
+                className="flex items-center space-x-1 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
+              >
+                <Brain className="h-4 w-4 text-purple-600" />
+                <span>Generate One</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={onAddWorkout}
+                className="flex items-center space-x-1 bg-hashim-600 hover:bg-hashim-700"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Workout</span>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
