@@ -13,7 +13,7 @@ import { ChatFAB } from "@/components/ChatFAB";
 import { AICoachBanner } from "@/components/AICoachBanner";
 import { PostWorkoutFeedbackModal } from "@/components/PostWorkoutFeedbackModal";
 import { WorkoutCardImproved } from "@/components/WorkoutCardImproved";
-import { Plus, MessageCircle, Dumbbell, ArrowUpDown } from "lucide-react";
+import { Plus, MessageCircle, Dumbbell, ArrowUpDown, Play } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
