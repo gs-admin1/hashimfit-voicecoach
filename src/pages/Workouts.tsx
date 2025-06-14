@@ -586,6 +586,16 @@ export default function WorkoutsPage() {
             activeFilters={activeFilters}
             onFiltersChange={setActiveFilters}
           />
+
+          {/* AI Coach Banner - shows when there are workouts */}
+          {filteredWorkouts.length > 0 && (
+            <AICoachBanner
+              workoutType={filteredWorkouts[0]?.title || "Full Body"}
+              difficulty={filteredWorkouts[0]?.difficulty || 3}
+              targetMuscles={filteredWorkouts[0]?.targetMuscles || ["Full Body"]}
+              className="animate-fade-in"
+            />
+          )}
           
           {isLoadingScheduled ? (
             <div className="flex justify-center py-8">
@@ -595,13 +605,14 @@ export default function WorkoutsPage() {
             <div className="space-y-4">
               {filteredWorkouts.length > 0 ? (
                 filteredWorkouts.map((workout, index) => (
-                  <WorkoutCard
+                  <WorkoutCardImproved
                     key={`${workout.schedule_id}-${workout.id}` || index}
                     workout={workout}
                     onStart={startWorkoutSession}
                     onAskCoach={() => {}}
                     onReplaceWorkout={() => {}}
-                    onUpdateWorkout={handleWorkoutUpdate}
+                    onSaveAsFavorite={saveAsFavorite}
+                    isToday={format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')}
                   />
                 ))
               ) : (
