@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Award, Fire, Target } from "lucide-react";
+import { Award, Flame, Target } from "lucide-react";
 
 interface GamificationCardProps {
   streakDays: number;
@@ -46,7 +46,7 @@ export function GamificationCard({
       <CardContent className="pt-0 space-y-4">
         {/* Streak */}
         <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl border border-orange-200/50 dark:border-orange-700/50">
-          <Fire className="h-6 w-6 text-orange-500 animate-pulse" />
+          <Flame className="h-6 w-6 text-orange-500 animate-pulse" />
           <div className="flex-1">
             <p className="font-semibold text-slate-800 dark:text-white">
               🔥 Streak: {streakDays}-day streak
