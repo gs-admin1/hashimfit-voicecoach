@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Logo";
@@ -32,15 +31,19 @@ export default function ProgressPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<'weight' | 'waist' | 'chest' | 'arms' | 'hips'>('weight');
 
-  // Mock data for demonstration
-  const [weeklyReflections] = useState([
+  // Mock data for demonstration with proper typing
+  const [weeklyReflections] = useState<Array<{
+    type: 'positive' | 'suggestion' | 'warning';
+    message: string;
+    icon: string;
+  }>>([
     {
-      type: 'positive',
+      type: 'positive' as const,
       message: "You trained 3x this week — strength focus. Keep it up 💪",
       icon: '💪'
     },
     {
-      type: 'suggestion',
+      type: 'suggestion' as const,
       message: "Protein goal missed 4 days — want help adjusting meals?",
       icon: '🥗'
     }
@@ -76,9 +79,9 @@ export default function ProgressPage() {
       if (range === "month") {
         setHasData(true);
         setBodyMetricsData([
-          { date: "2024-05-01", weight: 75, waist: 32, chest: 40 },
-          { date: "2024-05-15", weight: 74.5, waist: 31.5, chest: 40.2 },
-          { date: "2024-06-01", weight: 74, waist: 31, chest: 40.5 }
+          { date: "2024-05-01", weight: 75, waist: 32, chest: 40, arms: 35, hips: 38 },
+          { date: "2024-05-15", weight: 74.5, waist: 31.5, chest: 40.2, arms: 35.2, hips: 37.8 },
+          { date: "2024-06-01", weight: 74, waist: 31, chest: 40.5, arms: 35.5, hips: 37.5 }
         ]);
         setExerciseData([
           { date: "Week 1", benchPress: 80, squat: 100, deadlift: 120 },

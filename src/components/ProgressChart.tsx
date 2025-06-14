@@ -24,7 +24,7 @@ interface ProgressChartProps {
     carbs?: boolean;
     fat?: boolean;
   };
-  singleMetric?: 'weight' | 'calories' | 'protein' | 'carbs' | 'fat';
+  singleMetric?: 'weight' | 'calories' | 'protein' | 'carbs' | 'fat' | 'waist' | 'chest' | 'arms' | 'hips' | 'volume';
 }
 
 const CustomTooltip = ({ active, payload, label, metrics, singleMetric }: any) => {
@@ -62,11 +62,17 @@ const getMetricUnit = (metric?: string) => {
     case 'weight':
       return 'kg';
     case 'calories':
+    case 'volume':
       return '';
     case 'protein':
     case 'carbs':
     case 'fat':
       return 'g';
+    case 'waist':
+    case 'chest':
+    case 'arms':
+    case 'hips':
+      return 'cm';
     default:
       return '';
   }
@@ -84,6 +90,16 @@ const getMetricName = (metric?: string) => {
       return 'Carbs';
     case 'fat':
       return 'Fat';
+    case 'waist':
+      return 'Waist';
+    case 'chest':
+      return 'Chest';
+    case 'arms':
+      return 'Arms';
+    case 'hips':
+      return 'Hips';
+    case 'volume':
+      return 'Volume';
     default:
       return 'Value';
   }
@@ -251,8 +267,13 @@ export function ProgressChart({ data, metrics, singleMetric = 'weight' }: Progre
 function getMetricColor(metric?: string): string {
   switch(metric) {
     case 'weight':
+    case 'waist':
+    case 'chest':
+    case 'arms':
+    case 'hips':
       return '#be123c'; // Red
     case 'calories':
+    case 'volume':
       return '#0891b2'; // Blue
     case 'protein':
       return '#4d7c0f'; // Green
