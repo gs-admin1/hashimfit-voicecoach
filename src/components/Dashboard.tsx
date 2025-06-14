@@ -129,19 +129,22 @@ export function Dashboard() {
     isCompleted: selectedWorkout.is_completed
   } : undefined;
 
+  // Get user name from profile (handle both name and first_name)
+  const userName = user?.name || user?.first_name || "Alex";
+
   return (
     <div className="max-w-lg mx-auto pb-20">
       {/* 1. Daily Overview Card - Top Anchor */}
       <div className="mb-4">
         <DailyOverviewCard 
-          userName={user?.name || "Alex"}
+          userName={userName}
           todayWorkout={todayWorkoutData}
           mealsLogged={1}
           totalMeals={4}
           habitsCompleted={1}
           totalHabits={3}
           streakDays={3}
-          onStartWorkout={() => handleStartWorkout(selectedWorkout)}
+          onStartWorkout={() => selectedWorkout && handleStartWorkout(selectedWorkout)}
           onSnapMeal={handleSnapMeal}
           onViewHabits={handleViewHabits}
         />
@@ -165,7 +168,7 @@ export function Dashboard() {
             onToggleCollapse={() => toggleCardCollapse('workoutSummary')}
             workoutData={selectedWorkout}
             onContinueWorkout={handleContinueWorkout}
-            onStartWorkout={() => handleStartWorkout(selectedWorkout)}
+            onStartWorkout={() => selectedWorkout && handleStartWorkout(selectedWorkout)}
             onCompleteExercise={handleCompleteExercise}
             isLoading={isLoadingSelectedWorkout}
           />
@@ -195,7 +198,7 @@ export function Dashboard() {
         <AICoachInsightCard 
           isCollapsed={cardStates.aiInsights}
           onToggleCollapse={() => toggleCardCollapse('aiInsights')}
-          onCompleteWorkout={() => handleStartWorkout(selectedWorkout)}
+          onCompleteWorkout={() => selectedWorkout && handleStartWorkout(selectedWorkout)}
         />
       </div>
       

@@ -82,7 +82,7 @@ export function useSelectedWorkout(selectedDateString: string, workoutSchedules:
         exercises: [...plannedExercises, ...voiceLoggedExercises],
         is_completed: scheduledWorkout.is_completed || false,
         workout_log_id: scheduledWorkout.workout_log_id,
-        estimatedDuration: 45 // Add default estimated duration
+        estimatedDuration: 45 // Add estimated duration property
       };
     },
     enabled: !!userId && !!workoutSchedules,
