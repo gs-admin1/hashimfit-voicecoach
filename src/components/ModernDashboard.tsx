@@ -142,15 +142,15 @@ export function ModernDashboard() {
           <AIInsightTile onAskCoach={handleAskCoach} />
         </div>
 
-        {/* Two-column layout for completed items and metrics - SWAPPED POSITIONS */}
+        {/* Two-column layout for completed items and metrics - SWAPPED: CompletedItemsList first, DailySnapshotRing second */}
         <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CompletedItemsList items={completedItems} />
           <DailySnapshotRing 
             caloriesConsumed={1240}
             caloriesTarget={2100}
             proteinConsumed={85}
             proteinTarget={120}
           />
-          <CompletedItemsList items={completedItems} />
         </div>
 
         {/* Metrics Card - Moved below the swapped grid */}
