@@ -62,28 +62,28 @@ export function CompactExerciseCard({
     }
   };
 
-  // Helper function to get equipment icon
-  const getEquipmentIcon = (weight: string) => {
-    if (weight === 'bodyweight') return '🧘';
-    if (weight.toLowerCase().includes('backpack')) return '🎒';
-    if (weight.toLowerCase().includes('kg') || weight.toLowerCase().includes('lb')) return '🏋️';
-    return '⚖️';
+  // Helper function to get equipment text
+  const getEquipmentText = (weight: string) => {
+    if (weight === 'bodyweight') return 'Bodyweight';
+    if (weight.toLowerCase().includes('backpack')) return 'Backpack';
+    if (weight.toLowerCase().includes('kg') || weight.toLowerCase().includes('lb')) return weight;
+    return weight;
   };
 
   const muscleGroup = getMuscleGroup(exercise.name);
 
   return (
     <Card className={cn(
-      "transition-all duration-300 overflow-hidden animate-fade-in",
-      "bg-white/90 backdrop-blur-sm border-slate-200 hover:border-violet-300 hover:shadow-md",
+      "transition-all duration-300 overflow-hidden",
+      "bg-white/90 backdrop-blur-sm border-slate-200 hover:border-violet-300",
       exercise.completed && "border-green-300 bg-green-50/80",
-      isNext && "border-violet-400 bg-violet-50/80 ring-2 ring-violet-200/50 shadow-lg",
+      isNext && "border-violet-400 bg-violet-50/80 ring-2 ring-violet-200/50",
       className
     )}>
       <CardContent className="p-0">
         {/* Compact View */}
         <div
-          className="flex items-center p-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
+          className="flex items-center p-4 cursor-pointer hover:bg-slate-50/50 transition-colors min-h-[70px]"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           {/* Exercise Number Badge */}
@@ -98,71 +98,46 @@ export function CompactExerciseCard({
 
           {/* Exercise Info */}
           <div className="flex-1 min-w-0">
-            {/* Muscle Group Badge */}
-            <Badge className="text-xs bg-violet-100 text-violet-800 mb-1">
-              {getMuscleGroupIcon(muscleGroup)} {muscleGroup}
-            </Badge>
-            
-            {/* Exercise Name */}
+            {/* Exercise Name - Bold, max 2 lines */}
             <h3 className={cn(
-              "font-bold text-slate-900 line-clamp-2 leading-tight mb-1",
+              "font-bold text-slate-900 leading-tight mb-1 line-clamp-2",
               exercise.completed && "line-through text-slate-600"
             )}>
               {exercise.name}
             </h3>
             
-            {/* Sets and Reps */}
-            <p className="text-sm font-medium text-slate-700">
-              {exercise.sets} × {exercise.reps}
-            </p>
+            {/* Inline Metadata: Reps × Sets + Equipment */}
+            <div className="flex items-center space-x-2 text-sm text-slate-600">
+              <span className="font-medium">
+                {exercise.sets} × {exercise.reps} reps
+              </span>
+              <span>•</span>
+              <span>{getEquipmentText(exercise.weight)}</span>
+              {exercise.source === 'voice' && (
+                <Badge className="text-xs bg-blue-500 text-white px-1">🎤</Badge>
+              )}
+            </div>
           </div>
 
           {/* Right Side Icons */}
           <div className="flex items-center space-x-2 ml-3">
-            {/* Equipment Icon */}
-            <span className="text-lg opacity-60">
-              {getEquipmentIcon(exercise.weight)}
+            {/* Muscle Group Icon - Small and Subtle */}
+            <span className="text-sm opacity-60">
+              {getMuscleGroupIcon(muscleGroup)}
             </span>
             
-            {/* Status/Action Icons */}
-            <div className="flex items-center space-x-1">
-              {exercise.source === 'voice' && (
-                <Badge className="text-xs bg-blue-500 text-white px-1">🎤</Badge>
-              )}
-              
-              {/* Expand/Collapse */}
-              {isExpanded ? (
-                <ChevronUp size={16} className="text-slate-400" />
-              ) : (
-                <ChevronDown size={16} className="text-slate-400" />
-              )}
-            </div>
+            {/* Expand/Collapse Chevron */}
+            {isExpanded ? (
+              <ChevronUp size={16} className="text-slate-400" />
+            ) : (
+              <ChevronDown size={16} className="text-slate-400" />
+            )}
           </div>
         </div>
 
-        {/* Expanded View */}
+        {/* Expanded View - Slide Down Animation */}
         {isExpanded && (
           <div className="border-t border-slate-200 bg-slate-50/50 p-4 animate-accordion-down">
-            {/* Detailed Info */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="bg-white rounded-lg p-3 border border-slate-200">
-                <p className="text-xs text-slate-500 mb-1">Equipment</p>
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">{getEquipmentIcon(exercise.weight)}</span>
-                  <span className="text-sm font-medium text-slate-700">
-                    {exercise.weight === 'bodyweight' ? 'Bodyweight' : exercise.weight}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="bg-white rounded-lg p-3 border border-slate-200">
-                <p className="text-xs text-slate-500 mb-1">Volume</p>
-                <p className="text-lg font-bold text-violet-700">
-                  {exercise.sets} × {exercise.reps}
-                </p>
-              </div>
-            </div>
-
             {/* Action Buttons */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -177,7 +152,7 @@ export function CompactExerciseCard({
                     className="text-slate-600 hover:text-violet-700 hover:bg-violet-100"
                   >
                     <ArrowUpDown size={14} className="mr-1" />
-                    Swap
+                    🔄 Swap
                   </Button>
                 )}
                 
@@ -192,7 +167,7 @@ export function CompactExerciseCard({
                     className="text-slate-600 hover:text-violet-700 hover:bg-violet-100"
                   >
                     <Info size={14} className="mr-1" />
-                    Tips
+                    📺 Form Tips
                   </Button>
                 )}
               </div>

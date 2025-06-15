@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Target, Dumbbell, Sparkles, Calendar, Zap, Play } from "lucide-react";
+import { Clock, Target, Dumbbell, Sparkles, Zap, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface WorkoutSummaryCardProps {
@@ -28,12 +28,6 @@ export function WorkoutSummaryCard({ workout, onStartWorkout, className }: Worko
     return finishTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const getIntensityIcon = () => {
-    if (workout.difficulty >= 7) return <Zap size={16} className="text-orange-500" />;
-    if (workout.aiGenerated) return <Sparkles size={16} className="text-purple-500" />;
-    return <Calendar size={16} className="text-blue-500" />;
-  };
-
   const getCategoryColor = (category: string) => {
     switch (category.toLowerCase()) {
       case 'strength': return 'bg-violet-100 text-violet-800 border-violet-200';
@@ -43,72 +37,59 @@ export function WorkoutSummaryCard({ workout, onStartWorkout, className }: Worko
     }
   };
 
+  const getDifficultyLabel = () => {
+    if (workout.difficulty >= 7) return 'Advanced';
+    if (workout.difficulty >= 4) return 'Intermediate';
+    return 'Beginner';
+  };
+
   return (
     <Card className={cn("bg-white/90 backdrop-blur-sm border-violet-200/50 shadow-lg", className)}>
-      <CardContent className="p-6 space-y-4">
+      <CardContent className="p-5 space-y-3">
         {/* Header with Icon and Title */}
         <div className="flex items-start space-x-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Dumbbell className="h-6 w-6 text-white" />
+          <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Dumbbell className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-slate-900 leading-tight mb-2">
+            <h2 className="text-lg font-bold text-slate-900 leading-tight mb-1">
               🏋️ {workout.title}
             </h2>
-            <div className="flex items-center space-x-2 flex-wrap gap-2">
+            <div className="flex items-center space-x-2">
               <Badge className={cn("text-xs font-medium", getCategoryColor(workout.category))}>
-                💪 {workout.category} ({workout.difficulty >= 7 ? 'Advanced' : workout.difficulty >= 4 ? 'Intermediate' : 'Beginner'})
+                💪 {workout.category} ({getDifficultyLabel()})
               </Badge>
               {workout.aiGenerated && (
                 <Badge className="text-xs bg-purple-500 text-white">
-                  {getIntensityIcon()} AI Generated
+                  <Sparkles size={10} className="mr-1" />
+                  AI
                 </Badge>
               )}
             </div>
           </div>
         </div>
 
-        {/* Workout Stats */}
-        <div className="grid grid-cols-3 gap-4 py-3 px-4 bg-slate-50 rounded-xl">
-          <div className="text-center">
-            <div className="flex items-center justify-center text-violet-600 mb-1">
-              <Clock className="h-4 w-4" />
-            </div>
-            <p className="text-lg font-bold text-slate-900">{workout.estimatedDuration}</p>
-            <p className="text-xs text-slate-500">min</p>
+        {/* Combined Metadata Row */}
+        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+          <div className="flex items-center justify-between text-sm font-medium text-slate-700">
+            <span>Duration: {workout.estimatedDuration}min</span>
+            <span>Exercises: {workout.exercises.length}</span>
+            <span>Difficulty: {workout.difficulty}/10</span>
           </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center text-violet-600 mb-1">
-              <Target className="h-4 w-4" />
-            </div>
-            <p className="text-lg font-bold text-slate-900">{workout.exercises.length}</p>
-            <p className="text-xs text-slate-500">exercises</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center text-violet-600 mb-1">
-              <Dumbbell className="h-4 w-4" />
-            </div>
-            <p className="text-lg font-bold text-slate-900">{workout.difficulty}</p>
-            <p className="text-xs text-slate-500">/10</p>
+          <div className="flex items-center text-sm text-indigo-700">
+            <Clock className="h-4 w-4 mr-1" />
+            <span>Estimated Finish: {getCurrentTime()}</span>
           </div>
         </div>
 
-        {/* Estimated Finish Time */}
-        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-          <p className="text-sm text-indigo-800">
-            🎯 <span className="font-medium">Estimated Finish:</span> {getCurrentTime()} 
-            <span className="text-indigo-600 ml-1">(if started now)</span>
-          </p>
-        </div>
-
-        {/* Start Workout Button */}
+        {/* Start Workout Button - Integrated */}
         {!workout.isCompleted && (
           <Button
             onClick={onStartWorkout}
             size="lg"
-            className="w-full h-12 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-300"
+            className="w-full h-11 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-base font-bold shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            <Play size={18} className="mr-2" />
+            <Play size={16} className="mr-2" />
             Start Workout
           </Button>
         )}
