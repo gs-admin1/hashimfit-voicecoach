@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar, AnimatedCard } from "@/components/ui-components";
@@ -14,6 +15,7 @@ import { CollapsibleCoachInsight } from "@/components/CollapsibleCoachInsight";
 import { CompactExerciseCard } from "@/components/CompactExerciseCard";
 import { ProgressIndicator } from "@/components/ProgressIndicator";
 import { StickyFooterBar } from "@/components/StickyFooterBar";
+import { EnhancedWorkoutSessionCard } from "@/components/EnhancedWorkoutSessionCard";
 import { Plus, MessageCircle, Calendar, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
