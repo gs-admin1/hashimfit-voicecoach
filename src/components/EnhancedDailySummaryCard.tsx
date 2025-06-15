@@ -1,52 +1,62 @@
-import React, { useState } from 'react';
+
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { 
   Calendar,
-  Plus,
-  Dumbbell,
-  Heart,
-  Utensils,
-  Camera,
-  Brain,
-  CheckCircle,
-  Circle,
   Clock,
-  Target,
-  Flame,
+  Dumbbell,
+  Plus,
+  Edit3,
+  UtensilsCrossed,
+  Camera,
+  BookOpen,
+  MessageCircle,
   RefreshCw,
-  Zap,
-  Info
+  ChevronDown,
+  ChevronUp,
+  CheckCircle
 } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-interface WorkoutOption {
-  type: 'strength' | 'cardio' | 'recovery' | 'rest';
-  label: string;
-  icon: React.ReactNode;
-  color: string;
-  emoji: string;
+interface Workout {
+  id: string;
+  title: string;
+  duration: number;
+  bodyFocus: string[];
+  isCompleted: boolean;
+  exercises: number;
+}
+
+interface Habit {
+  id: string;
+  name: string;
+  isCompleted: boolean;
+  target?: number;
+  current?: number;
+  unit?: string;
 }
 
 interface EnhancedDailySummaryCardProps {
   date: Date;
-  workout?: any;
+  workout?: Workout;
   meals: any[];
-  habits: any[];
+  habits: Habit[];
   onAddWorkout: () => void;
-  onEditWorkout: (workout: any) => void;
+  onEditWorkout: (workout: Workout) => void;
   onAddMeal: () => void;
   onScanPlate: () => void;
   onUseTemplate: () => void;
   onAskCoach: () => void;
   onSwapDay: (type: string) => void;
-  onAddAnotherSession?: () => void;
-  onPreLogMeal?: (date: Date) => void;
-  className?: string;
+  onAddAnotherSession: () => void;
+  onPreLogMeal: (date: Date) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export function EnhancedDailySummaryCard({
@@ -63,353 +73,252 @@ export function EnhancedDailySummaryCard({
   onSwapDay,
   onAddAnotherSession,
   onPreLogMeal,
-  className
+  isCollapsed = false,
+  onToggleCollapse
 }: EnhancedDailySummaryCardProps) {
-  const [showWorkoutOptions, setShowWorkoutOptions] = useState(false);
-  const [showMealSuggestions, setShowMealSuggestions] = useState(false);
-  const [showFormTip, setShowFormTip] = useState(false);
+  const [localCollapsed, setLocalCollapsed] = useState(isCollapsed);
+  
+  const handleToggle = () => {
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    } else {
+      setLocalCollapsed(!localCollapsed);
+    }
+  };
+  
+  const collapsed = onToggleCollapse ? isCollapsed : localCollapsed;
 
-  const workoutOptions: WorkoutOption[] = [
-    { type: 'strength', label: 'Strength', icon: <Dumbbell size={14} />, color: 'bg-red-100 text-red-700 border-red-200', emoji: '🏋️' },
-    { type: 'cardio', label: 'Cardio', icon: <Heart size={14} />, color: 'bg-green-100 text-green-700 border-green-200', emoji: '🏃‍♂️' },
-    { type: 'recovery', label: 'Recovery', icon: <RefreshCw size={14} />, color: 'bg-purple-100 text-purple-700 border-purple-200', emoji: '🧘' },
-    { type: 'rest', label: 'Rest', icon: <Circle size={14} />, color: 'bg-gray-100 text-gray-700 border-gray-200', emoji: '💤' },
-  ];
-
-  const suggestedMeals = [
-    "🍗 Grilled Chicken Bowl (35g protein)",
-    "🐟 Salmon with Quinoa (32g protein)", 
-    "🥩 Lean Beef Stir-fry (40g protein)"
-  ];
-
+  const isToday = date.toDateString() === new Date().toDateString();
   const completedHabits = habits.filter(h => h.isCompleted).length;
-  const habitPercentage = habits.length > 0 ? (completedHabits / habits.length) * 100 : 0;
-
-  const getMissingProteinMessage = () => {
-    const totalProtein = meals.reduce((sum, meal) => sum + (meal.protein_g || 0), 0);
-    if (totalProtein < 100) {
-      return "You've missed protein targets 3 days — want help planning tomorrow's food?";
-    }
-    return null;
-  };
-
-  const getCoachNote = () => {
-    if (workout?.bodyFocus?.includes('legs')) {
-      return "Focus on hamstrings today — form reminder: slow eccentrics";
-    }
-    return "Remember to maintain proper form throughout your workout";
-  };
-
-  const getWorkoutSwapSuggestion = () => {
-    if (workout?.title?.includes('Upper')) {
-      return "Need a lighter day? Try: Recovery Mobility Flow 🧘";
-    }
-    return "Want to switch it up? Try a different workout style";
-  };
-
-  const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-  const isFuture = date > new Date();
+  const habitCompletion = habits.length > 0 ? (completedHabits / habits.length) * 100 : 0;
 
   return (
-    <Card className={cn("transition-all duration-200", className)}>
+    <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-white/40 dark:border-slate-700/40 shadow-lg">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar size={20} />
-            {format(date, 'EEEE, MMM d')}
-            {isToday && <Badge className="bg-hashim-100 text-hashim-700">Today</Badge>}
+          <CardTitle className="text-lg font-bold text-slate-800 dark:text-white flex items-center space-x-2">
+            <Calendar className="h-5 w-5 text-hashim-600" />
+            <span>📋 {isToday ? 'Today' : format(date, 'MMM d')} Summary</span>
           </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleToggle}
+            className="h-8 w-8 p-0"
+          >
+            {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </Button>
         </div>
       </CardHeader>
-
-      <CardContent className="space-y-6">
-        {/* Workout Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Dumbbell size={16} className="text-blue-600" />
-              Workout
+      
+      {!collapsed && (
+        <CardContent className="space-y-4">
+          {/* Workout Section */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-slate-800 dark:text-white flex items-center space-x-2">
+              <Dumbbell className="h-4 w-4 text-red-600" />
+              <span>💪 Workout</span>
             </h3>
-            {!workout && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowWorkoutOptions(!showWorkoutOptions)}
-                className="text-hashim-600 hover:text-hashim-700 hover:bg-hashim-50"
-              >
-                <Plus size={14} className="mr-1" />
-                Add
-              </Button>
-            )}
-          </div>
-
-          {workout ? (
-            <div className="space-y-3 animate-fade-in">
-              <div className="flex items-center justify-between p-3 bg-hashim-50 rounded-lg border border-hashim-200">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-hashim-100 rounded">
-                    <Dumbbell size={16} className="text-hashim-600" />
+            
+            {workout ? (
+              <div className="p-3 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-xl border border-red-200/50 dark:border-red-700/50">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-slate-800 dark:text-white">{workout.title}</h4>
+                  {workout.isCompleted && (
+                    <Badge className="bg-green-100 text-green-700">✓ Completed</Badge>
+                  )}
+                </div>
+                
+                <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-300 mb-3">
+                  <div className="flex items-center space-x-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{workout.duration}min</span>
                   </div>
-                  <div>
-                    <p className="font-medium">{workout.title}</p>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock size={10} />
-                        {workout.duration}min
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Target size={10} />
-                        {workout.exercises} exercises
-                      </span>
-                    </div>
+                  <div className="flex items-center space-x-1">
+                    <Dumbbell className="h-3 w-3" />
+                    <span>{workout.exercises} exercises</span>
                   </div>
                 </div>
+                
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {workout.bodyFocus.map((muscle, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {muscle}
+                    </Badge>
+                  ))}
+                </div>
+                
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
+                  <Button 
+                    variant="outline" 
                     size="sm"
                     onClick={() => onEditWorkout(workout)}
-                    className="text-xs"
+                    className="flex-1"
                   >
+                    <Edit3 className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={onAddAnotherSession}
+                    className="flex-1"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Session
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center">
+                <Dumbbell className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                  No workout scheduled
+                </p>
+                <div className="flex gap-2">
+                  <Button onClick={onAddWorkout} size="sm" className="flex-1">
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Workout
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => onSwapDay('strength')}
+                    className="flex-1"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
                     Swap Day
                   </Button>
                 </div>
               </div>
-              
-              {/* AI Coach Note */}
-              <div className="flex items-start gap-2 p-2 bg-purple-50 rounded text-xs border border-purple-200">
-                <Brain size={12} className="text-purple-600 mt-0.5" />
-                <p className="text-purple-700">{getCoachNote()}</p>
-              </div>
-
-              {/* Workout Options */}
-              {isToday && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onAddAnotherSession}
-                    className="flex-1 text-xs"
-                  >
-                    <Plus size={12} className="mr-1" />
-                    Add Another Session
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowWorkoutOptions(true)}
-                    className="flex-1 text-xs"
-                  >
-                    <RefreshCw size={12} className="mr-1" />
-                    Convert to Cardio
-                  </Button>
-                </div>
-              )}
-
-              {/* Swap Suggestion */}
-              <div className="p-2 bg-blue-50 rounded border border-blue-200">
-                <p className="text-xs text-blue-700 mb-1">{getWorkoutSwapSuggestion()}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onSwapDay('recovery')}
-                  className="text-xs h-6"
-                >
-                  Swap Workout
-                </Button>
-              </div>
-            </div>
-          ) : showWorkoutOptions ? (
-            <div className="grid grid-cols-2 gap-2 animate-fade-in">
-              {workoutOptions.map((option) => (
-                <Button
-                  key={option.type}
-                  variant="outline"
-                  className={cn("flex items-center gap-2 h-12 border", option.color)}
-                  onClick={() => {
-                    onSwapDay(option.type);
-                    setShowWorkoutOptions(false);
-                  }}
-                >
-                  <span className="text-sm">{option.emoji}</span>
-                  {option.icon}
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-muted-foreground border border-dashed rounded-lg bg-gray-50">
-              <p className="text-sm">💤 Rest day planned</p>
-            </div>
-          )}
-        </div>
-
-        {/* Nutrition Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Utensils size={16} className="text-green-600" />
-              Nutrition
-            </h3>
-            <span className="text-sm text-muted-foreground">{meals.length}/4 meals</span>
+            )}
           </div>
 
-          {meals.length > 0 ? (
-            <div className="space-y-2">
-              {meals.slice(0, 2).map((meal, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                  <span className="text-sm">{meal.meal_title || 'Meal'}</span>
-                  <span className="text-xs text-muted-foreground">{meal.calories || 0} cal</span>
-                </div>
-              ))}
-              {meals.length > 2 && (
-                <p className="text-xs text-muted-foreground text-center">+{meals.length - 2} more meals</p>
-              )}
-              
-              {isFuture && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onPreLogMeal?.(date)}
-                  className="w-full text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                >
-                  <Plus size={12} className="mr-1" />
-                  Pre-log meals for {format(date, 'MMM d')}
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3 animate-fade-in">
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-700 mb-3">
-                  {getMissingProteinMessage() || "Still missing meals today — want help planning tomorrow's food?"}
+          <Separator />
+
+          {/* Nutrition Section */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-slate-800 dark:text-white flex items-center space-x-2">
+              <UtensilsCrossed className="h-4 w-4 text-blue-600" />
+              <span>🍽️ Nutrition</span>
+            </h3>
+            
+            {meals.length > 0 ? (
+              <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200/50 dark:border-blue-700/50">
+                <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
+                  {meals.length} meal{meals.length > 1 ? 's' : ''} logged today
                 </p>
-                
-                {showMealSuggestions ? (
-                  <div className="space-y-2 mb-3">
-                    <p className="text-xs text-blue-600 font-medium">Try these high-protein meals:</p>
-                    {suggestedMeals.map((meal, index) => (
-                      <div key={index} className="text-xs text-blue-700 p-1 bg-white rounded border">
-                        {meal}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowMealSuggestions(true)}
-                    className="mb-3 text-xs text-blue-600 hover:text-blue-700 h-6"
-                  >
-                    <Zap size={10} className="mr-1" />
-                    Show suggested meals
-                  </Button>
-                )}
-                
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onScanPlate}
-                    className="flex-1 text-xs h-8"
-                  >
-                    <Camera size={12} className="mr-1" />
-                    📸 Scan Plate
+                  <Button variant="outline" size="sm" onClick={onScanPlate} className="flex-1">
+                    <Camera className="h-3 w-3 mr-1" />
+                    Scan Plate
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onUseTemplate}
-                    className="flex-1 text-xs h-8"
-                  >
-                    <Utensils size={12} className="mr-1" />
-                    🍱 Use Template
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onAskCoach}
-                    className="flex-1 text-xs h-8"
-                  >
-                    <Brain size={12} className="mr-1" />
-                    🧠 Ask Coach
+                  <Button variant="outline" size="sm" onClick={onAddMeal} className="flex-1">
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Meal
                   </Button>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Habits Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Target size={16} className="text-purple-600" />
-              Habits
-            </h3>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{completedHabits}/{habits.length}</span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowFormTip(!showFormTip)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Info size={12} className="text-muted-foreground" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">Consistency tip: Small daily actions create lasting change</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+            ) : (
+              <div className="p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-center">
+                <UtensilsCrossed className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                  No meals logged yet
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button variant="outline" size="sm" onClick={onScanPlate}>
+                    <Camera className="h-3 w-3 mr-1" />
+                    Scan
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={onUseTemplate}>
+                    <BookOpen className="h-3 w-3 mr-1" />
+                    Template
+                  </Button>
+                  <Button onClick={onAddMeal} size="sm">
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Progress value={habitPercentage} className="h-2" />
-            <div className="grid gap-2">
-              {habits.slice(0, 3).map((habit, index) => (
-                <div key={index} className={cn(
-                  "flex items-center justify-between p-2 rounded border transition-all",
-                  habit.isCompleted ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
-                )}>
-                  <div className="flex items-center gap-2">
-                    {habit.isCompleted ? (
-                      <CheckCircle size={14} className="text-green-600" />
-                    ) : (
-                      <Circle size={14} className="text-gray-400" />
-                    )}
-                    <span className="text-sm">{habit.name}</span>
-                    {habit.name === 'Water Intake' && habit.isCompleted && (
-                      <Badge className="text-xs bg-orange-100 text-orange-700">
-                        🔥 5-day streak!
-                      </Badge>
-                    )}
+          <Separator />
+
+          {/* Habits Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-slate-800 dark:text-white flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span>✅ Habits</span>
+              </h3>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                {completedHabits}/{habits.length}
+              </span>
+            </div>
+            
+            <Progress value={habitCompletion} className="h-2" />
+            
+            <div className="space-y-2">
+              {habits.map((habit, index) => (
+                <div 
+                  key={habit.id}
+                  className={cn(
+                    "flex items-center justify-between p-2 rounded-lg transition-colors",
+                    habit.isCompleted 
+                      ? "bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-700" 
+                      : "bg-slate-50 border border-slate-200 dark:bg-slate-700/50 dark:border-slate-600"
+                  )}
+                >
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle 
+                      className={cn(
+                        "h-4 w-4",
+                        habit.isCompleted ? "text-green-600" : "text-slate-400"
+                      )} 
+                    />
+                    <span className={cn(
+                      "text-sm",
+                      habit.isCompleted ? "text-green-700 dark:text-green-300" : "text-slate-700 dark:text-slate-300"
+                    )}>
+                      {habit.name}
+                    </span>
                   </div>
-                  {habit.target && (
-                    <span className="text-xs text-muted-foreground">
+                  {habit.target && habit.current !== undefined && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {habit.current}/{habit.target} {habit.unit}
                     </span>
                   )}
                 </div>
               ))}
             </div>
-            
-            <Button
-              variant="ghost"
+          </div>
+
+          <Separator />
+
+          {/* Quick Actions */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
               size="sm"
-              className="w-full text-xs text-muted-foreground hover:text-hashim-600 hover:bg-hashim-50"
+              onClick={onAskCoach}
+              className="flex-1 hover:bg-purple-50 transition-colors"
             >
-              <Plus size={12} className="mr-1" />
-              Add Custom Habit
+              <MessageCircle className="h-3 w-3 mr-1" />
+              Ask Coach
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => onPreLogMeal(date)}
+              className="flex-1 hover:bg-blue-50 transition-colors"
+            >
+              <Calendar className="h-3 w-3 mr-1" />
+              Pre-log Meals
             </Button>
           </div>
-        </div>
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 }

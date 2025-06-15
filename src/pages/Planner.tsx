@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { NavigationBar } from "@/components/ui-components";
@@ -33,6 +32,21 @@ export default function PlannerPage() {
   const { toast } = useToast();
   const { userId } = useAuth();
   
+  // Collapse state management
+  const [collapsedSections, setCollapsedSections] = useState({
+    aiAssistant: false,
+    weeklyTimeline: false,
+    dailySummary: false,
+    weeklySummary: false
+  });
+  
+  const toggleSection = (section: keyof typeof collapsedSections) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+  
   const [workoutDistribution, setWorkoutDistribution] = useState({
     upper: 2,
     lower: 1,
@@ -54,7 +68,6 @@ export default function PlannerPage() {
   const [weeklyTheme, setWeeklyTheme] = useState<string>('Consistency');
   const [momentumState, setMomentumState] = useState<'up' | 'steady' | 'down'>('up');
 
-  // Load weekly data
   useEffect(() => {
     if (!userId) return;
     
@@ -344,6 +357,8 @@ export default function PlannerPage() {
           onOptimizeWeek={handleOptimizeWeek}
           onApplySuggestions={handleApplySuggestions}
           onAutoPlanWeek={handleAutoPlanWeek}
+          isCollapsed={collapsedSections.aiAssistant}
+          onToggleCollapse={() => toggleSection('aiAssistant')}
         />
         
         {/* Section Separator */}
@@ -363,6 +378,8 @@ export default function PlannerPage() {
           selectedDate={selectedDate}
           onDaySelect={setSelectedDate}
           onAddWorkout={handleAddWorkout}
+          isCollapsed={collapsedSections.weeklyTimeline}
+          onToggleCollapse={() => toggleSection('weeklyTimeline')}
         />
         
         {/* Section Separator */}
@@ -389,6 +406,8 @@ export default function PlannerPage() {
             onSwapDay={handleSwapDay}
             onAddAnotherSession={handleAddAnotherSession}
             onPreLogMeal={handlePreLogMeal}
+            isCollapsed={collapsedSections.dailySummary}
+            onToggleCollapse={() => toggleSection('dailySummary')}
           />
         )}
         
@@ -406,6 +425,8 @@ export default function PlannerPage() {
             weeklyTheme={weeklyTheme}
             onUpdateGoal={handleUpdateGoal}
             onSetWeeklyTheme={handleSetWeeklyTheme}
+            isCollapsed={collapsedSections.weeklySummary}
+            onToggleCollapse={() => toggleSection('weeklySummary')}
           />
         )}
       </main>
