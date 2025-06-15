@@ -13,7 +13,10 @@ import { ChatFAB } from "@/components/ChatFAB";
 import { AICoachBanner } from "@/components/AICoachBanner";
 import { PostWorkoutFeedbackModal } from "@/components/PostWorkoutFeedbackModal";
 import { WorkoutCardImproved } from "@/components/WorkoutCardImproved";
-import { Plus, MessageCircle, Dumbbell, ArrowUpDown, Play, Sparkles } from "lucide-react";
+import { EnhancedExerciseList } from "@/components/EnhancedExerciseList";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Plus, MessageCircle, Dumbbell, ArrowUpDown, Play, Sparkles, Clock, Target, TrendingUp, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
@@ -539,10 +542,14 @@ export default function WorkoutsPage() {
     );
   }
 
-  // Main workout list view
+  // Main workout list view - REDESIGNED
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-indigo-50 to-slate-50 dark:from-gray-900 dark:via-indigo-900/20 dark:to-gray-800">
-      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-violet-200/30 dark:border-violet-700/30 sticky top-0 z-10 animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900">
+      {/* Modern gradient background with enhanced pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.15),transparent),radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.15),transparent)]" />
+      
+      {/* Header with Calendar Strip - Sticky */}
+      <header className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-violet-200/30 dark:border-violet-700/30 sticky top-0 z-10 animate-fade-in">
         <div className="max-w-lg mx-auto px-4 py-4 flex justify-between items-center">
           <Logo />
           <div className="flex items-center space-x-2">
@@ -565,138 +572,187 @@ export default function WorkoutsPage() {
           </div>
         </div>
         
+        {/* Calendar Strip */}
         <CalendarStrip
           selectedDate={selectedDate}
           onDateSelect={setSelectedDate}
         />
       </header>
       
-      <main className="pt-6 px-4 animate-fade-in pb-20">
+      <main className="relative pt-6 px-4 animate-fade-in pb-20">
         <div className="max-w-lg mx-auto space-y-6">
-          {/* Modern Section Header */}
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-700 to-indigo-700 bg-clip-text text-transparent">
-              {format(selectedDate, "EEEE, MMM d")}
-            </h1>
-            <p className="text-slate-600 dark:text-slate-300 text-sm">
-              Your training schedule
-            </p>
-          </div>
-          
+          {/* Hero Section - Today's Workout */}
+          {filteredWorkouts.length > 0 && (
+            <div className="space-y-4">
+              {/* Page Title */}
+              <div className="text-center space-y-2">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-700 to-indigo-700 bg-clip-text text-transparent">
+                  {format(selectedDate, "EEEE, MMM d")}
+                </h1>
+                <p className="text-slate-600 dark:text-slate-300 text-sm">
+                  Your training session awaits
+                </p>
+              </div>
+
+              {/* Workout Summary Card */}
+              <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-white/40 dark:border-slate-700/40 shadow-lg animate-fade-in">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-full flex items-center justify-center">
+                        <Dumbbell className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-bold text-slate-800 dark:text-white">
+                          {filteredWorkouts[0].title}
+                        </CardTitle>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {filteredWorkouts[0].category}
+                          </Badge>
+                          {filteredWorkouts[0].aiGenerated && (
+                            <Badge className="text-xs bg-gradient-to-r from-violet-500 to-indigo-500 text-white">
+                              AI Generated
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {filteredWorkouts[0].isCompleted && (
+                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-sm">✓</span>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-4">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-center text-violet-600">
+                        <Clock className="h-4 w-4 mr-1" />
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Duration</p>
+                      <p className="text-sm font-semibold">{filteredWorkouts[0].estimatedDuration}min</p>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-center text-violet-600">
+                        <Target className="h-4 w-4 mr-1" />
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Exercises</p>
+                      <p className="text-sm font-semibold">{filteredWorkouts[0].exercises.length}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-center text-violet-600">
+                        <TrendingUp className="h-4 w-4 mr-1" />
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Difficulty</p>
+                      <p className="text-sm font-semibold">{filteredWorkouts[0].difficulty}/10</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI Coach Insight Card */}
+              <Card className="bg-gradient-to-r from-indigo-100 to-violet-100 dark:from-indigo-900/50 dark:to-violet-900/50 backdrop-blur-xl border border-indigo-200/50 dark:border-indigo-700/50 shadow-lg animate-fade-in">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-full flex items-center justify-center">
+                      <Sparkles className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-indigo-800 dark:text-indigo-200 text-sm mb-1">
+                        🤖 Coach Insight
+                      </h4>
+                      <p className="text-indigo-700 dark:text-indigo-300 text-xs leading-relaxed">
+                        {filteredWorkouts[0]?.difficulty > 6 
+                          ? "High intensity session ahead! Focus on proper form and rest between sets. Stay hydrated! 💪"
+                          : "Perfect training intensity for steady progress. Maintain good form and challenge yourself progressively. You've got this! 🔥"
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Exercise Cards */}
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center">
+                  <Target className="h-5 w-5 mr-2 text-violet-600" />
+                  Exercise List
+                </h3>
+                <EnhancedExerciseList 
+                  exercises={filteredWorkouts[0].exercises}
+                  onExerciseToggle={(exerciseId) => {
+                    console.log('Toggle exercise:', exerciseId);
+                  }}
+                />
+              </div>
+
+              {/* Large Start Workout CTA - Sticky Bottom */}
+              {!filteredWorkouts[0]?.isCompleted && (
+                <div className="fixed bottom-20 left-0 right-0 p-4 z-20">
+                  <div className="max-w-lg mx-auto">
+                    <Button
+                      size="lg"
+                      onClick={() => startWorkoutSession(filteredWorkouts[0])}
+                      className="w-full h-14 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-lg font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                    >
+                      <Play size={20} className="mr-3" />
+                      Start Your Workout
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Filters */}
           <WorkoutFilters
             activeFilters={activeFilters}
             onFiltersChange={setActiveFilters}
           />
 
-          {/* AI Coach Banner - positioned above workouts */}
-          {filteredWorkouts.length > 0 && (
-            <div className="bg-gradient-to-r from-indigo-100 to-violet-100 dark:from-indigo-900/50 dark:to-violet-900/50 backdrop-blur-xl border border-indigo-200/50 dark:border-indigo-700/50 rounded-2xl p-4 shadow-lg animate-fade-in">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-full flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-indigo-800 dark:text-indigo-200 text-sm">
-                    AI Coach Insight
-                  </h4>
-                  <p className="text-indigo-700 dark:text-indigo-300 text-xs">
-                    {filteredWorkouts[0]?.difficulty > 6 
-                      ? "High intensity session ahead! Stay hydrated and focus on form."
-                      : "Perfect training intensity for steady progress. You've got this! 💪"
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {isLoadingScheduled ? (
+          {/* Loading State */}
+          {isLoadingScheduled && (
             <div className="flex justify-center py-8">
               <div className="w-8 h-8 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredWorkouts.length > 0 ? (
-                filteredWorkouts.map((workout, index) => (
-                  <WorkoutCardImproved
-                    key={`${workout.schedule_id}-${workout.id}` || index}
-                    workout={workout}
-                    onStart={startWorkoutSession}
-                    onAskCoach={() => {}}
-                    onReplaceWorkout={() => {}}
-                    onSaveAsFavorite={saveAsFavorite}
-                    isToday={format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')}
-                  />
-                ))
-              ) : (
-                <AnimatedCard className="text-center py-12 bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-white/40 dark:border-slate-700/40 shadow-lg">
-                  <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/50 dark:to-indigo-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Dumbbell className="h-10 w-10 text-violet-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
-                    {activeFilters.length > 0 
-                      ? "No workouts match your filters"
-                      : `No workouts for ${format(selectedDate, "MMM d")}`
-                    }
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm">
-                    {activeFilters.length > 0 
-                      ? "Try adjusting your filters or add a new workout"
-                      : "Ready to plan your next training session?"
-                    }
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => activeFilters.length > 0 ? setActiveFilters([]) : setShowAddWorkout(true)}
-                    className="border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-600 dark:text-violet-300 dark:hover:bg-violet-900/30"
-                  >
-                    {activeFilters.length > 0 ? (
-                      "Clear Filters"
-                    ) : (
-                      <>
-                        <Plus size={16} className="mr-2" />
-                        Schedule Workout
-                      </>
-                    )}
-                  </Button>
-                </AnimatedCard>
-              )}
-            </div>
           )}
 
-          {/* Mobile Action Bar - Fixed at bottom on mobile */}
-          <div className="fixed bottom-20 left-0 right-0 md:hidden bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border-t border-violet-200/30 dark:border-violet-700/30 p-4 z-20">
-            <div className="max-w-lg mx-auto flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {}}
-                className="flex-1 border-violet-300 text-violet-700 hover:bg-violet-50"
+          {/* Empty State */}
+          {!isLoadingScheduled && filteredWorkouts.length === 0 && (
+            <AnimatedCard className="text-center py-12 bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-white/40 dark:border-slate-700/40 shadow-lg">
+              <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/50 dark:to-indigo-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="h-10 w-10 text-violet-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+                {activeFilters.length > 0 
+                  ? "No workouts match your filters"
+                  : `No workouts for ${format(selectedDate, "MMM d")}`
+                }
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm">
+                {activeFilters.length > 0 
+                  ? "Try adjusting your filters or add a new workout"
+                  : "Ready to plan your next training session?"
+                }
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => activeFilters.length > 0 ? setActiveFilters([]) : setShowAddWorkout(true)}
+                className="border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-600 dark:text-violet-300 dark:hover:bg-violet-900/30"
               >
-                <MessageCircle size={14} className="mr-1" />
-                Ask Coach
+                {activeFilters.length > 0 ? (
+                  "Clear Filters"
+                ) : (
+                  <>
+                    <Plus size={16} className="mr-2" />
+                    Schedule Workout
+                  </>
+                )}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {}}
-                className="flex-1 border-violet-300 text-violet-700 hover:bg-violet-50"
-              >
-                <ArrowUpDown size={14} className="mr-1" />
-                Replace
-              </Button>
-              {filteredWorkouts.length > 0 && !filteredWorkouts[0]?.isCompleted && (
-                <Button
-                  size="sm"
-                  onClick={() => startWorkoutSession(filteredWorkouts[0])}
-                  className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white"
-                >
-                  <Play size={14} className="mr-1" />
-                  Start
-                </Button>
-              )}
-            </div>
-          </div>
+            </AnimatedCard>
+          )}
         </div>
       </main>
       
