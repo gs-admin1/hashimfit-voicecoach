@@ -26,6 +26,14 @@ export function ModernDashboard() {
   const [selectedDay, setSelectedDay] = useState(format(new Date(), 'EEEE'));
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   
+  // Add collapse state management
+  const [collapsedSections, setCollapsedSections] = useState({
+    completedToday: false,
+    winsThisWeek: false,
+    weightProgress: false,
+    aiInsights: false
+  });
+  
   const { user } = useUser();
   
   // Custom hooks for data and functionality
@@ -95,6 +103,14 @@ export function ModernDashboard() {
     });
   };
 
+  // Add toggle function for collapse states
+  const toggleSection = (section: keyof typeof collapsedSections) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
   // Get user name from profile
   const userName = user?.name || "Alex";
 
@@ -115,7 +131,6 @@ export function ModernDashboard() {
     { type: 'meal' as const, name: 'Chicken Salad', time: '1:00 PM', completed: true },
   ];
 
-  // Mock weight data with nutrition context
   const weightData = [
     { date: '2025-06-01', value: 77.0 },
     { date: '2025-06-03', value: 76.8 },
@@ -126,7 +141,6 @@ export function ModernDashboard() {
     { date: '2025-06-13', value: 75.2 },
   ];
 
-  // Mock nutrition data for context with coach insights
   const nutritionData = {
     dailyCalories: 1850,
     targetCalories: 2100,
@@ -139,7 +153,6 @@ export function ModernDashboard() {
     trendReason: "Your weight is trending down due to a consistent calorie deficit of ~250 calories daily. Your high protein intake (125g) is helping preserve muscle mass during fat loss. Keep maintaining this balance!"
   };
 
-  // Mock gamification data
   const gamificationData = {
     streakDays: 4,
     latestBadge: {
@@ -187,12 +200,20 @@ export function ModernDashboard() {
 
         {/* AI Insight Tile - Motivational coaching */}
         <div className="px-4 mb-4">
-          <AIInsightTile onAskCoach={handleAskCoach} />
+          <AIInsightTile 
+            onAskCoach={handleAskCoach}
+            isCollapsed={collapsedSections.aiInsights}
+            onToggleCollapse={() => toggleSection('aiInsights')}
+          />
         </div>
 
         {/* Today's Progress - Two-column layout for completed items and daily snapshot */}
         <div className="px-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <CompletedItemsList items={completedItems} />
+          <CompletedItemsList 
+            items={completedItems} 
+            isCollapsed={collapsedSections.completedToday}
+            onToggleCollapse={() => toggleSection('completedToday')}
+          />
           <DailySnapshotRing 
             caloriesConsumed={1240}
             caloriesTarget={2100}
@@ -208,6 +229,8 @@ export function ModernDashboard() {
             latestBadge={gamificationData.latestBadge}
             xpProgress={gamificationData.xpProgress}
             onViewAchievements={() => console.log('View achievements')}
+            isCollapsed={collapsedSections.winsThisWeek}
+            onToggleCollapse={() => toggleSection('winsThisWeek')}
           />
         </div>
 
@@ -219,6 +242,8 @@ export function ModernDashboard() {
             weightData={weightData}
             nutritionData={nutritionData}
             onAddWeight={() => console.log('Add weight modal')}
+            isCollapsed={collapsedSections.weightProgress}
+            onToggleCollapse={() => toggleSection('weightProgress')}
           />
         </div>
 
