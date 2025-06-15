@@ -258,7 +258,6 @@ export function ModernDashboard() {
                 setSelectedDay(dayName);
               }}
               onAddWorkout={() => setShowAddWorkout(true)}
-              className="border-0 bg-transparent shadow-none"
             />
           </div>
         </div>
