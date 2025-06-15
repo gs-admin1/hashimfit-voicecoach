@@ -13,7 +13,6 @@ import { DailySnapshotRing } from "@/components/dashboard/modern/DailySnapshotRi
 import { StreakMomentumBadge } from "@/components/dashboard/modern/StreakMomentumBadge";
 import { AIInsightTile } from "@/components/dashboard/modern/AIInsightTile";
 import { CompletedItemsList } from "@/components/dashboard/modern/CompletedItemsList";
-import { MetricsMicroCard } from "@/components/dashboard/modern/MetricsMicroCard";
 import { WeightProgressCard } from "@/components/dashboard/modern/WeightProgressCard";
 import { GamificationCard } from "@/components/dashboard/modern/GamificationCard";
 
@@ -127,7 +126,7 @@ export function ModernDashboard() {
     { date: '2025-06-13', value: 75.2 },
   ];
 
-  // Mock nutrition data for context
+  // Mock nutrition data for context with coach insights
   const nutritionData = {
     dailyCalories: 1850,
     targetCalories: 2100,
@@ -137,7 +136,7 @@ export function ModernDashboard() {
     targetCarbs: 210,
     fat: 65,
     targetFat: 70,
-    trendReason: "Consistent calorie deficit & high protein intake"
+    trendReason: "Your weight is trending down due to a consistent calorie deficit of ~250 calories daily. Your high protein intake (125g) is helping preserve muscle mass during fat loss. Keep maintaining this balance!"
   };
 
   // Mock gamification data
@@ -212,7 +211,7 @@ export function ModernDashboard() {
           />
         </div>
 
-        {/* Enhanced Weight Progress Card with Nutrition Context */}
+        {/* Enhanced Weight Progress Card with Nutrition Context and Coach Insights */}
         <div className="px-4 mb-4">
           <WeightProgressCard
             currentWeight={75.2}
@@ -220,15 +219,6 @@ export function ModernDashboard() {
             weightData={weightData}
             nutritionData={nutritionData}
             onAddWeight={() => console.log('Add weight modal')}
-          />
-        </div>
-
-        {/* Metrics Card */}
-        <div className="px-4 mb-4">
-          <MetricsMicroCard 
-            currentWeight={75.2}
-            weightTrend="-1.8"
-            lastLogDate="Today"
           />
         </div>
 

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TrendingDown, TrendingUp, Weight } from "lucide-react";
+import { TrendingDown, TrendingUp, Weight, Brain } from "lucide-react";
 import { ProgressChart } from "@/components/ProgressChart";
 
 interface WeightProgressCardProps {
@@ -96,33 +96,79 @@ export function WeightProgressCard({
           />
         </div>
         
-        {/* Trend Reason */}
+        {/* Coach Insights Section */}
         {nutritionData && (
-          <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200/50 dark:border-blue-700/50">
-            <p className="text-sm font-semibold text-slate-800 dark:text-white mb-2">
-              Why this trend? 📊
-            </p>
-            <p className="text-xs text-slate-600 dark:text-slate-300 mb-3">
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200/50 dark:border-blue-700/50">
+            <div className="flex items-center space-x-2 mb-3">
+              <Brain className="h-5 w-5 text-blue-600" />
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                🤖 Coach Insights
+              </p>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
               {nutritionData.trendReason}
             </p>
             
-            {/* Nutrition Summary */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Calories:</span>
-                <span className="font-medium">{nutritionData.dailyCalories}/{nutritionData.targetCalories}</span>
+            {/* Nutrition Data Grid */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400">Calories</span>
+                  <span className={`font-medium ${nutritionData.dailyCalories < nutritionData.targetCalories ? 'text-green-600' : 'text-orange-600'}`}>
+                    {nutritionData.dailyCalories}/{nutritionData.targetCalories}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
+                  <div 
+                    className={`h-1.5 rounded-full ${nutritionData.dailyCalories < nutritionData.targetCalories ? 'bg-green-500' : 'bg-orange-500'}`}
+                    style={{ width: `${Math.min((nutritionData.dailyCalories / nutritionData.targetCalories) * 100, 100)}%` }}
+                  ></div>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Protein:</span>
-                <span className="font-medium">{nutritionData.protein}g/{nutritionData.targetProtein}g</span>
+
+              <div className="p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400">Protein</span>
+                  <span className={`font-medium ${nutritionData.protein >= nutritionData.targetProtein * 0.8 ? 'text-green-600' : 'text-orange-600'}`}>
+                    {nutritionData.protein}g/{nutritionData.targetProtein}g
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
+                  <div 
+                    className={`h-1.5 rounded-full ${nutritionData.protein >= nutritionData.targetProtein * 0.8 ? 'bg-green-500' : 'bg-orange-500'}`}
+                    style={{ width: `${Math.min((nutritionData.protein / nutritionData.targetProtein) * 100, 100)}%` }}
+                  ></div>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Carbs:</span>
-                <span className="font-medium">{nutritionData.carbs}g/{nutritionData.targetCarbs}g</span>
+
+              <div className="p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400">Carbs</span>
+                  <span className="font-medium text-blue-600">
+                    {nutritionData.carbs}g/{nutritionData.targetCarbs}g
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
+                  <div 
+                    className="h-1.5 rounded-full bg-blue-500"
+                    style={{ width: `${Math.min((nutritionData.carbs / nutritionData.targetCarbs) * 100, 100)}%` }}
+                  ></div>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Fat:</span>
-                <span className="font-medium">{nutritionData.fat}g/{nutritionData.targetFat}g</span>
+
+              <div className="p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-slate-400">Fat</span>
+                  <span className="font-medium text-purple-600">
+                    {nutritionData.fat}g/{nutritionData.targetFat}g
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1">
+                  <div 
+                    className="h-1.5 rounded-full bg-purple-500"
+                    style={{ width: `${Math.min((nutritionData.fat / nutritionData.targetFat) * 100, 100)}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
