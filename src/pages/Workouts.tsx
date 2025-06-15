@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
-import { NavigationBar, AnimatedCard, SectionTitle } from "@/components/ui-components";
-import { WorkoutCard } from "@/components/WorkoutCard";
-import { EnhancedWorkoutSessionCard } from "@/components/EnhancedWorkoutSessionCard";
+import { NavigationBar, AnimatedCard } from "@/components/ui-components";
 import { CalendarStrip } from "@/components/CalendarStrip";
 import { WorkoutFilters } from "@/components/WorkoutFilters";
 import { WorkoutCompletionSummary } from "@/components/WorkoutCompletionSummary";
@@ -10,13 +8,13 @@ import { RestTimerOverlay } from "@/components/RestTimerOverlay";
 import { Button } from "@/components/ui/button";
 import { AddWorkoutModal } from "@/components/AddWorkoutModal";
 import { ChatFAB } from "@/components/ChatFAB";
-import { AICoachBanner } from "@/components/AICoachBanner";
 import { PostWorkoutFeedbackModal } from "@/components/PostWorkoutFeedbackModal";
-import { WorkoutCardImproved } from "@/components/WorkoutCardImproved";
-import { EnhancedExerciseList } from "@/components/EnhancedExerciseList";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus, MessageCircle, Dumbbell, ArrowUpDown, Play, Sparkles, Clock, Target, TrendingUp, Calendar } from "lucide-react";
+import { WorkoutSummaryCard } from "@/components/WorkoutSummaryCard";
+import { CollapsibleCoachInsight } from "@/components/CollapsibleCoachInsight";
+import { CompactExerciseCard } from "@/components/CompactExerciseCard";
+import { ProgressIndicator } from "@/components/ProgressIndicator";
+import { StickyFooterBar } from "@/components/StickyFooterBar";
+import { Plus, MessageCircle, Calendar, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { WorkoutService } from "@/lib/supabase/services/WorkoutService";
 import { toast } from "@/hooks/use-toast";
@@ -448,6 +446,22 @@ export default function WorkoutsPage() {
     });
   };
 
+  // Handle exercise actions
+  const handleExerciseToggle = (exerciseId: string) => {
+    console.log('Toggle exercise:', exerciseId);
+    // TODO: Implement exercise completion toggle
+  };
+
+  const handleSwapExercise = (exerciseId: string) => {
+    console.log('Swap exercise:', exerciseId);
+    // TODO: Implement exercise swap functionality
+  };
+
+  const handleFormGuide = (exerciseName: string) => {
+    console.log('Show form guide for:', exerciseName);
+    // TODO: Implement form guide modal
+  };
+
   // Completion view
   if (view === "completion" && selectedWorkout) {
     return (
@@ -579,7 +593,7 @@ export default function WorkoutsPage() {
         />
       </header>
       
-      <main className="relative pt-6 px-4 animate-fade-in pb-20">
+      <main className="relative pt-6 px-4 animate-fade-in pb-32">
         <div className="max-w-lg mx-auto space-y-6">
           {/* Hero Section - Today's Workout */}
           {filteredWorkouts.length > 0 && (
@@ -594,115 +608,44 @@ export default function WorkoutsPage() {
                 </p>
               </div>
 
-              {/* Workout Summary Card */}
-              <Card className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-white/40 dark:border-slate-700/40 shadow-lg animate-fade-in">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-full flex items-center justify-center">
-                        <Dumbbell className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-xl font-bold text-slate-800 dark:text-white">
-                          {filteredWorkouts[0].title}
-                        </CardTitle>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {filteredWorkouts[0].category}
-                          </Badge>
-                          {filteredWorkouts[0].aiGenerated && (
-                            <Badge className="text-xs bg-gradient-to-r from-violet-500 to-indigo-500 text-white">
-                              AI Generated
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {filteredWorkouts[0].isCompleted && (
-                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-sm">✓</span>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0 space-y-4">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-center text-violet-600">
-                        <Clock className="h-4 w-4 mr-1" />
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Duration</p>
-                      <p className="text-sm font-semibold">{filteredWorkouts[0].estimatedDuration}min</p>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-center text-violet-600">
-                        <Target className="h-4 w-4 mr-1" />
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Exercises</p>
-                      <p className="text-sm font-semibold">{filteredWorkouts[0].exercises.length}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-center text-violet-600">
-                        <TrendingUp className="h-4 w-4 mr-1" />
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Difficulty</p>
-                      <p className="text-sm font-semibold">{filteredWorkouts[0].difficulty}/10</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* New Workout Summary Card */}
+              <WorkoutSummaryCard
+                workout={filteredWorkouts[0]}
+                onStartWorkout={() => startWorkoutSession(filteredWorkouts[0])}
+              />
 
-              {/* AI Coach Insight Card */}
-              <Card className="bg-gradient-to-r from-indigo-100 to-violet-100 dark:from-indigo-900/50 dark:to-violet-900/50 backdrop-blur-xl border border-indigo-200/50 dark:border-indigo-700/50 shadow-lg animate-fade-in">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-full flex items-center justify-center">
-                      <Sparkles className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-indigo-800 dark:text-indigo-200 text-sm mb-1">
-                        🤖 Coach Insight
-                      </h4>
-                      <p className="text-indigo-700 dark:text-indigo-300 text-xs leading-relaxed">
-                        {filteredWorkouts[0]?.difficulty > 6 
-                          ? "High intensity session ahead! Focus on proper form and rest between sets. Stay hydrated! 💪"
-                          : "Perfect training intensity for steady progress. Maintain good form and challenge yourself progressively. You've got this! 🔥"
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Collapsible Coach Insight */}
+              <CollapsibleCoachInsight workout={filteredWorkouts[0]} />
 
-              {/* Exercise Cards */}
+              {/* Exercise List with Compact Cards */}
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center">
-                  <Target className="h-5 w-5 mr-2 text-violet-600" />
-                  Exercise List
+                  🗂️ Exercise List
                 </h3>
-                <EnhancedExerciseList 
-                  exercises={filteredWorkouts[0].exercises}
-                  onExerciseToggle={(exerciseId) => {
-                    console.log('Toggle exercise:', exerciseId);
-                  }}
-                />
+                <div className="space-y-3">
+                  {filteredWorkouts[0].exercises.map((exercise: any, index: number) => {
+                    const isNext = !exercise.completed && index === filteredWorkouts[0].exercises.findIndex((ex: any) => !ex.completed);
+                    return (
+                      <CompactExerciseCard
+                        key={exercise.id}
+                        exercise={exercise}
+                        exerciseNumber={index + 1}
+                        isNext={isNext}
+                        onToggleComplete={handleExerciseToggle}
+                        onSwap={handleSwapExercise}
+                        onFormTips={handleFormGuide}
+                      />
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Large Start Workout CTA - Sticky Bottom */}
-              {!filteredWorkouts[0]?.isCompleted && (
-                <div className="fixed bottom-20 left-0 right-0 p-4 z-20">
-                  <div className="max-w-lg mx-auto">
-                    <Button
-                      size="lg"
-                      onClick={() => startWorkoutSession(filteredWorkouts[0])}
-                      className="w-full h-14 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-lg font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
-                    >
-                      <Play size={20} className="mr-3" />
-                      Start Your Workout
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {/* Progress Indicator */}
+              <ProgressIndicator
+                totalExercises={filteredWorkouts[0].exercises.length}
+                completedExercises={filteredWorkouts[0].exercises.filter((ex: any) => ex.completed).length}
+                estimatedTimeLeft={filteredWorkouts[0].estimatedDuration - Math.floor(filteredWorkouts[0].exercises.filter((ex: any) => ex.completed).length * 3)}
+              />
             </div>
           )}
 
@@ -755,6 +698,14 @@ export default function WorkoutsPage() {
           )}
         </div>
       </main>
+
+      {/* Sticky Footer Bar */}
+      {filteredWorkouts.length > 0 && !filteredWorkouts[0]?.isCompleted && (
+        <StickyFooterBar
+          onStartWorkout={() => startWorkoutSession(filteredWorkouts[0])}
+          onVoiceLog={() => console.log('Voice log')}
+        />
+      )}
       
       <AddWorkoutModal 
         isOpen={showAddWorkout} 
